@@ -6,8 +6,8 @@
   <maintainer email="georgejose.pollayil@phd.unipi.it">George Jose Pollayil</maintainer>
   <license>Apache 2.0</license>
 
-  <url type="repository">https://github.com/CentroEPiaggio//panda_controllers</url>
-  <url type="bugtracker">https://github.com/CentroEPiaggio//panda_controllers/issues</url>
+  <url type="repository">https://github.com/CentroEPiaggio/panda_controllers</url>
+  <url type="bugtracker">https://github.com/CentroEPiaggio/panda_controllers/issues</url>
   <author>George Jose Pollayil</author>
 
   <buildtool_depend>catkin</buildtool_depend>
