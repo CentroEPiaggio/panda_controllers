@@ -1,0 +1,9 @@
+<library path="lib/libpanda_controllers">
+  
+  <class name="panda_controllers/CartesianVelocityController" type="panda_controllers::CartesianVelocityController" base_class_type="controller_interface::ControllerBase">
+    <description>
+      A controller that tracks a provided cartesian velocity
+    </description>
+  </class>
+
+</library>

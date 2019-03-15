@@ -1,0 +1,3 @@
+cartesian_velocity_controller:
+    type: panda_controllers/CartesianVelocityController
+    arm_id: panda
