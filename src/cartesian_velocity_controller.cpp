@@ -26,22 +26,22 @@ bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardwa
   }
   
   // Get the cartesian velocity interface fro the robot hardware
-  velocity_cartesian_interface_ = robot_hardware->get<franka_hw::FrankaVelocityCartesianInterface>();
-  if (velocity_cartesian_interface_ == nullptr) {
+  this->velocity_cartesian_interface_ = robot_hardware->get<franka_hw::FrankaVelocityCartesianInterface>();
+  if (this->velocity_cartesian_interface_ == nullptr) {
     ROS_ERROR("CartesianVelocityController: Could not get cartesian velocity interface from hardware.");
     return false;
   }
   
   // Getting the related handle
   try {
-    velocity_cartesian_handle_ = std::make_unique<franka_hw::FrankaCartesianVelocityHandle>(velocity_cartesian_interface_->getHandle(arm_id + "_robot"));
+    this->velocity_cartesian_handle_ = std::make_unique<franka_hw::FrankaCartesianVelocityHandle>(this->velocity_cartesian_interface_->getHandle(arm_id + "_robot"));
   } catch (const hardware_interface::HardwareInterfaceException& e) {
     ROS_ERROR_STREAM("CartesianVelocityController: Error (" << e.what() << ") getting cartesian velocity handle.");
     return false;
   }
 
   // Initializing subscriber to command topic
-  sub_command_ = node_handle.subscribe<geometry_msgs::Twist>("command", 1, &CartesianVelocityController::command, this);
+  this->sub_command_ = node_handle.subscribe<geometry_msgs::Twist>("command", 1, &CartesianVelocityController::command, this);
 
   return true;
 }
@@ -54,9 +54,9 @@ void CartesianVelocityController::starting(const ros::Time& /* time */) {
 void CartesianVelocityController::update(const ros::Time& /* time */, const ros::Duration& period) {
   
   // Setting the commanded twist
-  vel_mutex.lock();
-  velocity_cartesian_handle_->setCommand(vel_command);
-  vel_mutex.unlock();
+  this->vel_mutex.lock();
+  this->velocity_cartesian_handle_->setCommand(this->vel_command);
+  this->vel_mutex.unlock();
 }
 
 void CartesianVelocityController::stopping(const ros::Time& /*time*/) {
@@ -70,10 +70,10 @@ void CartesianVelocityController::stopping(const ros::Time& /*time*/) {
 void CartesianVelocityController::command(const geometry_msgs::Twist::ConstPtr &msg){
   
   // Converting and saving msg to command (TODO: check variation)
-  vel_mutex.lock();
-  vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
+  this->vel_mutex.lock();
+  this->vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
     msg->angular.x, msg->angular.y, msg->angular.z}};
-  vel_mutex.unlock();
+  this->vel_mutex.unlock();
 }
 
 }
