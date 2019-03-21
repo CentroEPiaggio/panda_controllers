@@ -51,6 +51,12 @@ bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardwa
   // Initializing subscriber to command topic
   this->sub_command_ = node_handle.subscribe<geometry_msgs::Twist>("command", 1, &CartesianVelocityController::command, this);
 
+  // Setting up the filter
+  for(int i = 0; i < 6; i++){
+    this->vel_filter.push_back(std::make_shared<filters::FilterChain<double>>("double"));
+    this->vel_filter[i]->configure("low_pass_filter", node_handle);
+  }
+
   return true;
 }
 
@@ -69,10 +75,15 @@ void CartesianVelocityController::update(const ros::Time& /* time */, const ros:
     this->vel_mutex.unlock();
   }
 
-  // Setting the commanded twist
+  // FIltering the requested command
   this->vel_mutex.lock();
-  this->velocity_cartesian_handle_->setCommand(this->vel_command);
+  for(int i = 0; i < 6; i++){
+    this->vel_filter[i]->update(this->vel_command[i], this->filt_command[i]);
+  }
   this->vel_mutex.unlock();
+
+  // Setting the filtered commanded twist
+  this->velocity_cartesian_handle_->setCommand(this->filt_command);
 }
 
 void CartesianVelocityController::stopping(const ros::Time& /*time*/) {
@@ -90,9 +101,34 @@ void CartesianVelocityController::command(const geometry_msgs::Twist::ConstPtr &
 
   // Converting and saving msg to command (TODO: check variation)
   this->vel_mutex.lock();
-  this->vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
-    msg->angular.x, msg->angular.y, msg->angular.z}};
+  // Check if franka is ok, if so set command else set zero velocities
+  if(this->franka_ok){
+    this->vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
+      msg->angular.x, msg->angular.y, msg->angular.z}};
+  } else {
+    std::fill(std::begin(this->vel_command), std::end(this->vel_command), double(0.0));
+  }
   this->vel_mutex.unlock();
+}
+
+// Franka states emergency callback
+void CartesianVelocityController::get_franka_states(const franka_msgs::FrankaState::ConstPtr &msg){
+
+  // See if robot got into error mode
+  if(msg->robot_mode != 2 && msg->robot_mode != 5){       // The robot state is not "automatic" or "manual guiding"
+      this->franka_ok = false;
+      if(this->print_once){
+        ROS_ERROR("Robot entered in error mode!");
+        this->print_once = false;
+      }
+  }else if(msg->robot_mode == 2){
+      this->franka_ok = true;
+      this->print_once = true;
+  }
+
+  // See if some violation occured without getting into errors
+  this->franka_ok = (msg->current_errors.joint_position_limits_violation || msg->current_errors.joint_velocity_violation
+    || msg->current_errors.joint_reflex || msg->current_errors.cartesian_reflex || msg->current_errors.tau_j_range_violation);
 }
 
 }

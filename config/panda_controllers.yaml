@@ -2,3 +2,9 @@ cartesian_velocity_controller:
     type: panda_controllers/CartesianVelocityController
     arm_id: panda
     command_timeout: 3.0
+    low_pass_filter:
+    - name: first_low_pass
+      type: filters/TransferFunctionFilterDouble
+      params:
+        a: [1.0, -0.9971]
+        b: [0.0014, 0.0014]

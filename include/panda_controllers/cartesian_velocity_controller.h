@@ -15,6 +15,13 @@
 
 // ROS msg includes
 #include "geometry_msgs/Twist.h"
+#include <franka_msgs/FrankaState.h>
+
+// Filter includes
+#include "filters/filter_chain.h"
+
+// Other includes
+#include <boost/scoped_ptr.hpp>
 
 namespace panda_controllers {
 
@@ -28,24 +35,37 @@ class CartesianVelocityController : public controller_interface::MultiInterfaceC
   void starting(const ros::Time&) override;
   void stopping(const ros::Time&) override;
 
-  // Command setting callback
-  void command(const geometry_msgs::Twist::ConstPtr &msg);
-
   private:
 
   // ROS Variables
   ros::Subscriber sub_command_;           // For listening to the command topic
+  ros::Subscriber sub_franka_;            // For listening to franka_states for errors
 
-  std::array<double, 6> vel_command;      // The command to be sent to the robot
-
+  // Variables for the velocity command
+  std::array<double, 6> vel_command;      // The requested command
+  std::array<double, 6> filt_command;     // The command to be sent to the robot
   std::mutex vel_mutex;                   // A mutual exclusion lock for the vel command
 
+  // Low pass filter variables
+  std::vector<std::shared_ptr<filters::FilterChain<double>>> vel_filter;
+
+  // Time variables
   ros::Time last_command_time;            // Last time at which a command was recieved
   ros::Duration command_timeout;          // Timeout after which command is reset to null
 
   // The interface and handle
   franka_hw::FrankaVelocityCartesianInterface* velocity_cartesian_interface_;
   std::unique_ptr<franka_hw::FrankaCartesianVelocityHandle> velocity_cartesian_handle_;
+
+  // Emergency and needed variables
+  bool franka_ok = true;
+  bool print_once = true;
+
+  // Command setting callback
+  void command(const geometry_msgs::Twist::ConstPtr &msg);
+  
+  // Franka states emergency callback
+  void get_franka_states(const franka_msgs::FrankaState::ConstPtr &msg);
 
 };
 
