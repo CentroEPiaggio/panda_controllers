@@ -40,6 +40,9 @@ class CartesianVelocityController : public controller_interface::MultiInterfaceC
 
   std::mutex vel_mutex;                   // A mutual exclusion lock for the vel command
 
+  ros::Time last_command_time;            // Last time at which a command was recieved
+  ros::Duration command_timeout;          // Timeout after which command is reset to null
+
   // The interface and handle
   franka_hw::FrankaVelocityCartesianInterface* velocity_cartesian_interface_;
   std::unique_ptr<franka_hw::FrankaCartesianVelocityHandle> velocity_cartesian_handle_;

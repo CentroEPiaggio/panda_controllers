@@ -18,12 +18,20 @@ namespace panda_controllers {
 bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   ros::NodeHandle& node_handle) {
   
-  // Getting needed parameters
+  // Getting arm id
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) {
     ROS_ERROR("CartesianVelocityController: Could not get parameter arm_id.");
     return false;
   }
+
+  // Getting command timeout
+  double comm_timeout;
+  if (!node_handle.getParam("command_timeout", comm_timeout)) {
+    ROS_ERROR("CartesianVelocityController: Could not get parameter command_timeout.");
+    return false;
+  }
+  this->command_timeout = ros::Duration(comm_timeout);
   
   // Get the cartesian velocity interface fro the robot hardware
   this->velocity_cartesian_interface_ = robot_hardware->get<franka_hw::FrankaVelocityCartesianInterface>();
@@ -48,11 +56,19 @@ bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardwa
 
 void CartesianVelocityController::starting(const ros::Time& /* time */) {
   
-  // Nothing to do here
+  // Setting the last recieved time
+  this->last_command_time = ros::Time::now();
 }
 
 void CartesianVelocityController::update(const ros::Time& /* time */, const ros::Duration& period) {
   
+  // Resetting command if timeout
+  if(ros::Time::now() - this->last_command_time > this->command_timeout){
+    this->vel_mutex.lock();
+    std::fill(std::begin(this->vel_command), std::end(this->vel_command), double(0.0));
+    this->vel_mutex.unlock();
+  }
+
   // Setting the commanded twist
   this->vel_mutex.lock();
   this->velocity_cartesian_handle_->setCommand(this->vel_command);
@@ -69,6 +85,9 @@ void CartesianVelocityController::stopping(const ros::Time& /*time*/) {
 // Command setting callback
 void CartesianVelocityController::command(const geometry_msgs::Twist::ConstPtr &msg){
   
+  // Setting the last recieved time
+  this->last_command_time = ros::Time::now();
+
   // Converting and saving msg to command (TODO: check variation)
   this->vel_mutex.lock();
   this->vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
