@@ -13,10 +13,15 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 
+#define   DEBUG_CVC   0       // Additional printouts
+
 namespace panda_controllers {
 
 bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardware,
   ros::NodeHandle& node_handle) {
+
+  // Initializing node handle
+  this->cvc_nh = node_handle;
   
   // Getting arm id
   std::string arm_id;
@@ -51,19 +56,25 @@ bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardwa
   // Initializing subscriber to command topic
   this->sub_command_ = node_handle.subscribe<geometry_msgs::Twist>("command", 1, &CartesianVelocityController::command, this);
 
-  // Setting up the filter
-  for(int i = 0; i < 6; i++){
-    this->vel_filter.push_back(std::make_shared<filters::FilterChain<double>>("double"));
-    this->vel_filter[i]->configure("low_pass_filter", node_handle);
-  }
-
   return true;
 }
 
 void CartesianVelocityController::starting(const ros::Time& /* time */) {
+
+  // Setting up the filter (This is needed here otherwise when switching controllers, filter memory is not cleared!)
+  this->vel_filter.clear();
+  for(int i = 0; i < 6; i++){
+    this->vel_filter.push_back(std::make_shared<filters::FilterChain<double>>("double"));
+    this->vel_filter[i]->configure("low_pass_filter", this->cvc_nh);
+  }
   
   // Setting the last recieved time
   this->last_command_time = ros::Time::now();
+
+  // Setting the value of the velocity command to zero
+  this->vel_mutex.lock();
+  std::fill(std::begin(this->vel_command), std::end(this->vel_command), double(0.0));
+  this->vel_mutex.unlock();
 }
 
 void CartesianVelocityController::update(const ros::Time& /* time */, const ros::Duration& period) {
@@ -82,6 +93,20 @@ void CartesianVelocityController::update(const ros::Time& /* time */, const ros:
   }
   this->vel_mutex.unlock();
 
+  if(DEBUG_CVC){
+    std::cout << "The commanded twist is [ ";
+    for(auto comm_print : this->vel_command){
+      std::cout << comm_print << " "; 
+    }
+    std::cout << "]" << std::endl;
+    std::cout << "The filtered twist is [ ";
+    for(auto comm_print : this->filt_command){
+      std::cout << comm_print << " "; 
+    }
+    std::cout << "]" << std::endl;
+  }
+  
+
   // Setting the filtered commanded twist
   this->velocity_cartesian_handle_->setCommand(this->filt_command);
 }
@@ -91,6 +116,11 @@ void CartesianVelocityController::stopping(const ros::Time& /*time*/) {
   // WARNING: DO NOT SEND ZERO VELOCITIES HERE AS IN CASE OF ABORTING DURING MOTION
   // A JUMP TO ZERO WILL BE COMMANDED PUTTING HIGH LOADS ON THE ROBOT. LET THE DEFAULT
   // BUILT-IN STOPPING BEHAVIOR SLOW DOWN THE ROBOT.
+
+  // Setting the value of the velocity command to zero
+  this->vel_mutex.lock();
+  std::fill(std::begin(this->vel_command), std::end(this->vel_command), double(0.0));
+  this->vel_mutex.unlock();
 }
 
 // Command setting callback

@@ -38,6 +38,7 @@ class CartesianVelocityController : public controller_interface::MultiInterfaceC
   private:
 
   // ROS Variables
+  ros::NodeHandle cvc_nh;
   ros::Subscriber sub_command_;           // For listening to the command topic
   ros::Subscriber sub_franka_;            // For listening to franka_states for errors
 
