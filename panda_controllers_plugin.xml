@@ -5,5 +5,11 @@
       A controller that tracks a provided cartesian velocity
     </description>
   </class>
+  
+  <class name="panda_controllers/PdController" type="panda_controllers::PdController" base_class_type="controller_interface::ControllerBase">
+   <description>
+      PD controller.
+   </description>
+  </class>
 
 </library>
