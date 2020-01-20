@@ -5,7 +5,7 @@
 
 #include <panda_controllers/pdcontroller.h> //file include of the controller
 
-#include <std_msgs/Float64.h>
+
 
 namespace panda_controllers 
 {
@@ -23,28 +23,33 @@ namespace panda_controllers
      command_ = joint_.getPosition(); //set the current joint goal to the current joint getPosition 
      
      //Start command subscriber 
-     sub_command_ = n.subscribe<std_msgs::Float64>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
+     sub_command_ = n.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
      return true;
     }
   
-  void update(const ros::Time& time, const ros::Duration& period)
+  void PdController::update(const ros::Time& time, const ros::Duration& period)
   {
-    double error = command_ - joint_.getPosition(); //the error is between the command received (command_) and the actual position of the joint (joint_.getPosition)
-    double tc = 2;
-    double errordot = (command_ - joint_.getPosition())/tc; 
-    double commanded_effort = Kp*error + Kv*errordot;//application of the pd controller
+    error = command_ - joint_.getPosition(); //the error is between the command received (command_) and the actual position of the joint (joint_.getPosition)
+    
+    dt = 2;
+    dot_error = (error - old_error)/dt; 
+    
+    commanded_effort = Kp*error + Kv*dot_error;//application of the pd controller
+    
     joint_.setCommand(commanded_effort); //set the torque to the joints
+    
+    old_error = error;
   }
   
-  void setCommandCB(const std_msgs::Float64ConstPtr& msg)//is the callback of the topic sub_command_ (up).
+  void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
   {
-   command_ = msg->data; 
+   command_ = msg->position;
   }
   
 
-  void starting(const ros::Time& time) {
+  void PdController::starting(const ros::Time& time) {
     
-    for(i=0,i < 7,i++){
+    for(i=0,i < 6,i++){
       
       Kp(i) = 100;
       Kv(i) = 0.7;
@@ -53,7 +58,7 @@ namespace panda_controllers
     
   }
   
-  void stopping(const ros::Time& time) {}
+  void PdController::stopping(const ros::Time& time) {}
   
   PLUGINLIB_EXPORT_CLASS(panda_controllers::PdController, controller_interface::ControllerBase);
    
