@@ -11,17 +11,75 @@ namespace panda_controllers
 {
     bool PdController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
     {
-      //inizialization of the joints
-     std::string my_joint;
-     if (!n.getParam("joint_names", my_joint))
-     {
-       ROS_ERROR("Could not find joint name!");
-       return false;       
+      //inizialization of the arm and setting up each joints
+      std::string arm_id; //checking up the arm id of the robot
+       if (!node_handle.getParam("arm_id", arm_id)) {
+      ROS_ERROR("PdController: Could not get parameter arm_id!");
+      return false;
+      
      }
-     
-     joint_ = hw->getHandle(my_joint); //Once the joint is found, we are going to listen that specific joint
-     command_ = joint_.getPosition(); //set the current joint goal to the current joint getPosition 
-     
+    
+      //Naming each joint
+      std::vector<std::string> joint_names;
+      if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
+      ROS_ERROR("PdController: No joint_names found!");
+      return false;
+      
+      }
+      
+      //Get model interface: used to perform calculations using the dynamic model of the robot
+      //in particular for modelHandle
+      franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
+      if (model_interface == nullptr) {
+	ROS_ERROR_STREAM("PdController: Error getting model interface from hardware!");
+	return false;
+	
+	}
+	try {
+	  model_handle_.reset(new franka_hw::FrankaModelHandle(model_interface->getHandle(arm_id + "_model")));
+	} catch (hardware_interface::HardwareInterfaceException& ex) {
+	  ROS_ERROR_STREAM("PdController: Exception getting model handle from interface: " << ex.what());
+	  return false;
+	  
+	}
+	
+	// Get state interface: reads the full robot state, from where we can take q,qdot,tau
+	franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
+	if (state_interface == nullptr) {
+	  ROS_ERROR_STREAM("PdController: Error getting state interface from hardware");
+	  return false;
+	  
+	}
+	try {
+	  state_handle_.reset(
+	    new franka_hw::FrankaStateHandle(state_interface->getHandle(arm_id + "_robot")));
+	} catch (hardware_interface::HardwareInterfaceException& ex) {
+	  ROS_ERROR_STREAM("PdController: Exception getting state handle from interface: " << ex.what());
+	  return false;
+	  
+	}
+	
+	  // Getting hardware interface: command joint-level torques and read the joint states.
+	  hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
+	  if (effort_joint_interface == nullptr) {
+	    ROS_ERROR_STREAM("PdController: Error getting effort joint interface from hardware!");
+	    return false;
+	    
+	  }
+	  
+	   // Creating handles for each joint
+	   for (size_t i = 0; i < 7; ++i) {
+	     try {
+	       joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
+	       
+	    } catch (const hardware_interface::HardwareInterfaceException& ex) {
+	      ROS_ERROR_STREAM("PdController: Exception getting joint handles: " << ex.what());
+	      return false;
+	      
+	    }
+	     
+	  }
+	  
      //Start command subscriber 
      sub_command_ = n.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
      return true;
@@ -29,16 +87,7 @@ namespace panda_controllers
   
   void PdController::update(const ros::Time& time, const ros::Duration& period)
   {
-    error = command_ - joint_.getPosition(); //the error is between the command received (command_) and the actual position of the joint (joint_.getPosition)
     
-    dt = 2;
-    dot_error = (error - old_error)/dt; 
-    
-    commanded_effort = Kp*error + Kv*dot_error;//application of the pd controller
-    
-    joint_.setCommand(commanded_effort); //set the torque to the joints
-    
-    old_error = error;
   }
   
   void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
@@ -48,11 +97,17 @@ namespace panda_controllers
   
 
   void PdController::starting(const ros::Time& time) {
-    
-    for(i=0,i < 6,i++){
+    //writing the position and velocity gain
+    for(int i=0,i < 7,i++){
       
       Kp(i) = 100;
       Kv(i) = 0.7;
+      
+    }
+    
+    for (int i=0,i < 7,i++){
+      
+      const franka::
       
     }
     
@@ -60,6 +115,6 @@ namespace panda_controllers
   
   void PdController::stopping(const ros::Time& time) {}
   
-  PLUGINLIB_EXPORT_CLASS(panda_controllers::PdController, controller_interface::ControllerBase);
+  PLUGINLIB_EXPORT_CLASS(panda_controllers::PdController, controller_interface::ControllerBase); 
    
 }
