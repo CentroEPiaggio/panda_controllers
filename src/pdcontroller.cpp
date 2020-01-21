@@ -4,7 +4,8 @@
 #include <pluginlib/class_list_macros.h> 
 
 #include <panda_controllers/pdcontroller.h> //file include of the controller
-
+#include <franka_hw/franka_state_interface.h>
+#include <franka/robot_state.h>
 
 
 namespace panda_controllers 
@@ -70,7 +71,7 @@ namespace panda_controllers
 	   // Creating handles for each joint
 	   for (size_t i = 0; i < 7; ++i) {
 	     try {
-	       joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
+	      joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
 	       
 	    } catch (const hardware_interface::HardwareInterfaceException& ex) {
 	      ROS_ERROR_STREAM("PdController: Exception getting joint handles: " << ex.what());
@@ -81,7 +82,7 @@ namespace panda_controllers
 	  }
 	  
      //Start command subscriber 
-     sub_command_ = node_handle.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
+     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
      return true;
     }
     
@@ -92,23 +93,24 @@ namespace panda_controllers
     }
     
     void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
-  {
+   {
    command_ = msg->position;
-  }
+   }
   
   void PdController::starting(const ros::Time& time) {
-    //writing the position and velocity gain
-    Kp = 100;
-    Kv = 0.7;
-    
-    for (int i=0,i < 7,i++){
-      
-      std::vector<franka_hw::EffortJointInterface> q[i] = joint_handles_->getPosition[i]; //in joint handle there is the actual state of the joints of the robot
-      
-    }
     
     
-  }
+    franka::RobotState robot_state = state_handle_->getRobotState(); //First version for getting robot state;
+    
+    q_curr = robot_state.q.data();
+    
+    /* robot_state.q(i)*/
+    
+    
+    
+    franka_hw::FrankaStateHandle robot_state2 = state_handle_->getRobotState(); //Second version for getting robot state;
+
+    
   
   void PdController::stopping(const ros::Time& time) {}
   

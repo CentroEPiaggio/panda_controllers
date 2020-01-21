@@ -51,6 +51,10 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
   std::vector<hardware_interface::JointHandle> joint_handles_;  
  
+  /*unique_ptr----->These objects have the ability of taking ownership of a pointer: once they take ownership 
+   *they manage the pointed object by becoming responsible for its deletion at some point.*/
+  
+  
 };
 
 }  // namespace panda_controllers
