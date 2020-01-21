@@ -9,7 +9,7 @@
 
 namespace panda_controllers 
 {
-    bool PdController::init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n)
+    bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle)
     {
       //inizialization of the arm and setting up each joints
       std::string arm_id; //checking up the arm id of the robot
@@ -21,8 +21,8 @@ namespace panda_controllers
     
       //Naming each joint
       std::vector<std::string> joint_names;
-      if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
-      ROS_ERROR("PdController: No joint_names found!");
+      if (!node_handle.getParam("joint_names",s) || joint_names.size() != 7) {
+      ROS_ERROR("PdController: No joint_names found!"); joint_name
       return false;
       
       }
@@ -81,35 +81,32 @@ namespace panda_controllers
 	  }
 	  
      //Start command subscriber 
-     sub_command_ = n.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
+     sub_command_ = node_handle.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
      return true;
     }
-  
-  void PdController::update(const ros::Time& time, const ros::Duration& period)
-  {
     
-  }
-  
-  void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
+    void PdController::update(const ros::Time& time, const ros::Duration& period)
+    {
+    
+      
+    }
+    
+    void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
   {
    command_ = msg->position;
   }
   
-
   void PdController::starting(const ros::Time& time) {
     //writing the position and velocity gain
-    for(int i=0,i < 7,i++){
-      
-      Kp(i) = 100;
-      Kv(i) = 0.7;
-      
-    }
+    Kp = 100;
+    Kv = 0.7;
     
     for (int i=0,i < 7,i++){
       
-      const franka::
+      std::vector<franka_hw::EffortJointInterface> q[i] = joint_handles_->getPosition[i]; //in joint handle there is the actual state of the joints of the robot
       
     }
+    
     
   }
   

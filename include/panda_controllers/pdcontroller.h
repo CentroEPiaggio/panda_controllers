@@ -48,7 +48,8 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   sensor_msgs::JointState command_; //definition of the desiderd position 
   
   std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; //used for the state of the joints and command the torque
-  
+  std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
+  std::vector<hardware_interface::JointHandle> joint_handles_;  
  
 };
 
