@@ -21,6 +21,10 @@
 
 //ROS message
 #include <franka_msgs/FrankaState.h>
+#include <eigen3/Eigen/Dense>
+
+#include <Eigen/Dense>
+using namespace Eigen;
 
 
 namespace panda_controllers {
@@ -29,7 +33,7 @@ class PdController : public controller_interface::MultiInterfaceController<frank
 hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   
  public:
-  bool init(hardware_interface::EffortJointInterface* hw, ros::NodeHandle &n);
+  bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle);
   void starting(const ros::Time&);
   void stopping(const ros::Time&);
   void update(const ros::Time&, const ros::Duration& period);
@@ -39,13 +43,31 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   //topic's command listened 
   ros::Subscriber sub_command_;
   
-  //variables used in updating
+  //Defining variables
   double error, old_error,dot_error,commanded_effort,dt; //definition of the errors and the variable for the commanded effort 
-  double Kp, Kv; //let's define the position and velocity gains
+  
+  /* Defining Position and Velocity Gains */
+  Eigen::DiagonalMatrix<double, 7> kp;
+  Eigen::DiagonalMatrix<double, 7> kv;
+  
+  /* Defining q_current, q_current_dot, q_des, and tau_cmd*/
+  
+  Eigen::Matrix<double, 7, 1> q_curr;
+  Eigen::Matrix<double, 7, 1> dq_curr;
+  Eigen::Matrix<double, 7, 1> q_des; ///// dovrei pescarla dal command_.....c'è da fare una conversione di data type
+  Eigen::Matrix<double, 7, 1> tau_cmd;
+  
+  
   
   //Command setting Callback
+  
   void setCommandCB(const sensor_msgs::JointStateConstPtr& msg);
-  sensor_msgs::JointState command_; //definition of the desiderd position 
+  
+  
+  Eigen::Matrix<double, 7, 1> command_pos; //definition of the desiderd position 
+  Eigen::Matrix<double, 7, 1> command_dot_pos;
+  
+  /* DUBBIO: E' lecito fare una cosa del genere "std::array<sensor_msgs::JointState, 7> pippo ??????????*/
   
   std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; //used for the state of the joints and command the torque
   std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;

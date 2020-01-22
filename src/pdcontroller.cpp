@@ -22,8 +22,8 @@ namespace panda_controllers
     
       //Naming each joint
       std::vector<std::string> joint_names;
-      if (!node_handle.getParam("joint_names",s) || joint_names.size() != 7) {
-      ROS_ERROR("PdController: No joint_names found!"); joint_name
+      if (!node_handle.getParam("joint_names",joint_names) || joint_names.size() != 7) {
+      ROS_ERROR("PdController: No joint_names found!"); 
       return false;
       
       }
@@ -83,32 +83,54 @@ namespace panda_controllers
 	  
      //Start command subscriber 
      this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
+     
      return true;
     }
     
-    void PdController::update(const ros::Time& time, const ros::Duration& period)
-    {
+    void PdController::update(const ros::Time& time, const ros::Duration& period){
     
+    
+      franka::RobotState robot_state = state_handle_->getRobotState();
+      Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
+      Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_curr(robot_state.dq.data());
+      
+      /* Proportional Derivative Controller Law*/
+      
+      tau_cmd = kp * (command_dot_pos - dq_curr) + kv *(command_dot_pos - dq_curr);
+      
+      for (size_t i = 0; i < 7; ++i) {
+      
+	joint_handles_[i].setCommand(tau_cmd(i));
+      }
       
     }
     
-    void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)//is the callback of the topic sub_command_ (up).
-   {
-   command_ = msg->position;
-   }
-  
-  void PdController::starting(const ros::Time& time) {
+    void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr &msg)//is the callback of the topic sub_command_ (up).
+    {
     
+    
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_pos((msg->position).data());
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_pos((msg->velocity).data());
+    
+    }
+  
+    void PdController::starting(const ros::Time& time) {
+    
+    /* Getting Robot State in order to get q and q_dot */
     
     franka::RobotState robot_state = state_handle_->getRobotState(); //First version for getting robot state;
+    /*franka_hw::FrankaStateHandle robot_state2 = state_handle_->getRobotState(); //Second version for getting robot state;*/
+
+    /* Remapping robot_state.q.data() and robot_state.dq.data() into Eigen Matrix Data Type */
     
-    q_curr = robot_state.q.data();
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_curr(robot_state.dq.data());
     
-    /* robot_state.q(i)*/
+    /* Initialize command_pos with the current position*/
     
+    command_pos = q_curr;
     
-    
-    franka_hw::FrankaStateHandle robot_state2 = state_handle_->getRobotState(); //Second version for getting robot state;
+    }
 
     
   
