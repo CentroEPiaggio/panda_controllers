@@ -13,14 +13,26 @@ namespace panda_controllers
     bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle)
     {
       //inizialization of the arm and setting up each joints
+      
       std::string arm_id; //checking up the arm id of the robot
-       if (!node_handle.getParam("arm_id", arm_id)) {
+      if (!node_handle.getParam("arm_id", arm_id)) {
       ROS_ERROR("PdController: Could not get parameter arm_id!");
       return false;
+	 
+      }
+     
+      double kp, kv;
+      if (!node_handle.getParam("kp", kp) || !node_handle.getParam("kv", kv)) {
+      ROS_ERROR("PdController: Could not get parameter kp or kv!");
+      return false;
+      }
       
-     }
+      Kp = kp * Eigen::MatrixXd::Identity(7, 7);
+      Kv = kv * Eigen::MatrixXd::Identity(7, 7);
+     
     
       //Naming each joint
+      
       std::vector<std::string> joint_names;
       if (!node_handle.getParam("joint_names",joint_names) || joint_names.size() != 7) {
       ROS_ERROR("PdController: No joint_names found!"); 
@@ -30,6 +42,7 @@ namespace panda_controllers
       
       //Get model interface: used to perform calculations using the dynamic model of the robot
       //in particular for modelHandle
+      
       franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
       if (model_interface == nullptr) {
 	ROS_ERROR_STREAM("PdController: Error getting model interface from hardware!");
@@ -45,6 +58,7 @@ namespace panda_controllers
 	}
 	
 	// Get state interface: reads the full robot state, from where we can take q,qdot,tau
+	
 	franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
 	if (state_interface == nullptr) {
 	  ROS_ERROR_STREAM("PdController: Error getting state interface from hardware");
@@ -61,6 +75,7 @@ namespace panda_controllers
 	}
 	
 	  // Getting hardware interface: command joint-level torques and read the joint states.
+	  
 	  hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
 	  if (effort_joint_interface == nullptr) {
 	    ROS_ERROR_STREAM("PdController: Error getting effort joint interface from hardware!");
@@ -69,6 +84,7 @@ namespace panda_controllers
 	  }
 	  
 	   // Creating handles for each joint
+	   
 	   for (size_t i = 0; i < 7; ++i) {
 	     try {
 	      joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
@@ -97,7 +113,7 @@ namespace panda_controllers
       
       /* Proportional Derivative Controller Law*/
       
-      tau_cmd = kp * (command_dot_pos - dq_curr) + kv *(command_dot_pos - dq_curr);
+      tau_cmd = Kp * (command_dot_pos - dq_curr) + Kv *(command_dot_pos - dq_curr);
       
       /* Set command for each joint*/
       
@@ -120,9 +136,8 @@ namespace panda_controllers
     
     /* Getting Robot State in order to get q and q_dot */
     
-    franka::RobotState robot_state = state_handle_->getRobotState(); //First version for getting robot state;
-    /*franka_hw::FrankaStateHandle robot_state2 = state_handle_->getRobotState(); //Second version for getting robot state;*/
-
+    franka::RobotState robot_state = state_handle_->getRobotState();
+    
     /* Remapping robot_state.q.data() and robot_state.dq.data() into Eigen Matrix Data Type */
     
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
@@ -134,10 +149,8 @@ namespace panda_controllers
     
     }
 
-    
+    void PdController::stopping(const ros::Time& time) { }
   
-  void PdController::stopping(const ros::Time& time) {}
-  
-  PLUGINLIB_EXPORT_CLASS(panda_controllers::PdController, controller_interface::ControllerBase); 
+    PLUGINLIB_EXPORT_CLASS(panda_controllers::PdController, controller_interface::ControllerBase); 
    
 }

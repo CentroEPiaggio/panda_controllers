@@ -1,10 +1,12 @@
-// Copyright (c) 2017 Franka Emika GmbH
-// Use of this source code is governed by the Apache-2.0 license, see LICENSE
 #pragma once
 
 #include <array>
 #include <string>
 #include <vector>
+#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
+
+#include <controller_interface/multi_interface_controller.h> //To use multiple interface template in the class PdController definition
 
 #include <controller_interface/controller.h>
 #include <franka_hw/franka_model_interface.h>
@@ -13,18 +15,13 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 
-#include <franka/robot_state.h> //so we can call the qdesired
+#include <franka/robot_state.h>
 
-#include <controller_interface/multi_interface_controller.h> //to use multiple template in the class definition
-
-#include <sensor_msgs/JointState.h>//for the callback, it can read the topic
+#include <sensor_msgs/JointState.h>
 
 //ROS message
 #include <franka_msgs/FrankaState.h>
-#include <eigen3/Eigen/Dense>
 
-#include <Eigen/Dense>
-using namespace Eigen;
 
 
 namespace panda_controllers {
@@ -44,20 +41,18 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   ros::Subscriber sub_command_;
   
   /* Defining Position and Velocity Gains */
-  Eigen::DiagonalMatrix<double, 7> kp;
-  Eigen::DiagonalMatrix<double, 7> kv;
+  Eigen::MatrixXd Kp;
+  Eigen::MatrixXd Kv;
   
   /* Defining q_current, q_current_dot, q_des, and tau_cmd*/
   
   Eigen::Matrix<double, 7, 1> q_curr;
-  Eigen::Matrix<double, 7, 1> dq_curr;
-  //Eigen::Matrix<double, 7, 1> q_des; 
+  Eigen::Matrix<double, 7, 1> dq_curr; 
   Eigen::Matrix<double, 7, 1> tau_cmd;
   
   /* Setting Command Callback*/
   
   void setCommandCB(const sensor_msgs::JointStateConstPtr& msg);
-  
   
   Eigen::Matrix<double, 7, 1> command_pos; //definition of the desiderd position 
   Eigen::Matrix<double, 7, 1> command_dot_pos;
