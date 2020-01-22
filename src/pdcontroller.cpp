@@ -82,6 +82,7 @@ namespace panda_controllers
 	  }
 	  
      //Start command subscriber 
+     
      this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState>("command", 1, &PdController::setCommandCB, this); //it verify with the callback that the command has been received 
      
      return true;
@@ -98,6 +99,8 @@ namespace panda_controllers
       
       tau_cmd = kp * (command_dot_pos - dq_curr) + kv *(command_dot_pos - dq_curr);
       
+      /* Set command for each joint*/
+      
       for (size_t i = 0; i < 7; ++i) {
       
 	joint_handles_[i].setCommand(tau_cmd(i));
@@ -107,7 +110,6 @@ namespace panda_controllers
     
     void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr &msg)//is the callback of the topic sub_command_ (up).
     {
-    
     
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_pos((msg->position).data());
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_pos((msg->velocity).data());

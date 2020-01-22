@@ -43,9 +43,6 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   //topic's command listened 
   ros::Subscriber sub_command_;
   
-  //Defining variables
-  double error, old_error,dot_error,commanded_effort,dt; //definition of the errors and the variable for the commanded effort 
-  
   /* Defining Position and Velocity Gains */
   Eigen::DiagonalMatrix<double, 7> kp;
   Eigen::DiagonalMatrix<double, 7> kv;
@@ -54,12 +51,10 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   
   Eigen::Matrix<double, 7, 1> q_curr;
   Eigen::Matrix<double, 7, 1> dq_curr;
-  Eigen::Matrix<double, 7, 1> q_des; ///// dovrei pescarla dal command_.....c'è da fare una conversione di data type
+  //Eigen::Matrix<double, 7, 1> q_des; 
   Eigen::Matrix<double, 7, 1> tau_cmd;
   
-  
-  
-  //Command setting Callback
+  /* Setting Command Callback*/
   
   void setCommandCB(const sensor_msgs::JointStateConstPtr& msg);
   
@@ -67,7 +62,6 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   Eigen::Matrix<double, 7, 1> command_pos; //definition of the desiderd position 
   Eigen::Matrix<double, 7, 1> command_dot_pos;
   
-  /* DUBBIO: E' lecito fare una cosa del genere "std::array<sensor_msgs::JointState, 7> pippo ??????????*/
   
   std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; //used for the state of the joints and command the torque
   std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
