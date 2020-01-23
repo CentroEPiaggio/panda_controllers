@@ -8,3 +8,33 @@ cartesian_velocity_controller:
       params:
         a: [1.0, -0.9971]
         b: [0.0014, 0.0014]
+        
+pdcontroller:
+    type: panda_controllers/PdController
+    arm_id: panda
+    joint_names:
+         - panda_joint1
+         - panda_joint2
+         - panda_joint3
+         - panda_joint4
+         - panda_joint5
+         - panda_joint6
+         - panda_joint7
+    kp:
+         - 100
+         - 100
+         - 100
+         - 100
+         - 100
+         - 100
+         - 100
+    kv:
+         - 0.7
+         - 0.7
+         - 0.7
+         - 0.7
+         - 0.7
+         - 0.7
+         - 0.7
+         
+         
