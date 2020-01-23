@@ -1,4 +1,4 @@
-//various library on which we work on
+//various library on which we work onù
 #include <controller_interface/controller.h> 
 #include <hardware_interface/joint_command_interface.h> 
 #include <pluginlib/class_list_macros.h> 
@@ -7,6 +7,17 @@
 #include <franka_hw/franka_state_interface.h>
 #include <franka/robot_state.h>
 
+//check for the callback
+#include "ros/static_assert.h"
+
+
+#ifdef NDEBUG
+#define ROS_ASSERT(cond)
+#endif
+
+#ifdef ROS_ASSERT_ENABLED
+#define ROS_BREAK()
+#endif
 
 namespace panda_controllers 
 {
@@ -122,6 +133,8 @@ namespace panda_controllers
 	joint_handles_[i].setCommand(tau_cmd(i));
       }
       
+      if(command_dot_pos != 0){
+      
     }
     
     void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr &msg)//is the callback of the topic sub_command_ (up).
@@ -129,6 +142,15 @@ namespace panda_controllers
     
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_pos((msg->position).data());
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_pos((msg->velocity).data());
+    
+    do{
+      if (command_pos.rows() != 7){
+	ROS_FATALS("Desired position has not dimension 7! ... %d\n\tcommand_pos = %s\n",143,command_pos.rows());
+	ROS_ISSUE_BREAK();
+      }
+    }while(0);  //loop doesn't run
+    
+    
     
     }
   
