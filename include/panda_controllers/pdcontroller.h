@@ -23,6 +23,8 @@
 //ROS message
 #include <franka_msgs/FrankaState.h>
 
+#include <assert.h>
+
 
 
 namespace panda_controllers {

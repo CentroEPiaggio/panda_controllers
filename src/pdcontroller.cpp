@@ -9,15 +9,21 @@
 
 //check for the callback
 #include "ros/static_assert.h"
+#include <ros/console.h>
 
 
-#ifdef NDEBUG
+/*#ifdef NDEBUG
 #define ROS_ASSERT(cond)
 #endif
 
 #ifdef ROS_ASSERT_ENABLED
 #define ROS_BREAK()
 #endif
+
+#ifdef ROS_FATALS ENABLED
+#define ROS_FATALS()
+#endif
+*/
 
 namespace panda_controllers 
 {
@@ -133,7 +139,6 @@ namespace panda_controllers
 	joint_handles_[i].setCommand(tau_cmd(i));
       }
       
-      if(command_dot_pos != 0){
       
     }
     
@@ -145,7 +150,7 @@ namespace panda_controllers
     
     do{
       if (command_pos.rows() != 7){
-	ROS_FATALS("Desired position has not dimension 7! ... %d\n\tcommand_pos = %s\n",143,command_pos.rows());
+	ROS_FATAL("Desired position has not dimension 7! ... %d\n\tcommand_pos = %s\n",142,command_pos.rows());
 	ROS_ISSUE_BREAK();
       }
     }while(0);  //loop doesn't run
