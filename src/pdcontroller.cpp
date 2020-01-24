@@ -12,6 +12,9 @@
 #include <ros/console.h>
 
 
+#include <math.h>
+
+
 /*#ifdef NDEBUG
 #define ROS_ASSERT(cond)
 #endif
@@ -122,23 +125,45 @@ namespace panda_controllers
     }
     
     void PdController::update(const ros::Time& time, const ros::Duration& period){
-    
-    
-      franka::RobotState robot_state = state_handle_->getRobotState();
-      Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-      Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_curr(robot_state.dq.data());
       
-      /* Proportional Derivative Controller Law*/
+	
+	franka::RobotState robot_state = state_handle_->getRobotState();
+	Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
+	Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_curr(robot_state.dq.data());
+		
+	//verification of the velocity vector of the joints
+	if(flag){
+	 
+	   /* Proportional Derivative Controller Law*/
+	  err = command_pos - q_curr;      
+	  dot_err = command_dot_pos - dq_curr;
       
-      tau_cmd = Kp * (command_dot_pos - dq_curr) + Kv *(command_dot_pos - dq_curr);
+	  tau_cmd = Kp * err + Kv * dot_err;
       
-      /* Set command for each joint*/
+	  /* Set the command for each joint*/
       
-      for (size_t i = 0; i < 7; ++i) {
+	  for (size_t i = 0; i < 7; ++i) {
       
-	joint_handles_[i].setCommand(tau_cmd(i));
-      }
-      
+	    joint_handles_[i].setCommand(tau_cmd(i));
+	  }
+	  
+	}
+	else{//if the flag is false so dot_q_desired is not given
+	  if (q_old.data() == 0){ //if we are at the first step where q_old (k-1 step) does not exist
+	    
+	    for (size_t i = 0; i<7; i++) {
+	      
+	      periodo[i] = ones[i] * period.toSec(); //creating a vector of period
+	      q_old[i] = ones[i] * 0.1; //giving a q_old a small "hit"
+	    }
+	
+	    dq_curr = (command_pos - q_old) / period.toSec();
+	    flag = true;
+	  }
+	
+	}   
+	 
+	q_old = q_curr;    
       
     }
     
@@ -154,6 +179,13 @@ namespace panda_controllers
 	ROS_ISSUE_BREAK();
       }
     }while(0);  //loop doesn't run
+    
+    do{
+      if (command_dot_pos.rows() != 7 || command_dot_pos.data() == 0 ){
+	ROS_INFO_STREAM("Desired velocity has a wrong dimension. Velocity of the joints will be estimated.");
+	flag = false;
+      }
+    }while(1);//loop continues
     
     
     

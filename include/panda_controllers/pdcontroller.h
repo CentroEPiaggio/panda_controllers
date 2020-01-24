@@ -5,6 +5,8 @@
 #include <vector>
 #include <eigen3/Eigen/Dense>
 #include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 
 #include <controller_interface/multi_interface_controller.h> //To use multiple interface template in the class PdController definition
@@ -40,8 +42,21 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
 
  private:
    
+   //flag for check of the dot_q
+   bool flag =  true; 
+   
   //topic's command listened 
   ros::Subscriber sub_command_;
+  
+  //Extra definition for the use in updating
+  
+  Eigen::Matrix<double, 7, 1> q_old;
+  
+  //used for test
+  Eigen::Matrix<double, 7, 1> ones;
+  Eigen::Matrix<double, 7, 1> periodo;
+  
+  ros::Duration elapsed_time;
   
   /* Defining Position and Velocity Gains */
   Eigen::MatrixXd Kp;
@@ -52,6 +67,10 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   Eigen::Matrix<double, 7, 1> q_curr;
   Eigen::Matrix<double, 7, 1> dq_curr; 
   Eigen::Matrix<double, 7, 1> tau_cmd;
+  
+  //error feedback
+  Eigen::Matrix<double, 7, 1> err;
+  Eigen::Matrix<double, 7, 1> dot_err;
   
   /* Setting Command Callback*/
   
