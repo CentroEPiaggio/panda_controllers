@@ -48,9 +48,10 @@ catkin_package(
   DEPENDS Franka
 )
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME}   
   src/cartesian_velocity_controller.cpp
   src/pdcontroller.cpp #pdcontroller
+  src/computed_torque.cpp #computed torque
 ) 
 
 add_dependencies(${PROJECT_NAME}

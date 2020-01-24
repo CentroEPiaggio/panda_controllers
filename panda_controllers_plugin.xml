@@ -11,5 +11,11 @@
       PD controller.
    </description>
   </class>
+  
+  <class name="panda_controllers/computedTorque" type="panda_controllers::computedTorque" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Computed Torque controller.
+   </description>
+  </class>
 
 </library>
