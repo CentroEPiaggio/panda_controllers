@@ -134,10 +134,11 @@ namespace panda_controllers
 	//verification of the velocity vector of the joints
 	if(flag){
 	 
-	   /* Proportional Derivative Controller Law*/
+	  //Estimation of the errors
 	  err = command_pos - q_curr;      
 	  dot_err = command_dot_pos - dq_curr;
-      
+	  
+	  /* Proportional Derivative Controller Law*/
 	  tau_cmd = Kp * err + Kv * dot_err;
       
 	  /* Set the command for each joint*/
@@ -149,21 +150,30 @@ namespace panda_controllers
 	  
 	}
 	else{//if the flag is false so dot_q_desired is not given
-	  if (q_old.data() == 0){ //if we are at the first step where q_old (k-1 step) does not exist
+	  
+	  if (q_old.data() == 0){ //if we are at the first step, where q_old (k-1 step) does not exist!
 	    
-	    for (size_t i = 0; i<7; i++) {
-	      
-	      periodo[i] = ones[i] * period.toSec(); //creating a vector of period
-	      q_old[i] = ones[i] * 0.1; //giving a q_old a small "hit"
-	    }
+// 	    for (size_t i = 0; i<7; i++) {
+// 	      
+// 	      periodo[i] = ones[i] * period.toSec(); //creating a vector of period
+// 	      q_old[i] = ones[i] * 0.0001; //giving a q_old a small "hit"
+// 	    }
 	
+	    dq_curr.setZero(); 
+	    
+	    q_old = q_curr;
+	    
+	    flag = false;
+	    
+	  }else{
+	    //saving last position
 	    dq_curr = (command_pos - q_old) / period.toSec();
+	    
 	    flag = true;
+	    
 	  }
 	
-	}   
-	 
-	q_old = q_curr;    
+	}  
       
     }
     
@@ -176,14 +186,17 @@ namespace panda_controllers
     do{
       if (command_pos.rows() != 7){
 	ROS_FATAL("Desired position has not dimension 7! ... %d\n\tcommand_pos = %s\n",142,command_pos.rows());
-	ROS_ISSUE_BREAK();
+	ROS_ISSUE_BREAK(); //if the vector's position is wrong, the software gives Error!
       }
     }while(0);  //loop doesn't run
     
     do{
       if (command_dot_pos.rows() != 7 || command_dot_pos.data() == 0 ){
-	ROS_INFO_STREAM("Desired velocity has a wrong dimension. Velocity of the joints will be estimated.");
+	ROS_INFO_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
 	flag = false;
+      }
+      else{
+	flag = true;
       }
     }while(1);//loop continues
     
