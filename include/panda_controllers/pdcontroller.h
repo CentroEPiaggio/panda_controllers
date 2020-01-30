@@ -45,6 +45,8 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
    //flag for check of the dot_q
    bool flag =  true; 
    
+   ros::Duration elapsed_time;
+   
   //topic's command listened 
   ros::Subscriber sub_command_;
   
@@ -52,11 +54,6 @@ hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface> {
   
   Eigen::Matrix<double, 7, 1> q_old;
   
-  //used for test
-  Eigen::Matrix<double, 7, 1> ones;
-  Eigen::Matrix<double, 7, 1> periodo;
-  
-  ros::Duration elapsed_time;
   
   /* Defining Position and Velocity Gains */
   Eigen::MatrixXd Kp;

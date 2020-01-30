@@ -133,7 +133,7 @@ namespace panda_controllers
 		
 	//verification of the velocity vector of the joints
 	if(flag){
-	 
+
 	  //Estimation of the errors
 	  err = command_pos - q_curr;      
 	  dot_err = command_dot_pos - dq_curr;
@@ -151,23 +151,26 @@ namespace panda_controllers
 	}
 	else{//if the flag is false so dot_q_desired is not given
 	  
-	  if (q_old.data() == 0){ //if we are at the first step, where q_old (k-1 step) does not exist!
+	  if (elapsed_time.toSec() == 0){ //if we are at the first step, where q_old (k-1 step) does not exist!
 	    
 // 	    for (size_t i = 0; i<7; i++) {
 // 	      
 // 	      periodo[i] = ones[i] * period.toSec(); //creating a vector of period
 // 	      q_old[i] = ones[i] * 0.0001; //giving a q_old a small "hit"
 // 	    }
-	
-	    dq_curr.setZero(); 
 	    
-	    q_old = q_curr;
+	    q_old.setZero();
 	    
 	    flag = false;
 	    
+	    elapsed_time += period;
+	    
 	  }else{
+	    
+	    //estimation of command_dot_pos
+	    command_dot_pos = (command_pos - q_old) / period.toSec();
 	    //saving last position
-	    dq_curr = (command_pos - q_old) / period.toSec();
+	    q_old = command_pos;
 	    
 	    flag = true;
 	    
@@ -214,6 +217,8 @@ namespace panda_controllers
     
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_curr(robot_state.dq.data());
+    
+    elapsed_time = ros::Duration(0.0);
     
     /* Initialize command_pos with the current position*/
     
