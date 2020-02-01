@@ -243,6 +243,8 @@ Eigen::Matrix<double, 7, 1> PdController::saturateTorqueRate (
 
 void PdController::stopping ( const ros::Time& time ) { }
 
+
+
 PLUGINLIB_EXPORT_CLASS ( panda_controllers::PdController, controller_interface::ControllerBase );
 
 }

@@ -155,7 +155,7 @@ void computedTorque::update ( const ros::Time&, const ros::Duration& period )
         error = command_q - q_cur;
         error_dot = command_dq - dq_cur;
 
-        tau_cmd = M * command_dotdot_q + C + Kp_apix * error + Kv * error_dot;
+        tau_cmd = M * command_dotdot_q + C + Kp_apix * error + Kv_apix * error_dot;
         //verification of the tau_cmd
         tau_cmd << saturateTorqueRate ( tau_cmd , tau_J_d );
         //sending the torque to the joints
