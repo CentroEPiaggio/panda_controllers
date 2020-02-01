@@ -5,7 +5,7 @@
 //check for the callback
 #include "ros/static_assert.h"
 #include <ros/console.h>
-#include "get_CoriolisMatrix.h"
+
 
 
 
@@ -132,11 +132,13 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
 
     if ( flag ) {
 
-        //the computed torque law
-        error = command_q - q_cur;
+        //the backstepping control law
+        
+      error = command_q - q_cur;
         error_dot = command_dq - dq_cur;
 	
 	/*Calculating the Coriolis matrix (array)*/
+	
 	double Coriolis_matrix_array[49];
 	
 	get_CoriolisMatrix(robot_state.q.data(), robot_state.dq.data(), Coriolis_matrix_array);
@@ -152,10 +154,12 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
         tau_cmd = M * command_dot_dot_qref/*to estimate */ + C * command_dot_qref + Kd * s + error;
         
 	//verification of the tau_cmd
-        tau_cmd << saturateTorqueRate ( tau_cmd , tau_J_d );
+        
+	tau_cmd << saturateTorqueRate ( tau_cmd , tau_J_d );
         
 	//sending the torque to the joints
-        for ( size_t i=0; i<7; i++ ) {
+        
+	for ( size_t i=0; i<7; i++ ) {
 
             joint_handles_[i].setCommand ( tau_cmd[i] );
 
