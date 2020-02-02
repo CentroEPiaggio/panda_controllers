@@ -17,5 +17,11 @@
       Computed Torque controller.
    </description>
   </class>
+  
+  <class name="panda_controllers/backstepping" type="panda_controllers::backstepping" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Backstepping controller.
+   </description>
+  </class>
 
 </library>
