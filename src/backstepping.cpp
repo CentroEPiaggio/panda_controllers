@@ -1,11 +1,12 @@
-/various library on which we work on
+
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the computed torque 
+
 
 //check for the callback
 #include "ros/static_assert.h"
 #include <ros/console.h>
-
+#include <utils/get_CoriolisMatrix.h>
 
 
 
@@ -22,6 +23,7 @@ bool backstepping::init ( hardware_interface::RobotHW* robot_hw, ros::NodeHandle
     }
 
     //Inizializing the Kd
+    
     double kd, delta;
     if ( !node_handle.getParam ( "kd", kd ) || !node_handle.getParam ( "delta", delta )) {
         ROS_ERROR ( "Backstepping: Kd or delta parameter couldn't be found!" );
@@ -58,8 +60,7 @@ bool backstepping::init ( hardware_interface::RobotHW* robot_hw, ros::NodeHandle
         return false;
     }
     try {
-        state_handle_.reset (
-            new franka_hw::FrankaStateHandle ( state_interface->getHandle ( arm_id + "_robot" ) ) );
+        state_handle_.reset (new franka_hw::FrankaStateHandle ( state_interface->getHandle ( arm_id + "_robot" ) ) );
     } catch ( hardware_interface::HardwareInterfaceException& ex ) {
         ROS_ERROR_STREAM ( "Backstepping: Exception getting state handle from interface: " << ex.what() );
         return false;
@@ -112,7 +113,6 @@ void backstepping::starting ( const ros::Time& time )
     command_q = q_cur; //security inizialization
     elapsed_time = ros::Duration ( 0.0 );
 
-
 }
 
 void backstepping::update ( const ros::Time&, const ros::Duration& period )
@@ -126,42 +126,43 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
     Eigen::Map<Eigen::Matrix<double, 7, 7>> M (mass_array.data());
 
     //actual position of the joints
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_cur ( robot_state.q.data() );
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_cur ( robot_state.dq.data() );
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d ( robot_state.tau_J_d.data() );
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_cur (robot_state.q.data());
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_cur (robot_state.dq.data());
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d (robot_state.tau_J_d.data());
 
     if ( flag ) {
 
         //the backstepping control law
-        
-      error = command_q - q_cur;
-        error_dot = command_dq - dq_cur;
 	
 	/*Calculating the Coriolis matrix (array)*/
-	
-	double Coriolis_matrix_array[49];
 	
 	get_CoriolisMatrix(robot_state.q.data(), robot_state.dq.data(), Coriolis_matrix_array);
 	
 	/* Converting Coriolis matrix array in Eigen Matrix */
 	
-	Eigen::Map<Eigen::Matrix<double, 7, 1>> C (Coriolis_matrix_array.data());
+	Eigen::Map<Eigen::Matrix<double, 7, 7>> C (Coriolis_matrix_array);
 	
 	/* Assign command_qref_dot*/
 	
-	command_qref_dot = command_dq + Delta * error;
+	error = command_q - q_cur;
+	
+	command_dot_qref = command_dot_q + Delta * error;
+	
+	s = command_dot_qref - dq_cur;
+	
+	/*Backstepping control law in the joint space*/
 
-        tau_cmd = M * command_dot_dot_qref/*to estimate */ + C * command_dot_qref + Kd * s + error;
+        tau_cmd = M * command_dot_dot_qref + C * command_dot_qref + Kd * s + error;
         
 	//verification of the tau_cmd
         
-	tau_cmd << saturateTorqueRate ( tau_cmd , tau_J_d );
+	tau_cmd << saturateTorqueRate (tau_cmd , tau_J_d);
         
 	//sending the torque to the joints
         
-	for ( size_t i=0; i<7; i++ ) {
+	for ( size_t i=0; i < 7; i++ ) {
 
-            joint_handles_[i].setCommand ( tau_cmd[i] );
+            joint_handles_[i].setCommand (tau_cmd[i]);
 
         }
 
@@ -170,41 +171,53 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
 
         if ( elapsed_time.toSec() == 0 ) { //In case of the first step, we don't have q and q_dot desired old.
            
-            command_dq.setZero(); //q_dot_desired = 0
+            command_dot_q.setZero(); //q_dot_desired = 0
             command_dotdot_q.setZero(); //q_dot_dot_desired = 0
 	    
+	    
 	    command_q_old.setZero();
-	    command_dq_old.setZero();
-
+	    command_dot_q_old.setZero();
+	    
+	   /* Tracking reference */
+	   
+	    command_dot_qref.setZero();
+	    command_dot_qref_old.setZero();
+	    
             elapsed_time += period;
 
             flag = false;
 
         }
 
-        command_dq = ( command_q - command_q_old ) / period.toSec(); //desired velocity
+        command_dot_q= (command_q - command_q_old) / period.toSec(); //desired velocity
 
-        command_dotdot_q = ( command_dq - command_dq_old ) / period.toSec(); //desired acceleration
+        command_dotdot_q = (command_dot_q - command_dot_q_old) / period.toSec(); //desired acceleration
+	
+	error = command_q - q_cur;
+	
+	command_dot_qref = command_dot_q + Delta * error;
+	
+	command_dot_dot_qref = (command_dot_qref - command_dot_qref_old) / period.toSec();
 
         ///saving last position and last velocity desired
-        command_q_old = command_q;
-        command_dq_old = command_dq;
+        
+	command_q_old = command_q;
+        command_dot_q_old = command_dot_q;
+	command_dot_qref_old = command_dot_qref;
 
         flag = true;
 
-
     }
-
 
 }
 
 void backstepping::stopping (const ros::Time&)
-{
+{//TO DO
 
 }
 
 //Check for the effort comanded if is to high
-Eigen::Matrix<double, 7, 1> computedTorque::saturateTorqueRate (
+Eigen::Matrix<double, 7, 1> backstepping::saturateTorqueRate (
     const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
     const Eigen::Matrix<double, 7, 1>& tau_J_d )
 {
@@ -228,7 +241,7 @@ void backstepping::setCommandCB ( const sensor_msgs::JointStateConstPtr &msg )
     }
     while ( 0 ); //blocks the compiling of the node.
     do {
-        if ( command_dq.rows() != 7 || command_dq.data() == 0 ) {
+        if ( command_dot_q.rows() != 7 || command_dot_q.data() == 0 ) {
             ROS_INFO_STREAM ( "Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated." );
             flag = false;
         } else {
