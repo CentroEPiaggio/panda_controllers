@@ -98,7 +98,7 @@ private:
     //Coriolis matrix (array and eigen form)
     
     double Coriolis_matrix_array[49];
-    Eigen::Matrix<double, 7, 1> C;
+    Eigen::Matrix<double, 7, 7> C;
     
 
     //Saturation of the computedTorque

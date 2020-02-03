@@ -52,7 +52,7 @@ add_library(${PROJECT_NAME}
   src/cartesian_velocity_controller.cpp
   src/pdcontroller.cpp #pdcontroller
   src/computed_torque.cpp #computed torque
-  src/backstepping.cpp
+  src/backstepping.cpp #backstepping
 ) 
 
 add_dependencies(${PROJECT_NAME}

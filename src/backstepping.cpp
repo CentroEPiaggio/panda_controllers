@@ -129,6 +129,8 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_cur (robot_state.q.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq_cur (robot_state.dq.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d (robot_state.tau_J_d.data());
+    
+    error = command_q - q_cur;
 
     if ( flag ) {
 
@@ -143,8 +145,6 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
 	Eigen::Map<Eigen::Matrix<double, 7, 7>> C (Coriolis_matrix_array);
 	
 	/* Assign command_qref_dot*/
-	
-	error = command_q - q_cur;
 	
 	command_dot_qref = command_dot_q + Delta * error;
 	
@@ -171,16 +171,14 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
 
         if ( elapsed_time.toSec() == 0 ) { //In case of the first step, we don't have q and q_dot desired old.
            
-            command_dot_q.setZero(); //q_dot_desired = 0
-            command_dotdot_q.setZero(); //q_dot_dot_desired = 0
-	    
+            command_dot_q.setZero(); //q_dot_desired = 0  
 	    
 	    command_q_old.setZero();
 	    command_dot_q_old.setZero();
 	    
 	   /* Tracking reference */
 	   
-	    command_dot_qref.setZero();
+	    command_dot_dot_qref.setZero();
 	    command_dot_qref_old.setZero();
 	    
             elapsed_time += period;
@@ -189,20 +187,15 @@ void backstepping::update ( const ros::Time&, const ros::Duration& period )
 
         }
 
-        command_dot_q= (command_q - command_q_old) / period.toSec(); //desired velocity
-
-        command_dotdot_q = (command_dot_q - command_dot_q_old) / period.toSec(); //desired acceleration
+        command_dot_q = (command_q - command_q_old) / period.toSec(); //desired velocity
 	
-	error = command_q - q_cur;
-	
-	command_dot_qref = command_dot_q + Delta * error;
+	command_dot_qref = command_dot_q + Delta * error; //For delta we mean Lambda in the control law
 	
 	command_dot_dot_qref = (command_dot_qref - command_dot_qref_old) / period.toSec();
 
         ///saving last position and last velocity desired
         
 	command_q_old = command_q;
-        command_dot_q_old = command_dot_q;
 	command_dot_qref_old = command_dot_qref;
 
         flag = true;
@@ -236,7 +229,7 @@ void backstepping::setCommandCB ( const sensor_msgs::JointStateConstPtr &msg )
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q ( ( msg->position ).data() );
 
     if ( command_q.rows() != 7 ) {
-        ROS_FATAL ( "Desired position has not dimension 7! ... %d\n\tcommand_q = %s\n",96,command_q.rows() );
+        ROS_FATAL ( "Desired position has not dimension 7! ... %d\n\tcommand_q = %s\n",226,command_q.rows() );
         ROS_ISSUE_BREAK();
     }
     while ( 0 ); //blocks the compiling of the node.
