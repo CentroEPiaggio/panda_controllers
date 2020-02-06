@@ -10,7 +10,7 @@
 #include <Eigen/Core>
 
 
-#include <controller_interface/multi_interface_controller.h> //To use multiple interface template in the class PdController definition
+#include <controller_interface/multi_interface_controller.h> //To use multiple interface template in the class backstepping definition
 #include <franka/robot_state.h>
 #include <controller_interface/controller.h>
 #include <franka_hw/franka_model_interface.h>
@@ -19,7 +19,7 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <ros/node_handle.h>
 #include <ros/time.h>
-/*#include <utils/get_CoriolisMatrix.h>*/
+
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
