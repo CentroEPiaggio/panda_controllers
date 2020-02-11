@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <math.h>
-
 #include <Eigen/Dense>
 
 
@@ -43,8 +42,7 @@ public:
 private:
 
     bool flag = false;           // flag true if desired velocity is given
-    ros::Duration elapsed_time;
-
+    
     /* Defining Position and Velocity Gains */
     
     Eigen::Matrix<double, 7, 7> Kp; 
