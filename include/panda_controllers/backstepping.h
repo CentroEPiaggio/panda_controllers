@@ -4,10 +4,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
-#include <eigen3/Eigen/Dense>
 #include <Eigen/Dense>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
 
 #include <controller_interface/multi_interface_controller.h>
 
@@ -28,7 +25,7 @@
 
 namespace panda_controllers
 {
-   class backstepping: public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
+   class BackStepping: public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
    hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface>
 {
 
@@ -42,8 +39,7 @@ public:
 private:
   
     bool flag = false;          // flag for check of the desired command velocity 
-    ros::Duration elapsed_time;
-  
+      
     /* Gain Matrices */
     
     Eigen::Matrix<double, 7, 7> Kd;
