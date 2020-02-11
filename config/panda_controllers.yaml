@@ -50,7 +50,7 @@ back_stepping_controller:
          - panda_joint6
          - panda_joint7
     kd: 0.7
-    delta: 50
+    lambda: 50
 
 
 

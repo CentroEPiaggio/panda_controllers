@@ -28,22 +28,20 @@
 namespace panda_controllers
 {
 
-class computedTorque : public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
+class computedTorque_bis : public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
     hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface>
 {
 
 
 public:
-  
     bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle);
     void starting(const ros::Time&);
     void stopping(const ros::Time&);
     void update(const ros::Time&, const ros::Duration& period);
 
 private:
-  
-    bool flag = false;           // flag for check of the desired command velocity 
-    ros::Duration elapsed_time;
+    bool assigned = false;
+    bool first_est = false;
     
     /* Gain Matrices */
     
@@ -66,13 +64,13 @@ private:
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
-    Eigen::Matrix<double, 7, 1> command_q_d;           // desired command position
-    Eigen::Matrix<double, 7, 1> command_q_d_old;       // Extra definition for the estimation of the command_dot_q_d 
+    Eigen::Matrix<double, 7, 1> command_pos;           // desired command position
+    Eigen::Matrix<double, 7, 1> command_pos_old;       // Extra definition for the estimation of the command_dot_pos 
     
-    Eigen::Matrix<double, 7, 1> command_dot_q_d;       // desired command velocity
-    Eigen::Matrix<double, 7, 1> command_dot_q_d_old;   // Extra definition for the estimation of the command_dotdot_pos 
+    Eigen::Matrix<double, 7, 1> command_dot_pos;       // desired command velocity
+    Eigen::Matrix<double, 7, 1> command_dot_pos_old;   // Extra definition for the estimation of the command_dotdot_pos 
     
-    Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;   // estimated desired acceleration command 
+    Eigen::Matrix<double, 7, 1> command_dot_dot_pos;   // estimated desired acceleration command 
 
     /* Mass Matrix and Coriolis vector */
     

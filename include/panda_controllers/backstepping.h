@@ -1,114 +1,102 @@
 #pragma once
 
-#include <math.h>
-#include <cmath>/*Used to getCoriolisMatrix */
 #include <array>
 #include <string>
 #include <vector>
+#include <math.h>
 #include <eigen3/Eigen/Dense>
 #include <Eigen/Dense>
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 
+#include <controller_interface/multi_interface_controller.h>
 
-#include <controller_interface/multi_interface_controller.h> //To use multiple interface template in the class backstepping definition
-#include <franka/robot_state.h>
-#include <controller_interface/controller.h>
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
+
 #include <hardware_interface/robot_hw.h>
 #include <hardware_interface/joint_command_interface.h>
+
 #include <ros/node_handle.h>
 #include <ros/time.h>
 
+#include <franka/robot_state.h>
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
 
+
 namespace panda_controllers
 {
-  
-
    class backstepping: public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
    hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface>
 {
 
-
 public:
     
-    bool init ( hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle );
-    void starting ( const ros::Time& );
-    void stopping ( const ros::Time& );
-    void update ( const ros::Time&, const ros::Duration& period );
+    bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle);
+    void starting(const ros::Time&);
+    void stopping(const ros::Time&);
+    void update(const ros::Time&, const ros::Duration& period);
 
 private:
-
-    Eigen::MatrixXd Kd;
-    Eigen::MatrixXd Delta;
-    
-
-    std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
-    std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
-    std::vector<hardware_interface::JointHandle> joint_handles_;
-
-    //subscriber
-    
-    ros::Subscriber sub_command_;
-    
-    //callback
-    
-    void setCommandCB ( const sensor_msgs::JointStateConstPtr& msg );
-
+  
+    bool flag = false;          // flag for check of the desired command velocity 
     ros::Duration elapsed_time;
-    bool flag; //check for the velocity
+  
+    /* Gain Matrices */
+    
+    Eigen::Matrix<double, 7, 7> Kd;
+    Eigen::Matrix<double, 7, 7> Lambda;
+    
+    /* Defining q_current, q_current_dot, and tau_cmd */
 
-    /* Defining q_current, q_current_dot, q_des, and tau_cmd*/
-
-    Eigen::Matrix<double, 7, 1> q_cur;
-    Eigen::Matrix<double, 7, 1> dq_cur;
+    Eigen::Matrix<double, 7, 1> q_curr;
+    Eigen::Matrix<double, 7, 1> dot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
-    Eigen::Matrix<double, 7, 1> q_old;
-
-    //Feedback
+    
+    /* Error feedback */
     
     Eigen::Matrix<double, 7, 1> error;
-    Eigen::Matrix<double, 7, 1> error_dot;
-
-    //Used for the position callback
     
-    Eigen::Matrix<double, 7, 1> command_q;
-    Eigen::Matrix<double, 7, 1> command_dot_q;
-    Eigen::Matrix<double, 7, 1> command_dotdot_q;
-
-    //Command for first iteration
+    /* Used for saving the last command position and command velocity, and old value to calculate the estimation */
     
-    Eigen::Matrix<double, 7, 1> command_q_old;
-    Eigen::Matrix<double, 7, 1> command_dot_q_old;
-    Eigen::Matrix<double, 7, 1> command_dot_qref_old;
-
-    //Used for reference velocity kinematic control q_r, q_dot_r and s
+    Eigen::Matrix<double, 7, 1> command_q_d;            // desired command position
+    Eigen::Matrix<double, 7, 1> command_q_d_old;        // Extra definition for the estimation of the command_dot_pos
+    Eigen::Matrix<double, 7, 1> command_dot_q_d;        // desired command velocity
     
-    Eigen::Matrix<double, 7, 1> command_dot_qref;
-    Eigen::Matrix<double, 7, 1> command_dot_dot_qref;
-    Eigen::Matrix<double, 7, 1> s;/* Tracking error velocity*/
+    /* Used for reference velocity kinematic control q_r, q_dot_r and s */
     
-    //Mass matrix
+    Eigen::Matrix<double, 7, 1> command_dot_qref;       // desired reference velocity
+    Eigen::Matrix<double, 7, 1> command_dot_qref_old;   // Extra definition for the estimation of the command_dot_dot_qref
+    Eigen::Matrix<double, 7, 1> command_dot_dot_qref;   // estimated desired reference acceleration 
+    Eigen::Matrix<double, 7, 1> s;                      // Tracking Error Velocity
+    
+    /* Mass matrix and Coriolis matrix (array and eigen form) */
     
     Eigen::Matrix<double, 7, 7> M;
-    
-    //Coriolis matrix (array and eigen form)
-    
     double Coriolis_matrix_array[49];
     Eigen::Matrix<double, 7, 7> C;
     
-
-    //Saturation of the computedTorque
+    /* Check the effort limits */
     
     Eigen::Matrix<double, 7, 1> saturateTorqueRate (
         const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
         const Eigen::Matrix<double, 7, 1>& tau_J_d );
 
     static constexpr double kDeltaTauMax {1.0};
-
+    
+    /* For listening to the command topic */
+    
+    ros::Subscriber sub_command_;
+    
+    /* Setting Command Callback*/
+    
+    void setCommandCB (const sensor_msgs::JointStateConstPtr& msg);
+    
+    std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
+    std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
+    std::vector<hardware_interface::JointHandle> joint_handles_;
 };
 
 }

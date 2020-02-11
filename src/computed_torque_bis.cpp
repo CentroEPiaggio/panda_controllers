@@ -1,6 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
-#include <panda_controllers/computed_torque.h> //library of the computed torque 
+#include <panda_controllers/computed_torque_bis.h> //library of the computed torque 
 
 //check for the callback
 #include "ros/static_assert.h"
@@ -10,7 +10,7 @@
 namespace panda_controllers
 {
 
-bool computedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle)
+bool computedTorque_bis::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle)
 {
     std::string arm_id; //checking up the arm id of the robot
     if (!node_handle.getParam ( "arm_id", arm_id)) {
@@ -29,8 +29,6 @@ bool computedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     Kp = kp * Eigen::MatrixXd::Identity (7, 7);
     Kv = kv * Eigen::MatrixXd::Identity (7, 7);
-    
-    /*DUBBIO: l'inizializzazione delle matrici di massa e di coriolis in questo punto non serve a nulla. Le possiamo levare?*/
 
     /* Loading the Mass matrix and the Coriolis vector */
     
@@ -76,7 +74,7 @@ bool computedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
     if (effort_joint_interface == nullptr) {
-        ROS_ERROR_STREAM ("Computed Torque: Error getting effort joint interface from hardware!");
+        ROS_ERROR_STREAM ("PdController: Error getting effort joint interface from hardware!");
         return false;
     }
 
@@ -92,11 +90,11 @@ bool computedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     /*Start command subscriber */
 
-    this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &computedTorque::setCommandCB, this); //it verify with the callback that the command has been received
+    this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &computedTorque_bis::setCommandCB, this); //it verify with the callback that the command has been received
     return true;
 }
 
-void computedTorque::starting(const ros::Time& time)
+void computedTorque_bis::starting(const ros::Time& time)
 {
     /* Getting Robot State in order to get q_curr and dot_q_curr */
     
@@ -113,8 +111,7 @@ void computedTorque::starting(const ros::Time& time)
     Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> C(coriolis_array.data());
 
-    command_q_d = q_curr;              // security inizialization
-    elapsed_time = ros::Duration(0.0); // first estimation
+    command_pos = q_curr;              // security inizialization
     
     /* Defining the NEW gains */
     
@@ -122,7 +119,7 @@ void computedTorque::starting(const ros::Time& time)
     Kv_apix = M * Kp;    
 }
 
-void computedTorque::update(const ros::Time&, const ros::Duration& period)
+void computedTorque_bis::update(const ros::Time&, const ros::Duration& period)
 {
     franka::RobotState robot_state = state_handle_->getRobotState();
     
@@ -141,17 +138,28 @@ void computedTorque::update(const ros::Time&, const ros::Duration& period)
     
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
 
-    if(flag){
+    if(assigned == true){
 
         /* The Computed Control Law */
       
-        error = command_q_d - q_curr;
-        dot_error = command_dot_q_d - dot_q_curr;
+        error = command_pos - q_curr;
+        dot_error = command_dot_pos - dot_q_curr;
 	
-	/* Qui potrebbe esserci un problema, perche se all'inizio assegno subito tutto, sia la q desiderata che la q dot desiderata
-	come fa a capire chi è command_dot_dot_q_d??? alla riga sotto*/
-
-        tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
+	/* Estimation of the command_dot_dot_pos */
+	
+	if (first_est == false){  
+	  
+	command_dot_pos_old.setZero();
+	first_est = true;
+	
+	}
+	
+	command_dot_dot_pos = (command_dot_pos - command_dot_pos_old) / period.toSec();
+	command_dot_pos_old = command_dot_pos; 
+        
+	command_pos_old = command_pos;
+	
+        tau_cmd = M * command_dot_dot_pos + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
         
 	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	
@@ -164,41 +172,50 @@ void computedTorque::update(const ros::Time&, const ros::Duration& period)
             joint_handles_[i].setCommand(tau_cmd[i]);	    
         }
 
-    }else{//if flag is false, so we don't have the velocity, so we have to estimate it.
+    }else{ // assigned == false
 
-        if(elapsed_time.toSec() == 0) { //In case of the first step, we don't have q and q_dot desired old.
+        if(first_est == false) {
            
-            command_dot_q_d.setZero();     //q_dot_desired = 0
-            command_dot_dot_q_d.setZero(); //q_dot_dot_desired = 0
-	     
-	    command_q_d_old.setZero();
-	    command_dot_q_d_old.setZero();
+            command_dot_pos.setZero(); //q_dot_desired = 0
+            command_dot_dot_pos.setZero(); //q_dot_dot_desired = 0
+	    
+	    command_pos_old.setZero();
+	    command_dot_pos_old.setZero();
 
-            elapsed_time += period;
-
-            flag = false;
+            first_est = true;
         }
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();             //desired velocity
+        command_dot_pos = (command_pos - command_pos_old) / period.toSec(); //desired velocity
 
-        command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec(); //desired acceleration
+        command_dot_dot_pos = (command_dot_pos - command_dot_pos_old) / period.toSec(); //desired acceleration
 
         /* Saving last position and last velocity desired */
 	
-        command_q_d_old = command_q_d;
-        command_dot_q_d_old = command_dot_q_d;
-
-        flag = true;
+        command_pos_old = command_pos;
+        command_dot_pos_old = command_dot_pos;
+	
+	tau_cmd = M * command_dot_dot_pos + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
+        
+	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
+	
+        tau_cmd << saturateTorqueRate (tau_cmd , tau_J_d);
+        
+	/* Set the command for each joint */
+	
+        for (size_t i=0; i < 7; i++) {
+	  
+            joint_handles_[i].setCommand(tau_cmd[i]);	    
+        }       
     }
 }
 
-void computedTorque::stopping(const ros::Time&)
+void computedTorque_bis::stopping(const ros::Time&)
 {  
 }
 
 /* Check for the effort commanded */
 
-Eigen::Matrix<double, 7, 1> computedTorque::saturateTorqueRate(
+Eigen::Matrix<double, 7, 1> computedTorque_bis::saturateTorqueRate(
     const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
     const Eigen::Matrix<double, 7, 1>& tau_J_d)
 {
@@ -206,40 +223,40 @@ Eigen::Matrix<double, 7, 1> computedTorque::saturateTorqueRate(
     for (size_t i = 0; i < 7; i++) {
       
         double difference = tau_d_calculated[i] - tau_J_d[i];
-        tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, kDeltaTauMax), -kDeltaTauMax);
-	
+        tau_d_saturated[i] = tau_J_d[i] + std::max(std::min (difference, kDeltaTauMax), -kDeltaTauMax);
     }
     return tau_d_saturated;
 }
 
-void computedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr &msg)
+void computedTorque_bis::setCommandCB(const sensor_msgs::JointStateConstPtr &msg)
 {
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q_d((msg->position).data());
+    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_pos((msg->position).data());
     
     do{
-        if (command_q_d.rows() != 7) {
+        if (command_pos.rows() != 7) {
 	  
-            ROS_FATAL ("Desired position has not dimension 7! ... %d\n\tcommand_q_d = %s\n", 220, command_q_d.rows());
+            ROS_FATAL ("Desired position has not dimension 7! ... %d\n\tcommand_pos = %s\n",215,command_pos.rows());
             ROS_ISSUE_BREAK();
 	    
 	}
     }while(0); //blocks the compiling of the node.
     
-    do{
-        if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
-	  
-            ROS_INFO_STREAM ("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
-            flag = false;
-	    
-        }else{
-	  
-            Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_q_d((msg->velocity).data());
-            flag = true;
-	    
-        }
-    }while(1); //loop continues
+    if(command_pos.rows() == 7 && (msg->velocity).size() != 7 && first_est == false)
+    {
+      ROS_ERROR("Correct command position and invalid command velocity or not specified!Need 1st estimation!");
+      assigned = false;
+    }
+    else if(command_pos.rows() == 7 && (msg->velocity).size() != 7 && first_est == true)
+    {
+      assigned = false;
+    }
+    else
+    {
+      assigned = true;
+      Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_pos((msg->velocity).data());
+    }    
 }
 
 }
 
-PLUGINLIB_EXPORT_CLASS (panda_controllers::computedTorque, controller_interface::ControllerBase);
+PLUGINLIB_EXPORT_CLASS (panda_controllers::computedTorque_bis, controller_interface::ControllerBase);
