@@ -50,9 +50,10 @@ catkin_package(
 
 add_library(${PROJECT_NAME}   
   src/cartesian_velocity_controller.cpp
-  src/pdcontroller.cpp #pdcontroller
-  src/computed_torque.cpp #computed torque
-  src/backstepping.cpp #backstepping
+  src/pdcontroller.cpp #PD controller
+  src/computed_torque.cpp #Computed Torque controller
+  src/backstepping.cpp #Backstepping controller
+  src/computed_torque_bis.cpp #Computed Torque controller
 ) 
 
 add_dependencies(${PROJECT_NAME}

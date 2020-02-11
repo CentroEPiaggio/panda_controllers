@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 #include <math.h>
-#include <eigen3/Eigen/Dense>
+
 #include <Eigen/Dense>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
+
 
 #include <controller_interface/multi_interface_controller.h> /*This particular controller implementation allows to claim resources from one up to four different hardware interfaces. 
 MultiInterfaceController <first interface, second interface, ....> */
@@ -43,7 +42,7 @@ public:
 
 private:
 
-    bool flag = false;           // flag for check of the desired command velocity 
+    bool flag = false;           // flag true if desired velocity is given
     ros::Duration elapsed_time;
 
     /* Defining Position and Velocity Gains */

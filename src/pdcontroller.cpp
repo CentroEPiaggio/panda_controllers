@@ -105,8 +105,13 @@ void PdController::starting(const ros::Time& time)
 
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
-  
-    command_q_d = q_curr;              // security inizialization
+    
+    // security inizialization
+    command_q_d = q_curr;
+    command_q_d_old = q_curr;
+    command_dot_q_d = dot_q_curr;  
+    
+    
     elapsed_time = ros::Duration(0.0); // first estimation
 }
 
@@ -122,26 +127,17 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     // verification of the velocity vector of the joints
     
-    if (flag) {
-
-        // Estimation of the errors
+    if (!flag) { //if the flag is false so dot_q_desired is not given
+      
+      // estimation of command_dot_q_d
+      command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
+      
+    }
+    
+    // Estimation of the errors
       
         err = command_q_d - q_curr;
         dot_err = command_dot_q_d - dot_q_curr;
-	
-	/* DUBBIO */
-	
-	/* Se siamo nella situazione in cui ho assegnato un comando di posizione, e di velocità,
-	 al termine di esso svuoto il vettore del comando di velocità, quindi assegno solamente la 
-	 il comando di posizione:
-	 
-	 1) Devo evitare che entri nel ciclo if(elapsed_time.toSec() == 0), quindi magari
-	 vado ad incrementare la variabile
-	 
-	 2) devo salvarmi l'ultima command_q_d, che nella stima sarà la command_q_d_old*/
-        
-	command_q_d_old = command_q_d;
-	elapsed_time += period;
 	
         /* Proportional Derivative Controller Law */
         
@@ -158,35 +154,22 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
             joint_handles_[i].setCommand(tau_cmd(i));
 	    
         }
-
-    }else{ //if the flag is false so dot_q_desired is not given
-
-        if (elapsed_time.toSec() == 0) { //if we are at the first step, where q_old (k-1 step) does not exist!
-
-            command_dot_q_d.setZero();
-	    
- 	    command_q_d_old.setZero();
-
-            flag = false;
-
-            elapsed_time += period;
-
-        }else{
-
-            // estimation of command_dot_q_d
-            
-	    command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
-            
-	    // saving last position
-            
-	    command_q_d_old = command_q_d;
-
-            flag = true;
-        }
-    }
+        
+        // saving last joint command
+        command_q_d_old = command_q_d;
 }
 
-void PdController::stopping(const ros::Time& time) {}
+void PdController::stopping(const ros::Time& time) {
+  
+  /* Set null command for each joint (TODO: Is this necessary?)
+        for (size_t i = 0; i < 7; ++i) {
+
+            joint_handles_[i].setCommand(0.0);
+	    
+        }
+        */
+  
+}
 
 /* Check for the effort commanded */
 
@@ -205,17 +188,15 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr &msg) //is
 {
     Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q_d((msg->position).data());
     
-    do{
-        if (command_q_d.rows() != 7) {
+    
+        if ((msg->position).size() != 7 ||  (msg->position).empty()) {
             ROS_FATAL ("Desired position has not dimension 7! ... %d\n\tcommand_q_d = %s\n",202,command_q_d.rows());
-            ROS_ISSUE_BREAK(); //if the vector's position is wrong, the software gives Error!
-        }
-    }while(0); //loop doesn't run
+	}
 
-    do{
+    
         if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 	  
-            ROS_INFO_STREAM ("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
+            ROS_DEBUG_STREAM ("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
             flag = false;
 	    
         }else{
@@ -224,7 +205,7 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr &msg) //is
             flag = true;
 	    
         }
-    }while(1); // loop continues(means while(1!=0))
+    
 }
 
 }
