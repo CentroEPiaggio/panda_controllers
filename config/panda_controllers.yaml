@@ -25,7 +25,7 @@ pd_controller:
 
          
 computed_torque_controller:
-    type: panda_controllers/computedTorque
+    type: panda_controllers/ComputedTorque
     arm_id: panda
     joint_names:
          - panda_joint1
@@ -39,7 +39,7 @@ computed_torque_controller:
     kv: 0.7
 
 back_stepping_controller:
-    type: panda_controllers/backstepping
+    type: panda_controllers/BackStepping
     arm_id: panda
     joint_names:
          - panda_joint1
