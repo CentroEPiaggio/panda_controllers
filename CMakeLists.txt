@@ -53,7 +53,6 @@ add_library(${PROJECT_NAME}
   src/pdcontroller.cpp #PD controller
   src/computed_torque.cpp #Computed Torque controller
   src/backstepping.cpp #Backstepping controller
-  src/computed_torque_bis.cpp #Computed Torque controller
 ) 
 
 add_dependencies(${PROJECT_NAME}
