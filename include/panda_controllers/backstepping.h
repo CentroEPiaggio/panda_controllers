@@ -54,19 +54,21 @@ private:
     /* Error feedback */
     
     Eigen::Matrix<double, 7, 1> error;
+    Eigen::Matrix<double, 7, 1> dot_error;
     
     /* Used for saving the last command position and command velocity, and old value to calculate the estimation */
     
     Eigen::Matrix<double, 7, 1> command_q_d;            // desired command position
-    Eigen::Matrix<double, 7, 1> command_q_d_old;        // Extra definition for the estimation of the command_dot_pos
+    Eigen::Matrix<double, 7, 1> command_q_d_old;        // Extra definition for the estimation of the command_dot_q_d
     Eigen::Matrix<double, 7, 1> command_dot_q_d;        // desired command velocity
+    Eigen::Matrix<double, 7, 1> command_dot_q_d_old;    // Extra definition for the estimation of the command_dot_dot_q_d
+    Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;    // desired command acceleration
     
     /* Used for reference velocity kinematic control q_r, q_dot_r and s */
     
     Eigen::Matrix<double, 7, 1> command_dot_qref;       // desired reference velocity
-    Eigen::Matrix<double, 7, 1> command_dot_qref_old;   // Extra definition for the estimation of the command_dot_dot_qref
     Eigen::Matrix<double, 7, 1> command_dot_dot_qref;   // estimated desired reference acceleration 
-    Eigen::Matrix<double, 7, 1> s;                      // Tracking Error Velocity
+    Eigen::Matrix<double, 7, 1> s;                      // Velocity Tracking Error
     
     /* Mass matrix and Coriolis matrix (array and eigen form) */
     
