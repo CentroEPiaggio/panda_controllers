@@ -123,10 +123,8 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
     // verification of the velocity vector of the joints
 
     if (!flag) {         //if the flag is false so dot_q_desired is not given
-
-        // estimation of command_dot_q_d
+      
         command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
-
     }
 
     err = command_q_d - q_curr;
@@ -154,14 +152,13 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
 void PdController::stopping(const ros::Time& time)
 {
-
-    /* Set null command for each joint (TODO: Is this necessary?)
+    Eigen::Matrix<double, 7, 1> tau_stop;
+    tau_stop.setZero();
+    
+    /* Set null command for each joint (TODO: Is this necessary?)*/
           for (size_t i = 0; i < 7; ++i) {
-
-              joint_handles_[i].setCommand(0.0);
-
-          }
-          */
+              joint_handles_[i].setCommand(tau_stop(i));
+          }          
 }
 
 /* Check for the effort commanded */
