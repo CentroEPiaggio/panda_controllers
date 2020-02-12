@@ -12,13 +12,13 @@
    </description>
   </class>
   
-  <class name="panda_controllers/computedTorque" type="panda_controllers::computedTorque" base_class_type="controller_interface::ControllerBase">
+  <class name="panda_controllers/ComputedTorque" type="panda_controllers::ComputedTorque" base_class_type="controller_interface::ControllerBase">
    <description>
       Computed Torque controller.
    </description>
   </class>
   
-  <class name="panda_controllers/backstepping" type="panda_controllers::backstepping" base_class_type="controller_interface::ControllerBase">
+  <class name="panda_controllers/BackStepping" type="panda_controllers::BackStepping" base_class_type="controller_interface::ControllerBase">
    <description>
       Backstepping controller.
    </description>
