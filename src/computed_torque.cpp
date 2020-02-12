@@ -130,15 +130,15 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
 
-    if (!flag) { // if the flag is false, desired command velocity and acceleration must be estimated
+    if (!flag) { // if the flag is false, desired command velocity must be estimated
 
         command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
+	
+    }            // Desired commmand acceleration must be estimated
+    
         command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
 
-    } else { // if the flag is true, desired command acceleration must be estimated
-
-        command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
-    }
+    /* Computed Torque control law */
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
@@ -147,7 +147,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
-    tau_cmd << saturateTorqueRate(tau_cmd , tau_J_d);
+    tau_cmd << saturateTorqueRate(tau_cmd, tau_J_d);
 
     /* Set the command for each joint */
 
