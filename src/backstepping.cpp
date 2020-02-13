@@ -105,13 +105,13 @@ void BackStepping::starting(const ros::Time& time)
     Eigen::Map<Eigen::Matrix<double, 7, 7>> C(Coriolis_matrix_array);
 
     /* Security Initialization */
-    
-    command_q_d = q_curr; 
+  
+    command_q_d = q_curr;
     command_q_d_old = q_curr;
-    
+
     command_dot_q_d = dot_q_curr;
     command_dot_q_d_old = dot_q_curr;
-    
+
     /* Missing definition of the commmand_dot_qref and command_dot_dot_qref */
 }
 
@@ -120,11 +120,16 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
     franka::RobotState robot_state = state_handle_->getRobotState();
 
     std::array<double, 49> mass_array = model_handle_->getMass();
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-
+    //Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
+    
+    /* Anologhi al precedente*/
+    
+    /*Eigen::Matrix<double, 7, 7>*/ M = Eigen::Map<Eigen::Matrix<double, 7, 7> >(mass_array.data());
+    //Eigen::Matrix<double, 7, 7> M = Eigen::Map<Eigen::MatrixXd>(mass_array.data(), 7, 7);
+    
     get_CoriolisMatrix(robot_state.q.data(), robot_state.dq.data(), Coriolis_matrix_array);
     Eigen::Map<Eigen::Matrix<double, 7, 7>> C(Coriolis_matrix_array);
-
+    
     /* Actual position and velocity of the joints */
 
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
@@ -135,22 +140,22 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
-      
+
         command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
     }
-    
+
     command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
-    
+
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
-    
+
     command_dot_qref = command_dot_q_d + Lambda * error;
     command_dot_dot_qref = command_dot_dot_q_d + Lambda * dot_error;
-    
+
     /* Velocity Tracking Error */
-    
+
     s = command_dot_qref - dot_q_curr;
-  
+
     /* Backstepping Control Law in the joint space */
 
     tau_cmd = M * command_dot_dot_qref + C * command_dot_qref + Kd * s + error;
@@ -166,15 +171,22 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
         joint_handles_[i].setCommand(tau_cmd[i]);
 
     }
-    
+
     /* Saving the last desired commmand position and desired command velocity */
-    
+
     command_q_d_old = command_q_d;
     command_dot_q_d_old = command_dot_q_d;
 }
 
 void BackStepping::stopping(const ros::Time&)
 {
+    Eigen::Matrix<double, 7, 1> tau_stop;
+    tau_stop.setZero();
+    
+    /* Set null command for each joint (TODO: Is this necessary?)*/
+          for (size_t i = 0; i < 7; ++i) {
+              joint_handles_[i].setCommand(tau_stop(i));
+          }          
 }
 
 /* Check the effort commanded */
@@ -198,8 +210,8 @@ void BackStepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
-        ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 195, command_q_d.rows());
-
+        //ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 195, command_q_d.rows());
+        ROS_FATAL("Desired position has not dimension 7 or is empty!");
     }
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 

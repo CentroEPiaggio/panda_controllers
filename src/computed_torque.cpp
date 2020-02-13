@@ -133,11 +133,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
         command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
-	
-    }            // Desired commmand acceleration must be estimated
-    
-        command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
 
+    }            // Desired commmand acceleration must be estimated
+
+    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
+    
     /* Computed Torque control law */
 
     error = command_q_d - q_curr;
@@ -164,6 +164,13 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 void ComputedTorque::stopping(const ros::Time&)
 {
+    Eigen::Matrix<double, 7, 1> tau_stop;
+    tau_stop.setZero();
+    
+    /* Set null command for each joint (TODO: Is this necessary?)*/
+          for (size_t i = 0; i < 7; ++i) {
+              joint_handles_[i].setCommand(tau_stop(i));
+          }          
 }
 
 /* Check for the effort commanded */
