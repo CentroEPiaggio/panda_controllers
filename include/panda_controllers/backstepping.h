@@ -78,9 +78,11 @@ private:
     
     /* Check the effort limits */
     
-    Eigen::Matrix<double, 7, 1> saturateTorqueRate (
+    Eigen::Matrix<double, 7, 1> saturateTorqueRate(
         const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
-        const Eigen::Matrix<double, 7, 1>& tau_J_d );
+        const Eigen::Matrix<double, 7, 1>& tau_J_d);
+    
+    Eigen::Matrix<double, 7, 1> tau_J_d;
 
     static constexpr double kDeltaTauMax {1.0};
     
