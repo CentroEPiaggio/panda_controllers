@@ -98,9 +98,9 @@ void PdController::starting(const ros::Time& time)
     franka::RobotState robot_state = state_handle_->getRobotState();
 
     /* Mapping actual joints position and actual joints velocity onto Eigen form */
-
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());   
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* Security inizialization */
 
@@ -113,14 +113,12 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 {
 
     franka::RobotState robot_state = state_handle_->getRobotState();
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
-
-    // verification of the velocity vector of the joints
+    tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
     if (!flag) {         //if the flag is false so dot_q_desired is not given
       
@@ -176,11 +174,12 @@ Eigen::Matrix<double, 7, 1> PdController::saturateTorqueRate(const Eigen::Matrix
 
 void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)      //is the callback of the topic sub_command_ (up).
 {
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q_d((msg->position).data());
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
     if ((msg->position).size() != 7 || (msg->position).empty()) {
-        ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 187, command_q_d.rows());
+        ROS_FATAL("Desired position has not dimension 7 or is empty!", command_q_d.rows());
     }
+    
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
@@ -188,10 +187,9 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)     
 
     } else {
 
-        Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_q_d((msg->velocity).data());
-        flag = true;
+    command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    flag = true;
     }
-
 }
 
 }

@@ -91,11 +91,11 @@ void ComputedTorque::starting(const ros::Time& time)
 
     /* Mapping actual joints position, actual joints velocity, Mass matrix and Coriolis vector onto Eigen form  */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> C(coriolis_array.data());
+    M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+    C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 
     /* Security Initialization */
 
@@ -108,7 +108,7 @@ void ComputedTorque::starting(const ros::Time& time)
     /* Defining the NEW gains */
 
     Kp_apix = M * Kp;
-    Kv_apix = M * Kp;
+    Kv_apix = M * Kv;
 }
 
 void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
@@ -118,17 +118,17 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     std::array<double, 49> mass_array = model_handle_->getMass();
     std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
 
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> C(coriolis_array.data());
+    M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+    C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 
     /* Actual position and velocity of the joints */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
+    tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
@@ -137,7 +137,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     }            // Desired commmand acceleration must be estimated
 
     command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
-    
+
     /* Computed Torque control law */
 
     error = command_q_d - q_curr;
@@ -166,11 +166,11 @@ void ComputedTorque::stopping(const ros::Time&)
 {
     Eigen::Matrix<double, 7, 1> tau_stop;
     tau_stop.setZero();
-    
+
     /* Set null command for each joint (TODO: Is this necessary?)*/
-          for (size_t i = 0; i < 7; ++i) {
-              joint_handles_[i].setCommand(tau_stop(i));
-          }          
+    for (size_t i = 0; i < 7; ++i) {
+        joint_handles_[i].setCommand(tau_stop(i));
+    }
 }
 
 /* Check for the effort commanded */
@@ -191,13 +191,14 @@ Eigen::Matrix<double, 7, 1> ComputedTorque::saturateTorqueRate(
 
 void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 {
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q_d((msg->position).data());
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
         ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 187, command_q_d.rows());
 
     }
+
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
@@ -205,8 +206,9 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 
     } else {
 
-        Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_q_d((msg->velocity).data());
+        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
         flag = true;
+
     }
 }
 

@@ -91,8 +91,8 @@ void BackStepping::starting(const ros::Time& time)
 
     /* Mapping actual joints position and actual joints velocity onto Eigen Matrix */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* Getting Mass matrix and Coriolis matrix */
 
@@ -101,11 +101,11 @@ void BackStepping::starting(const ros::Time& time)
 
     /* Mapping Mass matrix and Coriolis matrix onto Eigen form */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> C(Coriolis_matrix_array);
+    M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+    C = Eigen::Map<Eigen::Matrix<double, 7, 7>>(Coriolis_matrix_array);
 
     /* Security Initialization */
-  
+
     command_q_d = q_curr;
     command_q_d_old = q_curr;
 
@@ -120,24 +120,19 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
     franka::RobotState robot_state = state_handle_->getRobotState();
 
     std::array<double, 49> mass_array = model_handle_->getMass();
-    //Eigen::Map<Eigen::Matrix<double, 7, 7>> M(mass_array.data());
-    
-    /* Anologhi al precedente*/
-    
-    /*Eigen::Matrix<double, 7, 7>*/ M = Eigen::Map<Eigen::Matrix<double, 7, 7> >(mass_array.data());
-    //Eigen::Matrix<double, 7, 7> M = Eigen::Map<Eigen::MatrixXd>(mass_array.data(), 7, 7);
-    
+    M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+
     get_CoriolisMatrix(robot_state.q.data(), robot_state.dq.data(), Coriolis_matrix_array);
-    Eigen::Map<Eigen::Matrix<double, 7, 7>> C(Coriolis_matrix_array);
-    
+    C = Eigen::Map<Eigen::Matrix<double, 7, 7>>(Coriolis_matrix_array);
+
     /* Actual position and velocity of the joints */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> q_curr(robot_state.q.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> dot_q_curr(robot_state.dq.data());
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
+    tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
@@ -182,11 +177,11 @@ void BackStepping::stopping(const ros::Time&)
 {
     Eigen::Matrix<double, 7, 1> tau_stop;
     tau_stop.setZero();
-    
+
     /* Set null command for each joint (TODO: Is this necessary?)*/
-          for (size_t i = 0; i < 7; ++i) {
-              joint_handles_[i].setCommand(tau_stop(i));
-          }          
+    for (size_t i = 0; i < 7; ++i) {
+        joint_handles_[i].setCommand(tau_stop(i));
+    }
 }
 
 /* Check the effort commanded */
@@ -206,13 +201,16 @@ Eigen::Matrix<double, 7, 1> BackStepping::saturateTorqueRate(
 
 void BackStepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 {
-    Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_q_d((msg->position).data());
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
-        //ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 195, command_q_d.rows());
-        ROS_FATAL("Desired position has not dimension 7 or is empty!");
+        ROS_FATAL("Desired position has not dimension 7 or is empty!", command_q_d.rows());
     }
+
+    /* Non si potrebbe inserire qua la riga 209? Ovvero salvare il comando di posizione solamente
+       dopo essersi assicurati che il comando sia corretto? */
+
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
@@ -220,7 +218,7 @@ void BackStepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 
     } else {
 
-        Eigen::Map<const Eigen::Matrix<double, 7, 1>> command_dot_q_d((msg->velocity).data());
+        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
         flag = true;
     }
 }
