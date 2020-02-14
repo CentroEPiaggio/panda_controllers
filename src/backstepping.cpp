@@ -208,9 +208,6 @@ void BackStepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
         ROS_FATAL("Desired position has not dimension 7 or is empty!", command_q_d.rows());
     }
 
-    /* Non si potrebbe inserire qua la riga 209? Ovvero salvare il comando di posizione solamente
-       dopo essersi assicurati che il comando sia corretto? */
-
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
