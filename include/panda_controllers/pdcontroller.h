@@ -86,9 +86,6 @@ private:
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; //used for the state of the joints and command the torque
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
-
-    /*unique_ptr----->These objects have the ability of taking ownership of a pointer: once they take ownership
-     *they manage the pointed object by becoming responsible for its deletion at some point.*/
 };
 
 }

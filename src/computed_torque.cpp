@@ -147,7 +147,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
-    tau_cmd << saturateTorqueRate(tau_cmd, tau_J_d);
+    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
     /* Set the command for each joint */
 
@@ -164,13 +164,14 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 void ComputedTorque::stopping(const ros::Time&)
 {
-    Eigen::Matrix<double, 7, 1> tau_stop;
-    tau_stop.setZero();
-
-    /* Set null command for each joint (TODO: Is this necessary?)*/
-    for (size_t i = 0; i < 7; ++i) {
-        joint_handles_[i].setCommand(tau_stop(i));
-    }
+    //TO DO
+//     Eigen::Matrix<double, 7, 1> tau_stop;
+//     tau_stop.setZero();
+//
+//     /* Set null command for each joint (TODO: Is this necessary?)*/
+//     for (size_t i = 0; i < 7; ++i) {
+//         joint_handles_[i].setCommand(tau_stop(i));
+//     }
 }
 
 /* Check for the effort commanded */
@@ -191,13 +192,12 @@ Eigen::Matrix<double, 7, 1> ComputedTorque::saturateTorqueRate(
 
 void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 {
-    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
-        ROS_FATAL("Desired position has not dimension 7 or is empty! ... %d\n\tcommand_q_d = %s\n", 187, command_q_d.rows());
-
+        ROS_FATAL("Desired position has not dimension 7 or is empty!");
     }
+
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
@@ -208,7 +208,6 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 
         command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
         flag = true;
-
     }
 }
 

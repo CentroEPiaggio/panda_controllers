@@ -22,7 +22,6 @@
 //Ros Message
 #include <sensor_msgs/JointState.h>
 
-
 namespace panda_controllers
 {
    class BackStepping: public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,

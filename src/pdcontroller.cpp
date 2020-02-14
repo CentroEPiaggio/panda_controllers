@@ -98,8 +98,8 @@ void PdController::starting(const ros::Time& time)
     franka::RobotState robot_state = state_handle_->getRobotState();
 
     /* Mapping actual joints position and actual joints velocity onto Eigen form */
-    
-    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());   
+
+    q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
     dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
     /* Security inizialization */
@@ -121,7 +121,7 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
     if (!flag) {         //if the flag is false so dot_q_desired is not given
-      
+
         command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
     }
 
@@ -134,7 +134,7 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
-    tau_cmd << saturateTorqueRate(tau_cmd, tau_J_d);
+    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
     /* Set the command for each joint */
 
@@ -150,13 +150,15 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
 void PdController::stopping(const ros::Time& time)
 {
-    Eigen::Matrix<double, 7, 1> tau_stop;
-    tau_stop.setZero();
-    
-    /* Set null command for each joint (TODO: Is this necessary?)*/
-          for (size_t i = 0; i < 7; ++i) {
-              joint_handles_[i].setCommand(tau_stop(i));
-          }          
+    //TO DO
+//     Eigen::Matrix<double, 7, 1> tau_stop;
+//     tau_stop.setZero();
+//
+//     /* Set null command for each joint (TODO: Is this necessary?)*/
+//           for (size_t i = 0; i < 7; ++i) {
+//               joint_handles_[i].setCommand(tau_stop(i));
+//           }
+
 }
 
 /* Check for the effort commanded */
@@ -174,12 +176,13 @@ Eigen::Matrix<double, 7, 1> PdController::saturateTorqueRate(const Eigen::Matrix
 
 void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)      //is the callback of the topic sub_command_ (up).
 {
+    if ((msg->position).size() != 7 || (msg->position).empty()) {
+
+        ROS_FATAL("Desired position has not dimension 7 or is empty!");
+    }
+
     command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
-    if ((msg->position).size() != 7 || (msg->position).empty()) {
-        ROS_FATAL("Desired position has not dimension 7 or is empty!", command_q_d.rows());
-    }
-    
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
@@ -187,8 +190,8 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)     
 
     } else {
 
-    command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-    flag = true;
+        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+        flag = true;
     }
 }
 

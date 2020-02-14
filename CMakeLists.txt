@@ -74,7 +74,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${catkin_INCLUDE_DIRS}
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
-  include
+  include  
 )
 
 ## Installation

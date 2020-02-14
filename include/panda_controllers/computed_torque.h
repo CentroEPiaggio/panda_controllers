@@ -6,7 +6,6 @@
 #include <math.h>
 #include <Eigen/Dense>
 
-
 #include <controller_interface/multi_interface_controller.h>
 
 #include <franka_hw/franka_model_interface.h>
@@ -29,8 +28,7 @@ namespace panda_controllers
 class ComputedTorque : public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
     hardware_interface::EffortJointInterface, franka_hw::FrankaStateInterface>
 {
-
-
+  
 public:
   
     bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle &node_handle);
