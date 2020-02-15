@@ -1,7 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/computed_torque.h> //library of the computed torque 
-#include <ros/console.h>
 
 namespace panda_controllers
 {

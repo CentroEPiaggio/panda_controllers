@@ -1,7 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the backstepping
-#include <ros/console.h>
 
 #include <utils/get_CoriolisMatrix.h> // to obtain the Coriolis Matrix 
 

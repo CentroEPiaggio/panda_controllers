@@ -14,6 +14,7 @@
 #include <hardware_interface/robot_hw.h>
 #include <hardware_interface/joint_command_interface.h>
 
+#include <ros/console.h>
 #include <ros/node_handle.h>
 #include <ros/time.h>
 

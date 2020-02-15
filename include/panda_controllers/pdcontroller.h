@@ -16,6 +16,7 @@ MultiInterfaceController <first interface, second interface, ....> */
 It is meant to be used as a base class for abstracting custom robot hardware: hardware_interface::RobotHW (see function get())*/
 #include <hardware_interface/joint_command_interface.h> /* A handle used to read and command a single joint: hardware_interface::JointHandle */
 
+#include <ros/console.h>
 #include <ros/node_handle.h> /* roscpp's interface for creating subscribers, publishers, etc. */
 #include <ros/time.h> 
 
