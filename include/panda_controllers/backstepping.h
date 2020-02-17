@@ -86,8 +86,9 @@ private:
 
     static constexpr double kDeltaTauMax {1.0};
     
-    /* For listening to the command topic */
+    /* ROS variables */
     
+    ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     
     /* Setting Command Callback*/

@@ -9,6 +9,8 @@ namespace panda_controllers
 
 bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
 {
+    this->cvc_nh = node_handle;
+  
     std::string arm_id; //checking up the arm id of the robot
     if (!node_handle.getParam("arm_id", arm_id)) {
         ROS_ERROR("Backstepping: Could not get parameter arm_id!");
