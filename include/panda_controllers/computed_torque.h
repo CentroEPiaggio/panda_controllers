@@ -17,7 +17,6 @@
 #include <ros/console.h>
 #include <ros/node_handle.h>
 #include <ros/time.h>
-#include <ros/node_handle.h>
 
 #include <franka/robot_state.h>
 
