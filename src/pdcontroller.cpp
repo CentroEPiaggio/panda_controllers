@@ -6,9 +6,11 @@ namespace panda_controllers
 {
 
 bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
-{
-    //inizialization of the arm and setting up each joints
-
+{  
+    /* Initializing node handle */
+  
+    this->cvc_nh = node_handle;
+   
     std::string arm_id; //checking up the arm id of the robot
     if (!node_handle.getParam("arm_id", arm_id)) {
         ROS_ERROR("PdController: Could not get parameter arm_id!");
@@ -25,7 +27,7 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
     Kp = kp * Eigen::MatrixXd::Identity(7, 7);
     Kv = kv * Eigen::MatrixXd::Identity(7, 7);
 
-    //Naming each joint
+    /* Naming each joint */
 
     std::vector<std::string> joint_names;
     if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
@@ -33,8 +35,8 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         return false;
     }
 
-    //Get model interface: used to perform calculations using the dynamic model of the robot
-    //in particular for modelHandle
+    /*Get model interface: used to perform calculations using the dynamic model of the robot
+      in particular for modelHandle */
 
     franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
     if (model_interface == nullptr) {
@@ -49,7 +51,7 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         return false;
     }
 
-    // Get state interface: reads the full robot state, from where we can take q, qdot, tau
+    /* Get state interface: reads the full robot state, from where we can take q, qdot, tau */
 
     franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr) {
@@ -64,7 +66,7 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         return false;
     }
 
-    // Getting hardware interface: command joint-level torques and read the joint states.
+    /* Getting hardware interface: command joint-level torques and read the joint states */
 
     hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
     if (effort_joint_interface == nullptr) {
@@ -72,7 +74,7 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         return false;
     }
 
-    // Creating handles for each joint
+    /* Creating handles for each joint */
 
     for (size_t i = 0; i < 7; ++i) {
         try {
