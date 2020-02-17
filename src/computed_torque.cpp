@@ -9,7 +9,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 {
     std::string arm_id; //checking up the arm id of the robot
     if (!node_handle.getParam("arm_id", arm_id)) {
-        ROS_ERROR("Computed Torque: Could not get parameter arm_id!");
+        ROS_ERROR ("Computed Torque: Could not get parameter arm_id!");
         return false;
     }
 
@@ -193,7 +193,7 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 {
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
-        ROS_FATAL("Desired position has not dimension 7 or is empty!");
+        ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
     }
 
     command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
