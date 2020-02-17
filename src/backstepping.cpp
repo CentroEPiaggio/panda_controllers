@@ -112,7 +112,6 @@ void BackStepping::starting(const ros::Time& time)
 
     command_dot_q_d = dot_q_curr;
     command_dot_q_d_old = dot_q_curr;
-
 }
 
 void BackStepping::update(const ros::Time&, const ros::Duration& period)

@@ -18,7 +18,6 @@
 #include <ros/node_handle.h>
 #include <ros/time.h>
 
-
 #include <franka/robot_state.h>
 
 //Ros Message
