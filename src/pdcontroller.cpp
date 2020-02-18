@@ -86,6 +86,10 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         }
     }
 
+    /* Initialize joint (torque,velocity) limits */
+    tau_limit << 87, 87, 87, 87, 12, 12, 12;
+    q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
+
     /* Start command subscriber */
 
     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &PdController::setCommandCB, this);   //it verify with the callback that the command has been received
@@ -106,8 +110,8 @@ void PdController::starting(const ros::Time& time)
     /* Security inizialization */
 
     command_q_d = q_curr;
-    command_q_d_old = q_curr;
     command_dot_q_d = dot_q_curr;
+
 }
 
 void PdController::update(const ros::Time& time, const ros::Duration& period)
@@ -121,9 +125,18 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    if (!flag) {         //if the flag is false so dot_q_desired is not given
+    /* Setting time vars */
+    dt = ros::Duration(5.0);
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
+    if (!flag) {         //if the flag is false so dot_q_desired is not given
+        command_dot_q_d = (command_q_d - q_curr) / dt.toSec();
+    }
+
+    /* Saturate desired velocity to avoid limits */
+    for (int i = 0; i < 7; ++i){
+        double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
+        if( ith_des_vel > 1)
+            command_dot_q_d = command_dot_q_d / ith_des_vel;
     }
 
     err = command_q_d - q_curr;
@@ -131,13 +144,44 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     /* Proportional Derivative Controller Law */
 
+    // std::cout << "The err is ";
+    // for(int i = 0; i < err.rows(); i++){
+    //   std::cout << err(i) << " "; 
+    // }
+
+    // std::cout << "The command_q_d_old is ";
+    // for(int i = 0; i < command_q_d_old.rows(); i++){
+    //   std::cout << command_q_d_old(i) << " "; 
+    // }
+
+    // std::cout << "dt toSec is " << dt.toSec() << std::endl;
+
     tau_cmd = Kp * err + Kv * dot_err;
+
+    // std::cout << "The commanded torque before saturation is ";
+    // for(int i = 0; i < tau_cmd.rows(); i++){
+    //   std::cout << tau_cmd(i) << " "; 
+    // }
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
-    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+    tau_cmd << saturateTorqueRate(tau_cmd, tau_J_d);
+
+    /* Saturate torque to avoid torque limit */
+    for (int i = 0; i < 7; ++i){
+        double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
+        if( ith_torque_rate > 1)
+            tau_cmd = tau_cmd / ith_torque_rate;
+    }
 
     /* Set the command for each joint */
+    // std::cout << "Sending command of size " << tau_cmd.rows() << " x " << tau_cmd.cols() << std::endl;
+    // std::cout << "The commanded torque is ";
+    // for(int i = 0; i < tau_cmd.rows(); i++){
+    //   std::cout << tau_cmd(i) << " "; 
+    // }
+    // int trial;
+    // std::cin >> trial;
 
     for (size_t i = 0; i < 7; ++i) {
 
@@ -145,8 +189,6 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     }
 
-    /* Saving the last desired command position */
-    command_q_d_old = command_q_d;
 }
 
 void PdController::stopping(const ros::Time& time)
