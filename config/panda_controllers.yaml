@@ -21,7 +21,7 @@ pd_controller:
          - panda_joint6
          - panda_joint7
     kp: 10
-    kv: 0.7
+    kv: 0.8
 
          
 computed_torque_controller:
