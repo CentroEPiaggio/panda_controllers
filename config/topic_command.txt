@@ -1,0 +1,38 @@
+COMMAND FOR POSITION AND VELOCITY
+*********************************
+
+rostopic pub /panda_arm/pd_controller/command  sensor_msgs/JointState "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+name: ['']
+position: [-0.061712700309918114, -0.17000184992716552, -0.054988004275581294, -1.8472417912232246, 0.01611427599232351, 1.5594757091469207, -0.7172849450057578]
+velocity: [0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001, 0.00001]
+effort: [0]" 
+
+COMMAND FOR POSITION ONLY WITH ZERO VELOCITY
+********************************************
+
+rostopic pub /panda_arm/pd_controller/command  sensor_msgs/JointState "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+name: ['']
+position: [-0.061712700309918114, -0.17000184992716552, -0.054988004275581294, -1.8472417912232246, 0.01611427599232351, 1.5594757091469207, -0.7172849450057578]
+velocity: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0]" 
+
+
+COMMAND FOR POSITION ONLY WITH ESTIMATED VELOCITY
+*************************************************
+
+rostopic pub /panda_arm/pd_controller/command  sensor_msgs/JointState "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+name: ['']
+position: [-0.061712700309918114, -0.17000184992716552, -0.054988004275581294, -1.8472417912232246, 0.01611427599232351, 1.5594757091469207, -0.7172849450057578]
+velocity: [0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0]" 
+
+
