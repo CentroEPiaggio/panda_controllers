@@ -68,7 +68,9 @@ private:
     /* Used for saving the last command position and command velocity, and old value to calculate the estimation */
     
     Eigen::Matrix<double, 7, 1> command_q_d;            // desired command position
+    Eigen::Matrix<double, 7, 1> command_q_d_old; 
     Eigen::Matrix<double, 7, 1> command_dot_q_d;        // desired command velocity
+    Eigen::Matrix<double, 7, 1> command_dot_q_d_old;
     Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;    // desired command acceleration
     
     /* Used for reference velocity kinematic control q_r, q_dot_r and s */

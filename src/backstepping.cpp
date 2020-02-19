@@ -144,7 +144,7 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - q_curr) / dt;
+        command_dot_q_d = (command_q_d - command_q_d_old) / dt;
     }
     
     /* Saturate desired velocity to avoid limits */
@@ -155,7 +155,7 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
             command_dot_q_d = command_dot_q_d / ith_des_vel;
     }
 
-    command_dot_dot_q_d = (command_dot_q_d - dot_q_curr) / dt;
+    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
