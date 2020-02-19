@@ -114,8 +114,10 @@ void ComputedTorque::starting(const ros::Time& time)
     /* Secure Initialization */
 
     command_q_d = q_curr;
+    command_q_d_old = q_curr;
 
     command_dot_q_d = dot_q_curr;
+    command_dot_q_d_old = dot_q_curr;
 
     /* Defining the NEW gains */
 
@@ -144,20 +146,18 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - q_curr) / dt;
-	
-	/* Saturate desired velocity to avoid limits */
-	
-	for (int i = 0; i < 7; ++i){
-	  double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
-	  if( ith_des_vel > 1)
-            command_dot_q_d = command_dot_q_d / ith_des_vel;
-	  
-	}
+        command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
 
     }            // Desired commmand acceleration must be estimated
+    
+    /* Saturate desired velocity to avoid limits */
+    for (int i = 0; i < 7; ++i){
+      double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
+      if( ith_des_vel > 1)
+	command_dot_q_d = command_dot_q_d / ith_des_vel; 
+    }
 
-    command_dot_dot_q_d = (command_dot_q_d - dot_q_curr) / dt;
+    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
 
     /* Computed Torque control law */
 
@@ -184,6 +184,9 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
         joint_handles_[i].setCommand(tau_cmd[i]);
     }
+    
+    command_dot_q_d_old = command_dot_q_d;
+    command_q_d_old = command_q_d;
 }
 
 void ComputedTorque::stopping(const ros::Time&)
