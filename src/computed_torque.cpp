@@ -123,6 +123,7 @@ void ComputedTorque::starting(const ros::Time& time)
 
     Kp_apix = M * Kp;
     Kv_apix = M * Kv;
+    
 }
 
 void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
@@ -134,6 +135,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
     C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
+    
+   
 
     /* Actual position and velocity of the joints */
 
@@ -146,7 +149,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
+        command_dot_q_d = (command_q_d - command_q_d_old) / dt;
 
     }            // Desired commmand acceleration must be estimated
     
@@ -157,7 +160,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	command_dot_q_d = command_dot_q_d / ith_des_vel; 
     }
 
-    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
+    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
 
     /* Computed Torque control law */
 
@@ -185,8 +188,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
         joint_handles_[i].setCommand(tau_cmd[i]);
     }
     
+    /* Saving the last position of the desired position and velocity */
+    
     command_dot_q_d_old = command_dot_q_d;
     command_q_d_old = command_q_d;
+
 }
 
 void ComputedTorque::stopping(const ros::Time&)
@@ -236,6 +242,8 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
         command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
         flag = true;
     }
+    
+
 }
 
 }

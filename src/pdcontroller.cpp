@@ -132,9 +132,9 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    if (!flag) {         //if the flag is false so dot_q_desired is not given
-        command_dot_q_d = (command_q_d - q_curr) / dt;
-    }
+//     if (!flag) {         //if the flag is false so dot_q_desired is not given
+//         command_dot_q_d = (command_q_d - q_curr) / dt;
+//     }
 
     /* Saturate desired velocity to avoid limits */
     for (int i = 0; i < 7; ++i){
@@ -230,16 +230,16 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)     
 
     command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
-    if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
-
-        ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
-        flag = false;
-
-    } else {
-
-        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-        flag = true;
-    }
+//     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
+// 
+//         ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
+//         flag = false;
+// 
+//     } else {
+// 
+//         command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+//         flag = true;
+//     }
 }
 
 }
