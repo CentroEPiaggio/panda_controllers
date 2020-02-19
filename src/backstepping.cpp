@@ -29,6 +29,13 @@ bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
     Kd = kd * Eigen::MatrixXd::Identity(7, 7);
 
     Lambda = lambda * Eigen::MatrixXd::Identity(7, 7);
+    
+    /* Assigning the time */
+   
+    if (!node_handle.getParam("dt", dt)) {
+        ROS_ERROR("Backstepping: Could not get parameter dt!");
+        return false;
+    }
 
     std::vector<std::string> joint_names;
     if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
@@ -77,6 +84,11 @@ bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
             return false;
         }
     }
+    
+    /* Initialize joint (torque,velocity) limits */
+    
+    tau_limit << 87, 87, 87, 87, 12, 12, 12;
+    q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61;
 
     /* Start command subscriber */
 
@@ -108,10 +120,7 @@ void BackStepping::starting(const ros::Time& time)
     /* Security Initialization */
 
     command_q_d = q_curr;
-    command_q_d_old = q_curr;
-
     command_dot_q_d = dot_q_curr;
-    command_dot_q_d_old = dot_q_curr;
 }
 
 void BackStepping::update(const ros::Time&, const ros::Duration& period)
@@ -135,10 +144,18 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
 
     if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / period.toSec();
+        command_dot_q_d = (command_q_d - q_curr) / dt;
+    }
+    
+    /* Saturate desired velocity to avoid limits */
+    
+    for (int i = 0; i < 7; ++i){
+        double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
+        if( ith_des_vel > 1)
+            command_dot_q_d = command_dot_q_d / ith_des_vel;
     }
 
-    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / period.toSec();
+    command_dot_dot_q_d = (command_dot_q_d - dot_q_curr) / dt;
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
@@ -157,6 +174,13 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
     tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+    
+    /* Saturate torque to avoid torque limit */
+    for (int i = 0; i < 7; ++i){
+        double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
+        if( ith_torque_rate > 1)
+            tau_cmd = tau_cmd / ith_torque_rate;
+    }
 
     /* Set the command for each joint */
 
@@ -165,11 +189,6 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
         joint_handles_[i].setCommand(tau_cmd[i]);
 
     }
-
-    /* Saving the last desired commmand position and desired command velocity */
-
-    command_q_d_old = command_q_d;
-    command_dot_q_d_old = command_dot_q_d;
 }
 
 void BackStepping::stopping(const ros::Time&)

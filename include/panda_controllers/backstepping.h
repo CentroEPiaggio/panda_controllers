@@ -39,6 +39,15 @@ public:
 private:
   
     bool flag = false;          // flag for check of the desired command velocity 
+    
+    /* Definig the timing */
+    
+    double dt;
+    
+    // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
+    
+    Eigen::Matrix<double, 7, 1> tau_limit;
+    Eigen::Matrix<double, 7, 1> q_dot_limit;
       
     /* Gain Matrices */
     
@@ -59,9 +68,7 @@ private:
     /* Used for saving the last command position and command velocity, and old value to calculate the estimation */
     
     Eigen::Matrix<double, 7, 1> command_q_d;            // desired command position
-    Eigen::Matrix<double, 7, 1> command_q_d_old;        // Extra definition for the estimation of the command_dot_q_d
     Eigen::Matrix<double, 7, 1> command_dot_q_d;        // desired command velocity
-    Eigen::Matrix<double, 7, 1> command_dot_q_d_old;    // Extra definition for the estimation of the command_dot_dot_q_d
     Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;    // desired command acceleration
     
     /* Used for reference velocity kinematic control q_r, q_dot_r and s */
@@ -84,7 +91,7 @@ private:
     
     Eigen::Matrix<double, 7, 1> tau_J_d;
 
-    static constexpr double kDeltaTauMax {1.0};
+    static constexpr double kDeltaTauMax {0.5};
     
     /* ROS variables */
     
