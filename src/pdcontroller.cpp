@@ -26,6 +26,13 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
     Kp = kp * Eigen::MatrixXd::Identity(7, 7);
     Kv = kv * Eigen::MatrixXd::Identity(7, 7);
+    
+    /* Assigning the time */
+   
+    if (!node_handle.getParam("dt", dt)) {
+        ROS_ERROR("PdController: Could not get parameter dt!");
+        return false;
+    }
 
     /* Naming each joint */
 
@@ -125,11 +132,8 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    /* Setting time vars */
-    dt = ros::Duration(5.0);
-
     if (!flag) {         //if the flag is false so dot_q_desired is not given
-        command_dot_q_d = (command_q_d - q_curr) / dt.toSec();
+        command_dot_q_d = (command_q_d - q_curr) / dt;
     }
 
     /* Saturate desired velocity to avoid limits */

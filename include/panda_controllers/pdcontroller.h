@@ -42,14 +42,15 @@ public:
 private:
 
     bool flag = false;           // flag true if desired velocity is given
-
-    /* Defining time variables */
-    ros::Duration dt;
     
     /* Defining Position and Velocity Gains */
     
     Eigen::Matrix<double, 7, 7> Kp; 
     Eigen::Matrix<double, 7, 7> Kv;
+    
+    /* Definig the timing */
+    
+    double dt;
 
     /* Defining q_current, dot_q_current, and tau_cmd */
 
