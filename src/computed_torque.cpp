@@ -3,6 +3,7 @@
 #include <panda_controllers/computed_torque.h> //library of the computed torque 
 
 namespace panda_controllers
+
 {
 
 bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
