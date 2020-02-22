@@ -136,8 +136,6 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
     C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
     
-   
-
     /* Actual position and velocity of the joints */
 
     q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
@@ -166,6 +164,9 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
+    
+    Kp_apix = M * Kp;
+    Kv_apix = M * Kv;
 
     tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
 
