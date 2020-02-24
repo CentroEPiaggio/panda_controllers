@@ -46,7 +46,6 @@ Eigen::Matrix<double,7,1> q_0;
 Eigen::Matrix<double,7,1> q_final;
 Eigen::Matrix<double,7,1> q_d_sym;
 
-Eigen::MatrixBase< double >::squaredNorm ( ) const ;
 
 //Flag for the new message
 bool flag;
@@ -115,7 +114,7 @@ int main ( int argc, char **argv ){
 
     while ( ros::ok() ) {
       
-      while(squaredNorm(q_d_sym - q_final) > toll){ /*End the cycle when we are in the desired joints position */
+      while((q_d_sym - q_final).squaredNorm() > toll){ /*End the cycle when we are in the desired joints position */
 	//--! Has to be checked the squareNorm... does not work well. !--
 	
 	
