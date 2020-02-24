@@ -116,7 +116,7 @@ int main ( int argc, char **argv ){
     while ( ros::ok() ) {
       
       while(squaredNorm(q_d_sym - q_final) > toll){ /*End the cycle when we are in the desired joints position */
-	//--! Has to be checked the squareNorm... does not work well !--
+	//--! Has to be checked the squareNorm... does not work well. !--
 	
 	
 	if ( flag ) {
