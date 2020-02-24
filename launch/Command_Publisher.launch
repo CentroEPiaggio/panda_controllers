@@ -1,0 +1,8 @@
+<launch>
+   
+     <rosparam command="load" file="$(find panda_controllers)/config/command_publisher.yaml"/>   
+  
+     <node name="publisher" pkg="panda_controllers" type="command_publisher" output="screen"/>
+   
+</launch>
+

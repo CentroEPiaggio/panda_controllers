@@ -21,6 +21,7 @@
   <depend>dynamic_reconfigure</depend>
   <depend>franka_hw</depend>
   <depend>geometry_msgs</depend>
+  <depend>franka_msgs</depend>
   <depend>hardware_interface</depend>
   <depend>libfranka</depend>
   <depend>pluginlib</depend>
