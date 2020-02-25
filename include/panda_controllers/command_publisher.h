@@ -16,7 +16,6 @@ class Command_Publisher
 private:
   
   bool index = false; 	//flag to check the command position on the command_q_f_callback
-  
   double dt;     	//dt time interval
   double frequency;
  
@@ -33,6 +32,7 @@ private:
   Eigen::Matrix<double, 7, 1> q_initial;
   Eigen::Matrix<double, 7, 1> q_final;
   Eigen::Matrix<double, 7, 1> q_des_command;
+  std::array<double,7> prova;
   sensor_msgs::JointState q_des_command_array;
   
   /* Ros publisher and subscriber */
@@ -52,7 +52,7 @@ public:
     // Get name of controller
     std::string controller;
     if(nh_.getParam("controller", controller)){
-    ROS_INFO("Sono riuscito a prendere il nome del controllore.");
+    ROS_INFO("Get controller name.");
     } else {
       ROS_ERROR("Could not get controller name!");
     }
@@ -62,7 +62,7 @@ public:
     this->sub2 = nh_.subscribe("command_q_f", 1, &Command_Publisher::command_q_f_callback, this); 
     
     if(nh_.getParam("dt", this->dt) && nh_.getParam("t_f", this->t_f)){
-      ROS_INFO("Sono riuscito a prendere i parametri");
+      ROS_INFO("Get parameters");
     } else {
       ROS_ERROR("Could not get dt or t_f parameter!");
     }
@@ -79,7 +79,7 @@ public:
   
   ~Command_Publisher() = default;
   
-  bool get_index(){return index;} // DUBBIO: Per fare il get, ci vuole return this->index oppure basta return index?
+  bool get_index(){return index;} 
   
   double get_frequency(){return frequency;}
   
@@ -111,30 +111,70 @@ public:
   
   void publish_command(){
     
-  t_last = ros::Time::now();
+    t_last = ros::Time::now();
   
-  while(ros::ok()){ 
-    ros::spinOnce();
+    /* Necessary for allocate memory before assignment, because q_des_command_array has an undefined dimension */
+    /* Assing the dimension BEFORE while(ros::ok()) loop */
+    for(int i = 0; i < 7; ++i){
+      q_des_command_array.position.push_back(0.0);
+    }
+
+    while(ros::ok()){ 
     
+    std::cout<< "Checkpoint q_initial " << q_initial << std::endl;
+    
+    ros::spinOnce();    
     dt_bar = ros::Time::now() - t_last;
     this->t_last = ros::Time::now();
     elapsed_time += dt_bar; 
+    
+    std::cout << "Checkpoint 2" << std::endl; 
+    
     q_des_command = q_initial + (q_final - q_initial) / (t_f - t_0.toSec()) * (elapsed_time.toSec() - t_0.toSec()); 
-
-    /* Converting q_des_command onto array form (sensor_msgs::JoinState) */ 
-    for(int i = 0; i < q_des_command.rows(); ++i){ // q_des_command.rows() = 7; q_des_command.cols() = 1;
-      for(int j = 0; j < q_des_command.cols(); ++j){
-	q_des_command_array.position[i] = q_des_command(i, j);
-      }
+    
+    std::cout << " Checkpoint q_des_command :" << q_des_command << std::endl;
+    std::cout << "Checkpoint 3 " << std::endl;
+       
+//     std::cout << q_des_command[0] << "\n";
+//     std::cout << q_des_command[1] << "\n";
+//     std::cout << q_des_command[2] << "\n";
+//     std::cout << q_des_command[3] << "\n";
+//     std::cout << q_des_command[4] << "\n";
+//     std::cout << q_des_command[5] << "\n";
+//     std::cout << q_des_command[6] << "\n";
+      
+//     /* Necessary for allocate memory before assignment, because q_des_command_array has an undefined dimension */
+//     
+//     for(int i = 0; i < 7; ++i){
+//       q_des_command_array.position.push_back(0.0);
+//     }
+     std::cout << "Dimension of q_des_command_array before assignment " << q_des_command_array.position.size() << "\n";
+//     std::cout << q_des_command_array.position[0] << "\n";
+//     std::cout << q_des_command_array.position[1] << "\n";
+//     std::cout << q_des_command_array.position[2] << "\n";
+//     std::cout << q_des_command_array.position[3] << "\n";
+//     std::cout << q_des_command_array.position[4] << "\n";
+//     std::cout << q_des_command_array.position[5] << "\n";
+//     std::cout << q_des_command_array.position[6] << "\n";
+    
+    for(int i = 0; i < 7; ++i){
+      q_des_command_array.position[i] = q_des_command[i];
+      std::cout << q_des_command_array.position[i] << "\n";
     }
+
+    std::cout << " Checkpoint 4 " << std::endl;
     
     /* publish message */
+    std::cout << "Dimension of q_des_command_array after assignment " << q_des_command_array.position.size() << "\n";
     
-    pub.publish(q_des_command_array);    
+    pub.publish(q_des_command_array);   
+    
+    std::cout << "Dimensione of q_des_command_array after publish " << q_des_command_array.position.size() << "\n";
+    
     rate->sleep(); 
-    } 
-  }
-  
+    std::cout << "Checkpoint 5 " << std::endl;
+    }
+  }   
 };
 }
 
