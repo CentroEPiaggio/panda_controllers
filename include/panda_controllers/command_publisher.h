@@ -142,12 +142,7 @@ public:
 //     std::cout << q_des_command[4] << "\n";
 //     std::cout << q_des_command[5] << "\n";
 //     std::cout << q_des_command[6] << "\n";
-      
-//     /* Necessary for allocate memory before assignment, because q_des_command_array has an undefined dimension */
-//     
-//     for(int i = 0; i < 7; ++i){
-//       q_des_command_array.position.push_back(0.0);
-//     }
+    
      std::cout << "Dimension of q_des_command_array before assignment " << q_des_command_array.position.size() << "\n";
 //     std::cout << q_des_command_array.position[0] << "\n";
 //     std::cout << q_des_command_array.position[1] << "\n";

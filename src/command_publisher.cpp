@@ -17,7 +17,6 @@ int main (int argc, char **argv)
     ROS_INFO("Node started");
     
     std::cout << "t_f parameter is " << publish.get_t_f() << std::endl;
-    
     std::cout << "dt parameter is " << publish.get_d_t() << std::endl;
     
     while(publish.get_index() == false){
