@@ -101,12 +101,12 @@ int main ( int argc, char **argv ){
 
     ros::Rate frequency ( 1/dt ); //Declaring the frequency of sending the position
     
-    toll = 0.1; //need some test to choose the correct tollerance
+    toll = 0.0001; //need some test to choose the correct tollerance
 
 
     //Activating the subscribers
     sub_q_actual = node_handle.subscribe /*<franka_msgs::FrankaState>*/ ( "/franka_control/joint_states",1,Position_Callback );
-    sub_q_desired = node_handle.subscribe /*<sensor_msgs::JointState>*/ ( "desired_state",1,Desired_Callback ); // ?? Name of the topic ??
+    sub_q_desired = node_handle.subscribe /*<sensor_msgs::JointState>*/ ( "desired_state",1,Desired_Callback ); // 
     //Activating the publisher
     pub_q_desired = node_handle.advertise<sensor_msgs::JointState>( "/panda_controllers/pd_controller/command",1 );
 
@@ -115,7 +115,6 @@ int main ( int argc, char **argv ){
     while ( ros::ok() ) {
       
       while((q_d_sym - q_final).squaredNorm() > toll){ /*End the cycle when we are in the desired joints position */
-	//--! Has to be checked the squareNorm... does not work well. !--
 	
 	
 	if ( flag ) {
@@ -147,7 +146,6 @@ int main ( int argc, char **argv ){
 	
 	
       }
-      
 
     }
     
