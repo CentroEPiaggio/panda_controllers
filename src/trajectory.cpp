@@ -55,9 +55,6 @@ std::array<double,7> q_d_star;
 //Message
 sensor_msgs::JointState states;
 
-//MultiSpinner
-ros::MultiThreadedSpinner spinner(2);
-
 void Position_Callback ( const franka_msgs::FrankaStatePtr& msg )   //point
 {
 
@@ -181,7 +178,7 @@ int main ( int argc, char **argv )
                std::cout<< "Flag:  " << flag << std::endl;
           }
      }
-     spinner.spin();
+     ros::spin();
 
 }
 
