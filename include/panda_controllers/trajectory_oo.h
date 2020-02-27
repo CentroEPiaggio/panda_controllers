@@ -55,7 +55,7 @@ private:
     Eigen::Matrix<double,7,1> q_0;
     Eigen::Matrix<double,7,1> q_final;
     Eigen::Matrix<double,7,1> q_d_sym;
-    
+
 //NodeHandle
     ros::NodeHandle node_handle;
 
@@ -68,18 +68,19 @@ private:
 //Message
     sensor_msgs::JointState states;
 
+
 //Inizialization of Publisher and Subscriber functions
     void initializeSub_actual();
     void initializeSub_desired();
     void initializePub();
-    
-//Sampling the trajectory 
-    void sampling_trajectory(double, double);
-    
+
+//Sampling the trajectory
+    void sampling_trajectory ( double dt, double t_f );
+
 //Callback's Functions
     void Position_Callback ( const franka_msgs::FrankaStatePtr& msg );
-    
-    void Desired_Callback ( const sensor_msgs::JointStatePtr& msg ); 
+
+    void Desired_Callback ( const sensor_msgs::JointStatePtr& msg );
 
 public:
 
