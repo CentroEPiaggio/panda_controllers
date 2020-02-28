@@ -41,8 +41,8 @@ private:
     std::shared_ptr<ros::Rate> rate;
 
 //Variables
-    double dt; //parameter that is given from the topic
-    double t_i,t_f; //t_f is given from the topic
+
+    double t_i; //t_f is given from the topic
     double dt_hat,t_star;
     double toll; //tollerance
 
@@ -52,6 +52,7 @@ private:
     ros::Publisher pub_q_desired;
 
 //Matrices
+    Eigen::Matrix<double,7,1> q_current;
     Eigen::Matrix<double,7,1> q_0;
     Eigen::Matrix<double,7,1> q_final;
     Eigen::Matrix<double,7,1> q_d_sym;
@@ -74,9 +75,6 @@ private:
     void initializeSub_desired();
     void initializePub();
 
-//Sampling the trajectory
-    void sampling_trajectory ( double dt, double t_f );
-
 //Callback's Functions
     void Position_Callback ( const franka_msgs::FrankaStatePtr& msg );
 
@@ -84,7 +82,13 @@ private:
 
 public:
 
+    double dt,t_f; //parameter that is given from the topic
+
     sub_pub ( ros::NodeHandle* node_handle );
+
+//Sampling the trajectory
+    void sampling_trajectory ( double dt, double t_f );
+
 
 };
 
