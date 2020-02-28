@@ -72,9 +72,11 @@ add_dependencies(${PROJECT_NAME}
   ${PROJECT_NAME}_gencfg
 )
 
-add_executable(command_publisher src/command_publisher.cpp)
 ##
+add_executable(command_publisher src/command_publisher.cpp)
+
 add_executable(trajectory src/trajectory.cpp) # in case of not object oriented method
+add_executable(trajectory_oo src/trajectory_oo.cpp) # in case of object oriented method
 
 ##
 
@@ -87,6 +89,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 target_link_libraries(command_publisher ${PROJECT_NAME})
 
 target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriented method
+target_link_libraries(trajectory_oo ${PROJECT_NAME}) #In case of object oriented method
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}
