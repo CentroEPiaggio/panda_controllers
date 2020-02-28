@@ -82,12 +82,9 @@ public:
   
   ~Command_Publisher() = default;
   
-  bool get_index(){return index;} 
-  
-  double get_frequency(){return frequency;}
-  
-  double get_t_f(){return t_f;};
-  
+  bool get_index(){return index;}  
+  double get_frequency(){return frequency;} 
+  double get_t_f(){return t_f;};  
   double get_d_t(){return dt;};
    
   void franka_callback(const franka_msgs::FrankaStatePtr& joint_state){
