@@ -75,12 +75,14 @@ void sub_pub::sampling_trajectory ( double dt , double t_f ) //The trajectory sa
      std::cout<< "Flag Check!" << std::endl;
 
      if ( flag ) {
-       
-       ros::spinOnce();
+
+          ros::spinOnce();
 
           std::cout<< "We are in the cicle with FLAG TRUE." << std::endl;
 
           while ( ( q_d_sym - q_final ).squaredNorm() > toll && flag ) {
+
+               ros::spinOnce();
 
                dt_hat = ros::Time::now().toSec() - t_final; //Updating the dt_hat, we want to gather smaller windows.
                t_star = t_star + dt_hat;
@@ -111,10 +113,10 @@ void sub_pub::sampling_trajectory ( double dt , double t_f ) //The trajectory sa
 
                //publishing to command node the new q_desired
                pub_q_desired.publish ( states );
-	       
-	       std::cout << "Publish:   " << pub_q_desired << std::endl;
 
-               ros::spinOnce();
+               std::cout << "Publish:   " << pub_q_desired << std::endl;
+
+
                rate->sleep();
           }
 
@@ -140,13 +142,13 @@ int main ( int argc, char **argv )
      double ti;
      double toll;
      double t_f, dt;
-     
+
      //Finding the dt and t_f parameters
      if ( !nh.getParam ( "/trajectory_oo/dt", dt ) || !nh.getParam ( "/trajectory_oo/t_f", t_f ) ) {
           ROS_ERROR ( "Could not get parameter dt or t_f !" );
-	  return 1;
+          return 1;
      }
-     
+
      std::cout << "Value of dt and t_f:    " << dt << "    " << t_f << std::endl;
 
      //Defining initial TIME and the TOLLERANCE
