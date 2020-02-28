@@ -18,6 +18,7 @@ private:
   bool index = false; 	//flag to check the command position on the command_q_f_callback
   double dt;     	//dt time interval
   double frequency;
+  double tol = 1e-6;
  
   /* Ros time variables: t f-> t final; t_0 -> t initial; t_last, dt_bar, and elapsed_time to calculate the spent time */
   std::shared_ptr<ros::Rate> rate;
@@ -31,9 +32,9 @@ private:
   Eigen::Matrix<double, 7, 1> dot_q;
   Eigen::Matrix<double, 7, 1> q_initial;
   Eigen::Matrix<double, 7, 1> q_final;
-  Eigen::Matrix<double, 7, 1> q_des_command;
-  std::array<double,7> prova;
-  sensor_msgs::JointState q_des_command_array;
+  Eigen::Matrix<double, 7, 1> q_d_command;
+  
+  sensor_msgs::JointState q_d_command_array;
   
   /* Ros publisher and subscriber */
   
@@ -63,7 +64,9 @@ public:
     
     if(nh_.getParam("dt", this->dt) && nh_.getParam("t_f", this->t_f)){
       ROS_INFO("Get parameters");
+      
     } else {
+      
       ROS_ERROR("Could not get dt or t_f parameter!");
     }
     
@@ -79,98 +82,79 @@ public:
   
   ~Command_Publisher() = default;
   
-  bool get_index(){return index;} 
-  
-  double get_frequency(){return frequency;}
-  
-  double get_t_f(){return t_f;};
-  
+  bool get_index(){return index;}  
+  double get_frequency(){return frequency;} 
+  double get_t_f(){return t_f;};  
   double get_d_t(){return dt;};
    
   void franka_callback(const franka_msgs::FrankaStatePtr& joint_state){
     
     q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((joint_state->q).data());
     dot_q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((joint_state->dq).data());  
+    
   }
   
   void command_q_f_callback(const sensor_msgs::JointStatePtr& msg){
     
-    if((msg->position).size() == 7){  
+    if((msg->position).size() == 7){ 
+      
+      q_initial = q; /* Save the current joints position*/
+//    q_initial << 0, 3, 4, 5, 2, 1, 3; 
+      t_0 = ros::Time(0.0);
+      elapsed_time = ros::Duration(0.0);
+      t_last = ros::Time::now();
     
-    q_initial = q;
-    t_0 = ros::Time(0.0);
-    elapsed_time = ros::Duration(0.0);
-    t_last = ros::Time::now();
+      /* Saving the last desired command position */
     
-    /* Saving the last desired command position */
-    
-    q_final = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-    index = true;    
+      q_final = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+      index = true;    
+    } else {
+      
+      ROS_ERROR("Wrong position dimension !!!!!!");         
     }
-  }  
+  }
   
   void publish_command(){
-    
+       
     t_last = ros::Time::now();
   
     /* Necessary for allocate memory before assignment, because q_des_command_array has an undefined dimension */
-    /* Assing the dimension BEFORE while(ros::ok()) loop */
-    for(int i = 0; i < 7; ++i){
-      q_des_command_array.position.push_back(0.0);
-    }
 
-    while(ros::ok()){ 
+    q_d_command_array.position.resize(7,1);
+    q_d_command_array.velocity.resize(7,1);
     
-    std::cout<< "Checkpoint q_initial " << q_initial << std::endl;
+    index = false; /* Reset flag */  
     
-    ros::spinOnce();    
-    dt_bar = ros::Time::now() - t_last;
-    this->t_last = ros::Time::now();
-    elapsed_time += dt_bar; 
+    do{       
+      //std::cout<< "Checkpoint q_initial " << q_initial << std::endl;
+      ros::spinOnce();    
+      dt_bar = ros::Time::now() - t_last;
+      this->t_last = ros::Time::now();
+      elapsed_time += dt_bar; 
+        
+      q_d_command = q_initial + (q_final - q_initial) / (t_f - t_0.toSec()) * (elapsed_time.toSec() - t_0.toSec());  
+
+      for(int i = 0; i < 7; ++i){
+	
+      q_d_command_array.position[i] = q_d_command[i];
+      
+      }
     
-    std::cout << "Checkpoint 2" << std::endl; 
-    
-    q_des_command = q_initial + (q_final - q_initial) / (t_f - t_0.toSec()) * (elapsed_time.toSec() - t_0.toSec()); 
-    
-    std::cout << " Checkpoint q_des_command :" << q_des_command << std::endl;
-    std::cout << "Checkpoint 3 " << std::endl;
+      /* publish message */
+     
+      for(int i =0; i < 7; ++i){
+      std::cout << "q_d_command_array " << q_d_command_array.position[i] << "\n";
+      }
        
-//     std::cout << q_des_command[0] << "\n";
-//     std::cout << q_des_command[1] << "\n";
-//     std::cout << q_des_command[2] << "\n";
-//     std::cout << q_des_command[3] << "\n";
-//     std::cout << q_des_command[4] << "\n";
-//     std::cout << q_des_command[5] << "\n";
-//     std::cout << q_des_command[6] << "\n";
-    
-     std::cout << "Dimension of q_des_command_array before assignment " << q_des_command_array.position.size() << "\n";
-//     std::cout << q_des_command_array.position[0] << "\n";
-//     std::cout << q_des_command_array.position[1] << "\n";
-//     std::cout << q_des_command_array.position[2] << "\n";
-//     std::cout << q_des_command_array.position[3] << "\n";
-//     std::cout << q_des_command_array.position[4] << "\n";
-//     std::cout << q_des_command_array.position[5] << "\n";
-//     std::cout << q_des_command_array.position[6] << "\n";
-    
-    for(int i = 0; i < 7; ++i){
-      q_des_command_array.position[i] = q_des_command[i];
-      std::cout << q_des_command_array.position[i] << "\n";
-    }
-
-    std::cout << " Checkpoint 4 " << std::endl;
-    
-    /* publish message */
-    std::cout << "Dimension of q_des_command_array after assignment " << q_des_command_array.position.size() << "\n";
-    
-    pub.publish(q_des_command_array);   
-    
-    std::cout << "Dimensione of q_des_command_array after publish " << q_des_command_array.position.size() << "\n";
-    
-    rate->sleep(); 
-    std::cout << "Checkpoint 5 " << std::endl;
-    }
-  }   
+      pub.publish(q_d_command_array);     
+      rate->sleep(); 
+      std::cout << "Last checkpoint "<< std::endl; 
+      
+      }while((q_d_command - q_final).squaredNorm() >= tol);    
+  }// close void function
 };
 }
 
 #endif
+
+    

@@ -71,6 +71,7 @@ add_dependencies(${PROJECT_NAME}
   ${PROJECT_NAME}_gencpp
   ${PROJECT_NAME}_gencfg
 )
+
 ##
 add_executable(command_publisher src/command_publisher.cpp)
 
@@ -84,6 +85,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${catkin_LIBRARIES}
 )
 ##
+
 target_link_libraries(command_publisher ${PROJECT_NAME})
 
 target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriented method
