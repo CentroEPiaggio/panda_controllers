@@ -22,6 +22,7 @@ int main(int argc, char** argv)
         }
         publish.publish_command();
     }
+    
     return 0;
 }
 

@@ -125,8 +125,7 @@ public:
     
     index = false; /* Reset flag */  
     
-    do{ 
-      
+    do{       
       //std::cout<< "Checkpoint q_initial " << q_initial << std::endl;
       ros::spinOnce();    
       dt_bar = ros::Time::now() - t_last;
