@@ -19,14 +19,23 @@ bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
     /* Inizializing the kd and lambda gains */
 
-    double kd, lambda;
+    double kd, kp, lambda;
 
     if (!node_handle.getParam("kd", kd) || !node_handle.getParam("lambda", lambda)) {
         ROS_ERROR("Backstepping: Kd or lambda parameter couldn't be found!");
         return false;
     }
 
+    if (!node_handle.getParam("kp", kp)) {
+        ROS_ERROR("Backstepping: Kp parameter not found!");
+        return false;
+    }
+
     Kd = kd * Eigen::MatrixXd::Identity(7, 7);
+
+    // Proportional gain on possition error (trial: different weight on elbow)
+    Kp = kp * Eigen::MatrixXd::Identity(7, 7);
+    // Kp(3,3) = 2*kp;
 
     Lambda = lambda * Eigen::MatrixXd::Identity(7, 7);
     
@@ -117,10 +126,14 @@ void BackStepping::starting(const ros::Time& time)
     M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
     C = Eigen::Map<Eigen::Matrix<double, 7, 7>>(Coriolis_matrix_array);
 
-    /* Security Initialization */
+    /* Secure Initialization */
 
     command_q_d = q_curr;
+    command_q_d_old = q_curr;
+
     command_dot_q_d = dot_q_curr;
+    command_dot_q_d_old = dot_q_curr;
+
 }
 
 void BackStepping::update(const ros::Time&, const ros::Duration& period)
@@ -169,7 +182,9 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
 
     /* Backstepping Control Law in the joint space */
 
-    tau_cmd = M * command_dot_dot_qref + C * command_dot_qref + Kd * s + error;
+    tau_cmd = M * command_dot_dot_qref + C * command_dot_qref + Kd * s + Kp * error;
+
+    // std::cout << "Position error: " << error << std::endl;
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
@@ -189,6 +204,11 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
         joint_handles_[i].setCommand(tau_cmd[i]);
 
     }
+
+    /* Saving the last position of the desired position and velocity */
+    
+    command_dot_q_d_old = command_dot_q_d;
+    command_q_d_old = command_q_d;
 }
 
 void BackStepping::stopping(const ros::Time&)

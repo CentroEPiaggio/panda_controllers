@@ -52,6 +52,7 @@ private:
     /* Gain Matrices */
     
     Eigen::Matrix<double, 7, 7> Kd;
+    Eigen::Matrix<double, 7, 7> Kp;
     Eigen::Matrix<double, 7, 7> Lambda;
     
     /* Defining q_current, q_current_dot, and tau_cmd */
