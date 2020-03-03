@@ -58,8 +58,8 @@ public:
       ROS_ERROR("Could not get controller name!");
     }
     
-    this->pub = nh_.advertise<sensor_msgs::JointState>("/panda_controllers/" + controller + "/command", 1);
-    this->sub1 = nh_.subscribe("/Franka_Joint_State", 1, &Command_Publisher::franka_callback, this);
+    this->pub = nh_.advertise<sensor_msgs::JointState>("/panda_arm/" + controller + "/command", 1);
+    this->sub1 = nh_.subscribe("/panda_arm/franka_state_controller/franka_states", 1, &Command_Publisher::franka_callback, this);
     this->sub2 = nh_.subscribe("command_q_f", 1, &Command_Publisher::command_q_f_callback, this); 
     
     if(nh_.getParam("dt", this->dt) && nh_.getParam("t_f", this->t_f)){
