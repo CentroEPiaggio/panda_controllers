@@ -2,6 +2,10 @@ cartesian_velocity_controller:
     type: panda_controllers/CartesianVelocityController
     arm_id: panda
     command_timeout: 3.0
+    velocity_thresh:    # taken from documentation franka
+        translation: 1.700
+        rotation: 2.500
+        elbow: 2.175
     low_pass_filter:
     - name: first_low_pass
       type: filters/TransferFunctionFilterDouble

@@ -37,6 +37,20 @@ bool CartesianVelocityController::init(hardware_interface::RobotHW* robot_hardwa
     return false;
   }
   this->command_timeout = ros::Duration(comm_timeout);
+
+  // Getting cartesian velocity limits
+  if (!node_handle.getParam("velocity_thresh/translation", this->translation_limit)) {
+    ROS_ERROR("CartesianVelocityController: Could not get parameter velocity_thresh/translation.");
+    return false;
+  }
+  if (!node_handle.getParam("velocity_thresh/rotation", this->rotation_limit)) {
+    ROS_ERROR("CartesianVelocityController: Could not get parameter velocity_thresh/rotation.");
+    return false;
+  }
+  if (!node_handle.getParam("velocity_thresh/elbow", this->elbow_limit)) {
+    ROS_ERROR("CartesianVelocityController: Could not get parameter velocity_thresh/elbow.");
+    return false;
+  }
   
   // Get the cartesian velocity interface fro the robot hardware
   this->velocity_cartesian_interface_ = robot_hardware->get<franka_hw::FrankaVelocityCartesianInterface>();
@@ -86,7 +100,7 @@ void CartesianVelocityController::update(const ros::Time& /* time */, const ros:
     this->vel_mutex.unlock();
   }
 
-  // FIltering the requested command
+  // Filtering the requested command
   this->vel_mutex.lock();
   for(int i = 0; i < 6; i++){
     this->vel_filter[i]->update(this->vel_command[i], this->filt_command[i]);
@@ -104,8 +118,7 @@ void CartesianVelocityController::update(const ros::Time& /* time */, const ros:
       std::cout << comm_print << " "; 
     }
     std::cout << "]" << std::endl;
-  }
-  
+  } 
 
   // Setting the filtered commanded twist
   this->velocity_cartesian_handle_->setCommand(this->filt_command);
@@ -129,13 +142,22 @@ void CartesianVelocityController::command(const geometry_msgs::Twist::ConstPtr &
   // Setting the last recieved time
   this->last_command_time = ros::Time::now();
 
+  // If there are nans or infs in the command, set to zero
+  bool all_finite = this->check_if_finite(*msg);
+
+  // Cutting off the command to cartesian velocity limits
+  // TODO if necessary
+
   // Converting and saving msg to command (TODO: check variation)
   this->vel_mutex.lock();
   // Check if franka is ok, if so set command else set zero velocities
-  if(this->franka_ok){
+  if(this->franka_ok && all_finite){
     this->vel_command = {{msg->linear.x, msg->linear.y, msg->linear.z,
       msg->angular.x, msg->angular.y, msg->angular.z}};
   } else {
+    if (!all_finite) {
+      ROS_WARN_STREAM("panda_controllers::CartesianVelocityController : The requested velocity vector contains NaNs or Infs, setting x_ref to null.");
+    }
     std::fill(std::begin(this->vel_command), std::end(this->vel_command), double(0.0));
   }
   this->vel_mutex.unlock();

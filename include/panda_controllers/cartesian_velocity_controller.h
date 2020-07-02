@@ -54,6 +54,11 @@ class CartesianVelocityController : public controller_interface::MultiInterfaceC
   ros::Time last_command_time;            // Last time at which a command was recieved
   ros::Duration command_timeout;          // Timeout after which command is reset to null
 
+  // Cartesian velocity limits
+  double translation_limit;
+  double rotation_limit;
+  double elbow_limit;
+
   // The interface and handle
   franka_hw::FrankaVelocityCartesianInterface* velocity_cartesian_interface_;
   std::unique_ptr<franka_hw::FrankaCartesianVelocityHandle> velocity_cartesian_handle_;
@@ -67,6 +72,19 @@ class CartesianVelocityController : public controller_interface::MultiInterfaceC
   
   // Franka states emergency callback
   void get_franka_states(const franka_msgs::FrankaState::ConstPtr &msg);
+
+  // For checking if there are nans or infs in array
+  inline bool check_if_finite(geometry_msgs::Twist twist) {
+    std::array<double, 6> tmp_command;
+    tmp_command = {{twist.linear.x, twist.linear.y, twist.linear.z,
+      twist.angular.x, twist.angular.y, twist.angular.z}};
+    for (auto it : tmp_command) {
+      if (!std::isfinite(it)) {
+        return false;
+        }
+    }
+    return true;
+  }
 
 };
 
