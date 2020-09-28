@@ -24,8 +24,10 @@ pd_controller:
          - panda_joint5
          - panda_joint6
          - panda_joint7
-    kp: 10
-    kv: 0.8
+    kp1: 120.0
+    kp2: 70.0
+    kp3: 50.0
+    kv: 10.0
     dt: 5
 
          
@@ -40,8 +42,10 @@ computed_torque_controller:
          - panda_joint5
          - panda_joint6
          - panda_joint7
-    kp: 10
-    kv: 0.7
+    kp1: 120.0
+    kp2: 70.0
+    kp3: 50.0
+    kv: 10.0
     dt: 5
 
 back_stepping_controller:
@@ -55,9 +59,11 @@ back_stepping_controller:
          - panda_joint5
          - panda_joint6
          - panda_joint7
-    kd: 2
-    kp: 8
-    lambda: 3
+    kp1: 120.0
+    kp2: 70.0
+    kp3: 50.0
+    kd: 10.0
+    lambda: 1
     dt: 5
 
 
