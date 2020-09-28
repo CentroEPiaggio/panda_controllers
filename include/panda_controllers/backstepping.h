@@ -94,12 +94,13 @@ private:
     
     Eigen::Matrix<double, 7, 1> tau_J_d;
 
-    static constexpr double kDeltaTauMax {0.5};
+    static constexpr double kDeltaTauMax {1.0};
     
     /* ROS variables */
     
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
+    ros::Publisher pub_err_;
     
     /* Setting Command Callback*/
     
