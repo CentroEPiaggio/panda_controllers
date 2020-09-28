@@ -18,14 +18,15 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     /* Inizializing the Kp and Kv gains */
 
-    double kp, kv;
+    double kp1, kp2, kp3, kv;
 
-    if (!node_handle.getParam("kp", kp) || !node_handle.getParam("kv", kv)) {
-        ROS_ERROR("Computed Torque: One of the parameters kp or kv couldn't be found!");
+    if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3) || !node_handle.getParam("kv", kv)) {
+        ROS_ERROR("PdController: Could not get parameter kpi or kv!");
         return false;
     }
 
-    Kp = kp * Eigen::MatrixXd::Identity(7, 7);
+    Kp = Eigen::MatrixXd::Identity(7, 7);
+    Kp(1,1) = kp1; Kp(2,2) = kp1; Kp(3,3) = kp1; Kp(4,4) = kp1; Kp(5,5) = kp2; Kp(6,6) = kp2; Kp(7,7) = kp3;
     Kv = kv * Eigen::MatrixXd::Identity(7, 7);
     
     /* Assigning the time */
@@ -91,6 +92,8 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
     /*Start command subscriber */
 
     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
+    this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
+    
     return true;
 }
 
@@ -121,8 +124,8 @@ void ComputedTorque::starting(const ros::Time& time)
 
     /* Defining the NEW gains */
 
-    Kp_apix = M * Kp;
-    Kv_apix = M * Kv;
+    Kp_apix = Kp;
+    Kv_apix = Kv;
     
 }
 
@@ -145,11 +148,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    if (!flag) { // if the flag is false, desired command velocity must be estimated
+    // if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / dt;
+    //     command_dot_q_d = (command_q_d - command_q_d_old) / dt;
 
-    }            // Desired commmand acceleration must be estimated
+    // }            // Desired commmand acceleration must be estimated
     
     /* Saturate desired velocity to avoid limits */
     for (int i = 0; i < 7; ++i){
@@ -158,15 +161,29 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	command_dot_q_d = command_dot_q_d / ith_des_vel; 
     }
 
-    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
+    // command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
 
     /* Computed Torque control law */
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
+
+    // Publish tracking errors as joint states
+    sensor_msgs::JointState error_msg;
+    std::vector<double> err_vec(error.data(), error.data() + error.rows()*error.cols());
+    std::vector<double> dot_err_vec(dot_error.data(), dot_error.data() + dot_error.rows()*dot_error.cols());
+    error_msg.header.stamp = ros::Time::now();
+    error_msg.position = err_vec;
+    error_msg.velocity = dot_err_vec;
+    this->pub_err_.publish(error_msg);
+
+    // std::cout << "The error is ";
+    // for(int i = 0; i < error.rows(); i++){
+    //   std::cout << error(i) << " " << std::endl; 
+    // }
     
-    Kp_apix = M * Kp;
-    Kv_apix = M * Kv;
+    Kp_apix = Kp;
+    Kv_apix = Kv;
 
     tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
 
@@ -176,11 +193,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     
     /* Saturate torque to avoid torque limit */
     
-    for (int i = 0; i < 7; ++i){
-        double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
-        if( ith_torque_rate > 1)
-            tau_cmd = tau_cmd / ith_torque_rate;
-    }
+    // for (int i = 0; i < 7; ++i){
+    //     double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
+    //     if( ith_torque_rate > 1)
+    //         tau_cmd = tau_cmd / ith_torque_rate;
+    // }
 
     /* Set the command for each joint */
 
@@ -191,8 +208,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     
     /* Saving the last position of the desired position and velocity */
     
-    command_dot_q_d_old = command_dot_q_d;
-    command_q_d_old = command_q_d;
+    // command_dot_q_d_old = command_dot_q_d;
+    // command_q_d_old = command_q_d;
 
 }
 
@@ -231,18 +248,31 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
         ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
     }
 
-    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
-        ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
-        flag = false;
-
-    } else {
-
-        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-        flag = true;
+        ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg->velocity).size());
     }
+
+    // TODO: Here we assign acceleration to effort (use trajectory_msgs::JointTrajectoryMessage)
+    if ((msg->effort).size() != 7 || (msg->effort).empty()) {
+
+        ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg->effort).size());
+    }
+
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+    command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+
+    // if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
+
+    //     ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
+    //     flag = false;
+
+    // } else {
+
+    //     command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    //     flag = true;
+    // }
     
 
 }

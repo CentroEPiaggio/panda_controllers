@@ -19,23 +19,23 @@ bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
     /* Inizializing the kd and lambda gains */
 
-    double kd, kp, lambda;
+    double kd, kp1, kp2, kp3, lambda;
 
     if (!node_handle.getParam("kd", kd) || !node_handle.getParam("lambda", lambda)) {
         ROS_ERROR("Backstepping: Kd or lambda parameter couldn't be found!");
         return false;
     }
 
-    if (!node_handle.getParam("kp", kp)) {
-        ROS_ERROR("Backstepping: Kp parameter not found!");
+    if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3)) {
+        ROS_ERROR("Backstepping: Kp parameters not found!");
         return false;
     }
 
     Kd = kd * Eigen::MatrixXd::Identity(7, 7);
 
     // Proportional gain on possition error (trial: different weight on elbow)
-    Kp = kp * Eigen::MatrixXd::Identity(7, 7);
-    // Kp(3,3) = 2*kp;
+    Kp = Eigen::MatrixXd::Identity(7, 7);
+    Kp(1,1) = kp1; Kp(2,2) = kp1; Kp(3,3) = kp1; Kp(4,4) = kp1; Kp(5,5) = kp2; Kp(6,6) = kp2; Kp(7,7) = kp3;
 
     Lambda = lambda * Eigen::MatrixXd::Identity(7, 7);
     
@@ -102,6 +102,8 @@ bool BackStepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
     /* Start command subscriber */
 
     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &BackStepping::setCommandCB, this); //it verify with the callback that the command has been received
+    this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
+
     return true;
 }
 
@@ -155,10 +157,10 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    if (!flag) { // if the flag is false, desired command velocity must be estimated
+    // if (!flag) { // if the flag is false, desired command velocity must be estimated
 
-        command_dot_q_d = (command_q_d - command_q_d_old) / dt;
-    }
+    //     command_dot_q_d = (command_q_d - command_q_d_old) / dt;
+    // }
     
     /* Saturate desired velocity to avoid limits */
     
@@ -168,10 +170,24 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
             command_dot_q_d = command_dot_q_d / ith_des_vel;
     }
 
-    command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
+    // command_dot_dot_q_d = (command_dot_q_d - command_dot_q_d_old) / dt;
 
     error = command_q_d - q_curr;
     dot_error = command_dot_q_d - dot_q_curr;
+
+    // Publish tracking errors as joint states
+    sensor_msgs::JointState error_msg;
+    std::vector<double> err_vec(error.data(), error.data() + error.rows()*error.cols());
+    std::vector<double> dot_err_vec(dot_error.data(), dot_error.data() + dot_error.rows()*dot_error.cols());
+    error_msg.header.stamp = ros::Time::now();
+    error_msg.position = err_vec;
+    error_msg.velocity = dot_err_vec;
+    this->pub_err_.publish(error_msg);
+
+    // std::cout << "The error is ";
+    // for(int i = 0; i < error.rows(); i++){
+    //   std::cout << error(i) << " " << std::endl; 
+    // }
 
     command_dot_qref = command_dot_q_d + Lambda * error;
     command_dot_dot_qref = command_dot_dot_q_d + Lambda * dot_error;
@@ -191,11 +207,11 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
     tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
     
     /* Saturate torque to avoid torque limit */
-    for (int i = 0; i < 7; ++i){
-        double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
-        if( ith_torque_rate > 1)
-            tau_cmd = tau_cmd / ith_torque_rate;
-    }
+    // for (int i = 0; i < 7; ++i){
+    //     double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
+    //     if( ith_torque_rate > 1)
+    //         tau_cmd = tau_cmd / ith_torque_rate;
+    // }
 
     /* Set the command for each joint */
 
@@ -207,8 +223,9 @@ void BackStepping::update(const ros::Time&, const ros::Duration& period)
 
     /* Saving the last position of the desired position and velocity */
     
-    command_dot_q_d_old = command_dot_q_d;
-    command_q_d_old = command_q_d;
+    // command_dot_q_d_old = command_dot_q_d;
+    // command_q_d_old = command_q_d;
+
 }
 
 void BackStepping::stopping(const ros::Time&)
@@ -242,21 +259,34 @@ void BackStepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 {
     if ((msg->position).size() != 7 || (msg->position).empty()) {
 
-        ROS_FATAL("Desired position has not dimension 7 or is empty!",(msg->position).size());
+        ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
     }
-
-    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 
     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
-        ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
-        flag = false;
-
-    } else {
-
-        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-        flag = true;
+        ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg->velocity).size());
     }
+
+    // TODO: Here we assign acceleration to effort (use trajectory_msgs::JointTrajectoryMessage)
+    if ((msg->effort).size() != 7 || (msg->effort).empty()) {
+
+        ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg->effort).size());
+    }
+
+    command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+    command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+
+    // if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
+
+    //     ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
+    //     flag = false;
+
+    // } else {
+
+    //     command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    //     flag = true;
+    // }
 }
 
 }

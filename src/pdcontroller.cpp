@@ -17,14 +17,15 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
         return false;
     }
 
-    double kp, kv;
+    double kp1, kp2, kp3, kv;
 
-    if (!node_handle.getParam("kp", kp) || !node_handle.getParam("kv", kv)) {
-        ROS_ERROR("PdController: Could not get parameter kp or kv!");
+    if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3) || !node_handle.getParam("kv", kv)) {
+        ROS_ERROR("PdController: Could not get parameter kpi or kv!");
         return false;
     }
 
-    Kp = kp * Eigen::MatrixXd::Identity(7, 7);
+    Kp = Eigen::MatrixXd::Identity(7, 7);
+    Kp(1,1) = kp1; Kp(2,2) = kp1; Kp(3,3) = kp1; Kp(4,4) = kp1; Kp(5,5) = kp2; Kp(6,6) = kp2; Kp(7,7) = kp3;
     Kv = kv * Eigen::MatrixXd::Identity(7, 7);
     
     /* Assigning the time */
@@ -100,6 +101,8 @@ bool PdController::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
     /* Start command subscriber */
 
     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &PdController::setCommandCB, this);   //it verify with the callback that the command has been received
+    this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
+
     return true;
 }
 
@@ -128,6 +131,11 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
     q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
     dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
+    // std::cout << "The current q is ";
+    // for(int i = 0; i < q_curr.rows(); i++){
+    //   std::cout << q_curr(i) << " "; 
+    // }
+
     /* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
@@ -146,11 +154,20 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
     err = command_q_d - q_curr;
     dot_err = command_dot_q_d - dot_q_curr;
 
+    // Publish tracking errors as joint states
+    sensor_msgs::JointState error_msg;
+    std::vector<double> err_vec(err.data(), err.data() + err.rows()*err.cols());
+    std::vector<double> dot_err_vec(dot_err.data(), dot_err.data() + dot_err.rows()*dot_err.cols());
+    error_msg.header.stamp = ros::Time::now();
+    error_msg.position = err_vec;
+    error_msg.velocity = dot_err_vec;
+    this->pub_err_.publish(error_msg);
+
     /* Proportional Derivative Controller Law */
 
     // std::cout << "The err is ";
     // for(int i = 0; i < err.rows(); i++){
-    //   std::cout << err(i) << " "; 
+    //   std::cout << err(i) << " " << std::endl; 
     // }
 
     // std::cout << "The command_q_d_old is ";
@@ -164,19 +181,24 @@ void PdController::update(const ros::Time& time, const ros::Duration& period)
 
     // std::cout << "The commanded torque before saturation is ";
     // for(int i = 0; i < tau_cmd.rows(); i++){
-    //   std::cout << tau_cmd(i) << " "; 
+    //   std::cout << tau_cmd(i) << " " << std::endl; 
     // }
 
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
     tau_cmd << saturateTorqueRate(tau_cmd, tau_J_d);
 
+    // std::cout << "The commanded torque after saturation is ";
+    // for(int i = 0; i < tau_cmd.rows(); i++){
+    //   std::cout << tau_cmd(i) << " " << std::endl; 
+    // }
+
     /* Saturate torque to avoid torque limit */
-    for (int i = 0; i < 7; ++i){
-        double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
-        if( ith_torque_rate > 1)
-            tau_cmd = tau_cmd / ith_torque_rate;
-    }
+    // for (int i = 0; i < 7; ++i){
+    //     double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
+    //     if( ith_torque_rate > 1)
+    //         tau_cmd = tau_cmd / ith_torque_rate;
+    // }
 
     /* Set the command for each joint */
     // std::cout << "Sending command of size " << tau_cmd.rows() << " x " << tau_cmd.cols() << std::endl;
@@ -228,7 +250,19 @@ void PdController::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)     
         ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
     }
 
+    if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
+
+        ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg->velocity).size());
+    }
+
+    // TODO: Here we assign acceleration to effort (use trajectory_msgs::JointTrajectoryMessage)
+    if ((msg->effort).size() != 7 || (msg->effort).empty()) {
+
+        ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg->effort).size());
+    }
+
     command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+    command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
 
 //     if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 // 
