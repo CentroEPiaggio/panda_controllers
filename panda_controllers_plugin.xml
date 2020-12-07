@@ -24,4 +24,10 @@
    </description>
   </class>
 
+  <class name="panda_controllers/VariableImpedanceController" type="panda_controllers::VariableImpedanceController" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Variable impedance controller.
+   </description>
+  </class>
+
 </library>

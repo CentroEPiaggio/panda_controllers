@@ -26,6 +26,8 @@ find_package(Franka 0.5.0 REQUIRED)
 
 add_message_files(FILES
   JointTorqueComparison.msg
+  RobotState.msg
+  DesiredImpedance.msg
 )
 
 ##
@@ -61,6 +63,7 @@ add_library(${PROJECT_NAME}
   src/pdcontroller.cpp #PD controller
   src/computed_torque.cpp #Computed Torque controller
   src/backstepping.cpp #Backstepping controller
+  src/variable_impedance_controller.cpp #Backstepping controller
 ) 
 
 add_dependencies(${PROJECT_NAME}
