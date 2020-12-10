@@ -60,6 +60,10 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
         "aborting controller init!");
     return false;
   }
+  if (!node_handle.getParam("var_damp", var_damp)) {
+    ROS_ERROR_STREAM("VariableImpedanceController: Could not read parameter var_damp");
+    return false;
+  }
 
   franka_hw::FrankaModelInterface* model_interface =
       robot_hw->get<franka_hw::FrankaModelInterface>();
@@ -338,12 +342,15 @@ void VariableImpedanceController::desiredImpedance_Callback(const panda_controll
   for (int i=0; i<36; i++)
     cartesian_stiffness_target_(i) = msg->stiffness_matrix[i];
 
-  for (int i=0; i<36; i++)
-    cartesian_damping_target_(i) = msg->damping_matrix[i];
+  if (var_damp) {
+    for (int i=0; i<36; i++)
+      cartesian_damping_target_(i) = msg->damping_matrix[i];
+  } else {
+    cartesian_damping_target_.Identity();
+    for (int i=0; i<6; i++)
+      cartesian_damping_target_(i,i) = 2.0 * sqrt(cartesian_stiffness_target_(i,i));
+  }
 
-//   cartesian_damping_target_.Identity();
-//   for (int i=0; i<6; i++)
-//     cartesian_damping_target_(i,i) = 2.0 * sqrt(cartesian_stiffness_target_(i,i));
 }
 
 

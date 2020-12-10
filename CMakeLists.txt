@@ -34,6 +34,7 @@ add_message_files(FILES
 generate_messages(
   DEPENDENCIES##
   franka_msgs##
+  std_msgs
 )
 
 generate_dynamic_reconfigure_options(
