@@ -53,9 +53,9 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   std::vector<hardware_interface::JointHandle> joint_handles_;
 
   bool var_damp;                                                  //freely variable damping or critically damped
-  double filter_params_{0.1};                                     //exponential filter parameter
+  double filter_params_{0.05};                                    //exponential filter parameter
   double nullspace_stiffness_{5.0};                               //nullspace stiffness [Nm/rad]
-  const double delta_tau_max_{1.0};                               //torque rate limit [Nm/ms], from datasheet https://frankaemika.github.io/docs/control_parameters.html
+  const double delta_tau_max_{0.8};                               //torque rate limit [Nm/ms], from datasheet https://frankaemika.github.io/docs/control_parameters.html
   Eigen::Matrix<double, 7, 1> tau_limit;                          //joint torque limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
   Eigen::Matrix<double, 6, 6> cartesian_stiffness_;               //actual stiffness matrix
   Eigen::Matrix<double, 6, 6> cartesian_stiffness_target_;        //target stiffness matrix

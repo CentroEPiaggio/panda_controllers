@@ -34,7 +34,7 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_desired_stiffness_matrix_ = node_handle.subscribe(
-      name_space+"/desired_impedance_matrix", 1, &VariableImpedanceController::desiredImpedance_Callback, this,
+      name_space+"/desired_impedance", 1, &VariableImpedanceController::desiredImpedance_Callback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   pub_pos_error    = node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
@@ -152,14 +152,14 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   // collBehaviourSrvMsg.request.lower_force_thresholds_nominal = {2000, 2000, 2000, 2000, 2000, 2000};
   // collBehaviourSrvMsg.request.upper_force_thresholds_nominal = {2000, 2000, 2000, 2000, 2000, 2000};
 
-  collBehaviourSrvMsg.request.lower_torque_thresholds_acceleration = {50, 50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.upper_torque_thresholds_acceleration = {50, 50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.lower_torque_thresholds_nominal = {50, 50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.upper_torque_thresholds_nominal = {50, 50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.lower_force_thresholds_acceleration = {50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.upper_force_thresholds_acceleration = {50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.lower_force_thresholds_nominal = {50, 50, 50, 50, 50, 50};
-  collBehaviourSrvMsg.request.upper_force_thresholds_nominal = {50, 50, 50, 50, 50, 50};
+  collBehaviourSrvMsg.request.lower_torque_thresholds_acceleration = {100, 100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.upper_torque_thresholds_acceleration = {100, 100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.lower_torque_thresholds_nominal = {100, 100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.upper_torque_thresholds_nominal = {100, 100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.lower_force_thresholds_acceleration = {100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.upper_force_thresholds_acceleration = {100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.lower_force_thresholds_nominal = {100, 100, 100, 100, 100, 100};
+  collBehaviourSrvMsg.request.upper_force_thresholds_nominal = {100, 100, 100, 100, 100, 100};
 
   return true;
 }
@@ -283,6 +283,7 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   /*-------------------------------------------------------PUBLISH*/
 
   // position error
+  pos_error_msg.header.stamp = ros::Time::now();
   pos_error_msg.twist.linear.x = -error(0);
   pos_error_msg.twist.linear.y = -error(1);
   pos_error_msg.twist.linear.z = -error(2);
@@ -350,6 +351,8 @@ void VariableImpedanceController::desiredImpedance_Callback(const panda_controll
     for (int i=0; i<6; i++)
       cartesian_damping_target_(i,i) = 2.0 * sqrt(cartesian_stiffness_target_(i,i));
   }
+  // std::cout << "Cartesian Stiffness: \n" << cartesian_stiffness_target_ << std::endl;
+  // std::cout << "Cartesian Damping: \n" << cartesian_damping_target_ << std::endl;
 
 }
 
