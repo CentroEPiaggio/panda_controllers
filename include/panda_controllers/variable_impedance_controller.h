@@ -23,6 +23,7 @@
 #include <franka_hw/franka_state_interface.h>
 
 #include <franka_control/SetFullCollisionBehavior.h>
+#include <franka_control/SetJointImpedance.h>
 
 #include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
@@ -42,6 +43,9 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   void update(const ros::Time&, const ros::Duration& period) override;
   franka_control::SetFullCollisionBehavior collBehaviourSrvMsg;
   ros::ServiceClient collBehaviourClient;
+  franka_control::SetJointImpedance jointImpedanceSrvMsg;
+  ros::ServiceClient jointImpedanceClient;
+
 
  private:
   // Saturation

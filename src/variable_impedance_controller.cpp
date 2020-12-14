@@ -45,7 +45,10 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   pub_robot_state_ = node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
 
   /*--------------------------------------------------INITIALIZE SERVICE CLIENTS*/
-  collBehaviourClient = node_handle.serviceClient<franka_control::SetFullCollisionBehavior>(name_space + "/franka_control/set_full_collision_behavior");
+  collBehaviourClient = node_handle.serviceClient<franka_control::SetFullCollisionBehavior>(
+      name_space + "/franka_control/set_full_collision_behavior");
+  jointImpedanceClient = node_handle.serviceClient<franka_control::SetJointImpedance>(
+      name_space + "/franka_control/set_joint_impedance");
 
   /*--------------------------------------------------INITIALIZE NODE, ROBOT HANDLER AND ROBOT INTERFACE*/
   std::string arm_id;
@@ -161,6 +164,9 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   collBehaviourSrvMsg.request.lower_force_thresholds_nominal = {100, 100, 100, 100, 100, 100};
   collBehaviourSrvMsg.request.upper_force_thresholds_nominal = {100, 100, 100, 100, 100, 100};
 
+  // Joint impedance
+  jointImpedanceSrvMsg.request.joint_stiffness = {3000, 3000, 3000, 3000, 3000, 2000, 100};
+
   return true;
 }
 
@@ -179,6 +185,9 @@ void VariableImpedanceController::starting(const ros::Time& /*time*/) {
 
   // set collision behaviour
   collBehaviourClient.call(collBehaviourSrvMsg);
+
+  // set joint impedance
+  jointImpedanceClient.call(jointImpedanceSrvMsg);
 
 }
 
@@ -243,7 +252,7 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   error.tail(3) = transform.linear().transpose()*error.tail(3);
 
   // TODO: implement velocity orientation error
-  derror.tail(3) = Eigen::Vector3d::Zero();
+  derror.tail(3) = dposition.tail(3);
 
 
   /*------------------------------------------------------COMPUTE CONTROL*/
@@ -281,8 +290,6 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   //set arm command torques
   for (size_t i = 0; i < 7; ++i)
     joint_handles_[i].setCommand(tau_d(i));
-
-
 
 
   /*-------------------------------------------------------PUBLISH*/
