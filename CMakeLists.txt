@@ -28,6 +28,7 @@ add_message_files(FILES
   JointTorqueComparison.msg
   RobotState.msg
   DesiredImpedance.msg
+  DesiredTrajectory.msg
 )
 
 ##
@@ -35,6 +36,7 @@ generate_messages(
   DEPENDENCIES##
   franka_msgs##
   std_msgs
+  geometry_msgs
 )
 
 generate_dynamic_reconfigure_options(

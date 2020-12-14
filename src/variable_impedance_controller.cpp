@@ -29,8 +29,8 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
   /*--------------------------------------------------INITIALIZE SUBSCRIBERS AND PUBLISHERS*/
 
-  sub_equilibrium_pose_ = node_handle.subscribe(
-      name_space+"/equilibrium_pose", 10, &VariableImpedanceController::equilibriumPoseCallback, this,
+  sub_des_traj_ = node_handle.subscribe(
+      name_space+"/desired_trajectory", 10, &VariableImpedanceController::desiredTrajectoryCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_desired_stiffness_matrix_ = node_handle.subscribe(
@@ -122,7 +122,7 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
   position_d_.setZero();                                   // desired position
   orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;           // desired orientation
-
+  dposition_d_.setZero();                                  // desired position velocity
 
 
 
@@ -213,9 +213,13 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   /*--------------------------------------------COMPUTE POSE ERROR */
   
   Eigen::Matrix<double, 6, 1> error;  // pose error 6x1: position error (3x1) [m] - orientation error in axis-angle repr. (3x1) [rad]
+  Eigen::Matrix<double, 6, 1> derror; // pose vel. error 6x1: vel. error (3x1) [m] - orientation vel. error NOT IMPLEMENTED!
+
   
   // position error expressed in the base frame
   error.head(3) << position - position_d_;
+  Eigen::Matrix<double, 6, 1> dposition = jacobian * dq;
+  derror.head(3) << dposition.head(3) - dposition_d_;
 
   // orientation error expressed in the base frame
   if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0)
@@ -238,7 +242,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   error.head(3) = transform.linear().transpose()*error.head(3);
   error.tail(3) = transform.linear().transpose()*error.tail(3);
 
-
+  // TODO: implement velocity orientation error
+  derror.tail(3) = Eigen::Vector3d::Zero();
 
 
   /*------------------------------------------------------COMPUTE CONTROL*/
@@ -251,8 +256,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   pseudoInverse(jacobian.transpose(), jacobian_transpose_pinv);
 
   // Cartesian PD control with damping ratio = 1 - Cartesian desired Wrench as output
-  wrench_task << ( - cartesian_stiffness_ * error                       // proportional term
-                 - cartesian_damping_ * (jacobian * dq));               // derivative term
+  wrench_task << ( - cartesian_stiffness_ * error               // proportional term
+                 - cartesian_damping_ * derror );               // derivative term
   //project in joint space
   tau_task << jacobian.transpose() * wrench_task;
   // nullspace PD control with damping ratio = 1
@@ -338,7 +343,8 @@ Eigen::Matrix<double, 7, 1> VariableImpedanceController::saturateTorqueRate(
 }
 
 
-void VariableImpedanceController::desiredImpedance_Callback(const panda_controllers::DesiredImpedance::ConstPtr& msg){
+void VariableImpedanceController::desiredImpedance_Callback(
+    const panda_controllers::DesiredImpedance::ConstPtr& msg){
   
   for (int i=0; i<36; i++)
     cartesian_stiffness_target_(i) = msg->stiffness_matrix[i];
@@ -357,9 +363,11 @@ void VariableImpedanceController::desiredImpedance_Callback(const panda_controll
 }
 
 
-void VariableImpedanceController::equilibriumPoseCallback(
-    const geometry_msgs::PoseStampedConstPtr& msg) {
+void VariableImpedanceController::desiredTrajectoryCallback(
+    const panda_controllers::DesiredTrajectoryConstPtr& msg) {
+  
   position_d_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+  dposition_d_ << msg->velocity.position.x, msg->velocity.position.y, msg->velocity.position.z;
 
   Eigen::Quaterniond last_orientation_d_target(orientation_d_);
   orientation_d_.coeffs() << msg->pose.orientation.x, msg->pose.orientation.y,
@@ -367,6 +375,7 @@ void VariableImpedanceController::equilibriumPoseCallback(
 
   if (last_orientation_d_target.coeffs().dot(orientation_d_.coeffs()) < 0.0)
     orientation_d_.coeffs() << -orientation_d_.coeffs();
+
 }
 
 

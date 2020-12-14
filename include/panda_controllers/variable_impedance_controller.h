@@ -24,6 +24,7 @@
 
 #include <franka_control/SetFullCollisionBehavior.h>
 
+#include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
 #include <panda_controllers/RobotState.h>
 
@@ -64,15 +65,15 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   Eigen::Matrix<double, 7, 1> q_d_nullspace_;                     //desired joint position (controlled in the nullspace)
   Eigen::Vector3d position_d_;                                    //desired position
   Eigen::Quaterniond orientation_d_;                              //desired orientation
-
+  Eigen::Vector3d dposition_d_;                                   //desired position velocity
 
   ros::Subscriber sub_desired_stiffness_matrix_;
   void desiredImpedance_Callback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
   // void CartesianImpedanceControllerSoftbots::desiredRightStiffnessMatrix_Callback(const std_msgs::Float64MultiArray::ConstPtr& array);
 
   // Equilibrium pose subscriber
-  ros::Subscriber sub_equilibrium_pose_;
-  void equilibriumPoseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+  ros::Subscriber sub_des_traj_;
+  void desiredTrajectoryCallback(const panda_controllers::DesiredTrajectoryConstPtr& msg);
 
 
   ros::Publisher pub_pos_error;
