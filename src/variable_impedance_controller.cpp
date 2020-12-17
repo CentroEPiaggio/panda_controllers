@@ -198,7 +198,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   franka::RobotState robot_state = state_handle_->getRobotState();                  // robot state
   std::array<double, 49> mass_array = model_handle_->getMass();
   std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
-  std::array<double, 42> jacobian_array = model_handle_->getBodyJacobian(franka::Frame::kEndEffector);
+  // std::array<double, 42> jacobian_array = model_handle_->getBodyJacobian(franka::Frame::kEndEffector);
+  std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 
   /*-------------------------------------------------------PUBLISH MATRICES FOR PLANNING*/
 
@@ -248,8 +249,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   error.tail(3) << error_quaternion_angle_axis.axis() * error_quaternion_angle_axis.angle();
   
   // transposition of the linear and angular errors in the end-effector
-  error.head(3) = transform.linear().transpose()*error.head(3);
-  error.tail(3) = transform.linear().transpose()*error.tail(3);
+  // error.head(3) = transform.linear().transpose()*error.head(3);
+  // error.tail(3) = transform.linear().transpose()*error.tail(3);
 
   // TODO: implement velocity orientation error
   derror.tail(3) = dposition.tail(3);
