@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<launch>
+    <!-- Panda params -->
+    <arg name="robot_ip" default="172.16.0.2"/>
+    <arg name="load_gripper" default="false"/>
+
+    <!-- Controller name -->
+    <arg name="controller" default="variable_impedance_controller"/>
+    
+    <!-- Franka control node -->
+    <include file="$(find panda_controllers)/launch/panda_controller.launch" >
+        <arg name="robot_ip" value="$(arg robot_ip)" />
+        <arg name="load_gripper" value="$(arg load_gripper)" />
+        <arg name="controller_name" value="$(arg controller)" />
+    </include>
+
+    <!-- Load Gripper -->
+    <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
+        <arg name="robot_ip" value="$(arg robot_ip)" />
+    </include>
+
+    <!-- Load Gripper Close Node -->
+    <node pkg="panda_controllers" name="gripper_control.py" type="gripper_control.py" output="screen">
+    
+</launch>
