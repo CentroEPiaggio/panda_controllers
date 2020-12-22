@@ -20,6 +20,6 @@
     </include>
 
     <!-- Load Gripper Close Node -->
-    <node pkg="panda_controllers" name="gripper_control.py" type="gripper_control.py" output="screen">
+    <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/>
     
 </launch>
