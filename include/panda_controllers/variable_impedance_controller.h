@@ -30,6 +30,7 @@
 #include <panda_controllers/RobotState.h>
 
 #include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Float64.h"
 
 namespace panda_controllers {
 
@@ -84,6 +85,7 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   ros::Publisher pub_cmd_force;
   ros::Publisher pub_endeffector_pose_;
   ros::Publisher pub_robot_state_;
+  ros::Publisher pub_impedance_;
 
   geometry_msgs::TwistStamped   pos_error_msg;
   geometry_msgs::WrenchStamped  force_cmd_msg;  

@@ -39,10 +39,9 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
   pub_pos_error    = node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
   pub_cmd_force   = node_handle.advertise<geometry_msgs::WrenchStamped>(name_space+"/cmd_force", 1);
-
   pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
-
   pub_robot_state_ = node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
+  pub_impedance_ = node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
 
   /*--------------------------------------------------INITIALIZE SERVICE CLIENTS*/
   collBehaviourClient = node_handle.serviceClient<franka_control::SetFullCollisionBehavior>(
@@ -316,7 +315,7 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
 
   pub_cmd_force.publish(force_cmd_msg);
 
-  // End effectore position
+  // End effector position
   geometry_msgs::PoseStamped postion_endeff;
   postion_endeff.pose.position.x = position.x();
   postion_endeff.pose.position.y = position.y();
@@ -327,6 +326,12 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   postion_endeff.pose.orientation.z = orientation.z();
 
   pub_endeffector_pose_.publish(postion_endeff);
+
+  // Current impedance
+  std_msgs::Float64 impedance_msg;
+  impedance_msg.data = std::pow(cartesian_stiffness_.norm(),2) + std::pow(cartesian_damping_.norm(),2);
+
+  pub_impedance_.publish(impedance_msg);
 
   /*---------------------------------------------------UPDATE desired cartesian
   stiffness and damping matrices target by filtering*/
