@@ -280,8 +280,8 @@
                         <curve_0>
                             <axes>
                                 <x_axis>
-                                    <field>header/stamp</field>
-                                    <field_type>0</field_type>
+                                    <field></field>
+                                    <field_type>1</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
                                         <absolute_minimum>0</absolute_minimum>
@@ -289,11 +289,11 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/desired_impedance</topic>
-                                    <type>panda_controllers/DesiredImpedance</type>
+                                    <topic>/variable_impedance_controller/current_impedance</topic>
+                                    <type>std_msgs/Float64</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>stiffness_matrix/0</field>
+                                    <field>data</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>360</absolute_maximum>
@@ -302,59 +302,8 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/desired_impedance</topic>
-                                    <type>panda_controllers/DesiredImpedance</type>
-                                </y_axis>
-                            </axes>
-                            <color>
-                                <custom_color>#550000</custom_color>
-                                <type>1</type>
-                            </color>
-                            <data>
-                                <circular_buffer_capacity>1000</circular_buffer_capacity>
-                                <time_frame_length>10</time_frame_length>
-                                <type>0</type>
-                            </data>
-                            <style>
-                                <lines_interpolate>false</lines_interpolate>
-                                <pen_style>1</pen_style>
-                                <pen_width>3</pen_width>
-                                <render_antialias>false</render_antialias>
-                                <steps_invert>false</steps_invert>
-                                <sticks_baseline>0</sticks_baseline>
-                                <sticks_orientation>2</sticks_orientation>
-                                <type>0</type>
-                            </style>
-                            <subscriber_queue_size>100</subscriber_queue_size>
-                            <title>stiffness</title>
-                        </curve_0>
-                        <curve_1>
-                            <axes>
-                                <x_axis>
-                                    <field>header/stamp</field>
-                                    <field_type>0</field_type>
-                                    <scale>
-                                        <absolute_maximum>1000</absolute_maximum>
-                                        <absolute_minimum>0</absolute_minimum>
-                                        <relative_maximum>0</relative_maximum>
-                                        <relative_minimum>-1000</relative_minimum>
-                                        <type>0</type>
-                                    </scale>
-                                    <topic>/variable_impedance_controller/desired_impedance</topic>
-                                    <type>panda_controllers/DesiredImpedance</type>
-                                </x_axis>
-                                <y_axis>
-                                    <field>damping_matrix/0</field>
-                                    <field_type>0</field_type>
-                                    <scale>
-                                        <absolute_maximum>1000</absolute_maximum>
-                                        <absolute_minimum>0</absolute_minimum>
-                                        <relative_maximum>0</relative_maximum>
-                                        <relative_minimum>-1000</relative_minimum>
-                                        <type>0</type>
-                                    </scale>
-                                    <topic>/variable_impedance_controller/desired_impedance</topic>
-                                    <type>panda_controllers/DesiredImpedance</type>
+                                    <topic>/variable_impedance_controller/current_impedance</topic>
+                                    <type>std_msgs/Float64</type>
                                 </y_axis>
                             </axes>
                             <color>
@@ -377,8 +326,8 @@
                                 <type>0</type>
                             </style>
                             <subscriber_queue_size>100</subscriber_queue_size>
-                            <title>damping</title>
-                        </curve_1>
+                            <title>cost</title>
+                        </curve_0>
                     </curves>
                     <legend>
                         <visible>true</visible>
