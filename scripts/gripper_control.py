@@ -2,11 +2,10 @@
 # license removed for brevity
 import rospy
 from std_msgs.msg import Float64
-from franka_gripper.msg import MoveActionGoal
+from franka_gripper.msg import GraspActionGoal
 
-def_speed = 0.05
 open_width = 0.08
-publisher = rospy.Publisher('/franka_gripper/move/goal', MoveActionGoal, queue_size=10)
+publisher = rospy.Publisher('/franka_gripper/grasp/goal', GraspActionGoal, queue_size=10)
 
 def callback(data):
     rospy.loginfo(rospy.get_caller_id() + "I heard command %s", data.data)
@@ -17,9 +16,12 @@ def callback(data):
     if command < 0.0 :
         command = 0.0
 
-    control_msg = MoveActionGoal()
+    control_msg = GraspActionGoal()
     control_msg.goal.width = (1 - command)*open_width
-    control_msg.goal.speed = def_speed
+    control_msg.goal.epsilon.inner = 0.08
+    control_msg.goal.epsilon.outer = 0.08
+    control_msg.goal.speed = 0.1
+    control_msg.goal.force = 0.5
     publisher.publish(control_msg)
 
 def gripper_control():
