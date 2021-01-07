@@ -21,5 +21,13 @@
 
     <!-- Load Gripper Close Node -->
     <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/>
+
+    <!-- Bags record path -->
+    <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>
+
+    <!-- Load Rosbag record server -->
+    <include file="$(find record_ros)/launch/record_ros.launch" >
+        <arg name="path_save" value="$(arg record_path)" />
+    </include>
     
 </launch>
