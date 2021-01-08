@@ -24,10 +24,14 @@
 
     <!-- Bags record path -->
     <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>
+    <arg name="record_topics" default="/variable_impedance_controller/desired_impedance 
+        /variable_impedance_controller/pos_error /franka_state_controller/F_ext /impedance_planning/bounds
+        /variable_impedance_controller/robot_state"/>
 
     <!-- Load Rosbag record server -->
     <include file="$(find record_ros)/launch/record_ros.launch" >
         <arg name="path_save" value="$(arg record_path)" />
+        <arg name="topic" value="$(arg record_topics)" />
     </include>
     
 </launch>
