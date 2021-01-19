@@ -22,8 +22,8 @@
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
-#include <franka_control/SetFullCollisionBehavior.h>
-#include <franka_control/SetJointImpedance.h>
+#include <franka_msgs/SetFullCollisionBehavior.h>
+#include <franka_msgs/SetJointImpedance.h>
 
 #include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
@@ -42,9 +42,9 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
   void starting(const ros::Time&) override;
   void update(const ros::Time&, const ros::Duration& period) override;
-  franka_control::SetFullCollisionBehavior collBehaviourSrvMsg;
+  franka_msgs::SetFullCollisionBehavior collBehaviourSrvMsg;
   ros::ServiceClient collBehaviourClient;
-  franka_control::SetJointImpedance jointImpedanceSrvMsg;
+  franka_msgs::SetJointImpedance jointImpedanceSrvMsg;
   ros::ServiceClient jointImpedanceClient;
 
 

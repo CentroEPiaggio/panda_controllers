@@ -44,9 +44,9 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   pub_impedance_ = node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
 
   /*--------------------------------------------------INITIALIZE SERVICE CLIENTS*/
-  collBehaviourClient = node_handle.serviceClient<franka_control::SetFullCollisionBehavior>(
+  collBehaviourClient = node_handle.serviceClient<franka_msgs::SetFullCollisionBehavior>(
       name_space + "/franka_control/set_full_collision_behavior");
-  jointImpedanceClient = node_handle.serviceClient<franka_control::SetJointImpedance>(
+  jointImpedanceClient = node_handle.serviceClient<franka_msgs::SetJointImpedance>(
       name_space + "/franka_control/set_joint_impedance");
 
   /*--------------------------------------------------INITIALIZE NODE, ROBOT HANDLER AND ROBOT INTERFACE*/
