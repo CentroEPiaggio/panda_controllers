@@ -312,7 +312,7 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
 
   // define robot mass in task space
   Eigen::Matrix<double, 3, 3> task_mass;
-  task_mass << jacobian_transpose_pinv*mass*jacobian_pinv;    // 3x3
+  task_mass << (jacobian*mass.inverse()*jacobian.transpose()).inverse();    // 3x3
 
 // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
 // project impedance controller
