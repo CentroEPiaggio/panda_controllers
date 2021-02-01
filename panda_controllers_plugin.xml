@@ -30,4 +30,10 @@
    </description>
   </class>
 
+  <class name="panda_controllers/ProjectImpedanceController" type="panda_controllers::ProjectImpedanceController" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Project impedance controller.
+   </description>
+  </class>
+
 </library>
