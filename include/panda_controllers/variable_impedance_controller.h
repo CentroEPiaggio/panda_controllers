@@ -32,6 +32,12 @@
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Float64.h"
 
+// Filter includes
+#include "filters/filter_chain.h"
+
+// Other includes
+#include <boost/scoped_ptr.hpp>
+
 namespace panda_controllers {
 
 class VariableImpedanceController : public controller_interface::MultiInterfaceController<
@@ -46,7 +52,11 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   ros::ServiceClient collBehaviourClient;
   franka_msgs::SetJointImpedance jointImpedanceSrvMsg;
   ros::ServiceClient jointImpedanceClient;
+  std::array<double, 6> tau_filt;     // The command to be sent to the robot
+  //std::mutex tau_mutex;                   // A mutual exclusion lock for the vel command
 
+  // Low pass filter variables
+  std::vector<std::shared_ptr<filters::FilterChain<double>>> tau_filter;
 
  private:
   // Saturation
@@ -71,7 +81,8 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
   Eigen::Vector3d position_d_;                                    //desired position
   Eigen::Quaterniond orientation_d_;                              //desired orientation
   Eigen::Vector3d dposition_d_;                                   //desired position velocity
-
+  Eigen::Vector3d position_d_target_;                                    //desired position
+  Eigen::Quaterniond orientation_d_target_;                              //desired orientation
   ros::Subscriber sub_desired_stiffness_matrix_;
   void desiredImpedance_Callback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
   // void CartesianImpedanceControllerSoftbots::desiredRightStiffnessMatrix_Callback(const std_msgs::Float64MultiArray::ConstPtr& array);

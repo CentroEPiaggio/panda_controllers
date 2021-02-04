@@ -122,9 +122,10 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
   /*-----------------------------------INITIALIZE VARIABLES */
 
-  position_d_.setZero();                                   // desired position
-  orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;           // desired orientation
-  dposition_d_.setZero();                                  // desired position velocity
+  position_d_.setZero();
+  orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;
+  position_d_target_.setZero();
+  orientation_d_target_.coeffs() << 0.0, 0.0, 0.0, 1.0;
 
 
 
@@ -178,6 +179,8 @@ void VariableImpedanceController::starting(const ros::Time& /*time*/) {
   // set equilibrium point to current state
   position_d_ = initial_transform.translation();
   orientation_d_ = Eigen::Quaterniond(initial_transform.linear());
+  position_d_target_ = initial_transform.translation();
+  orientation_d_target_ = Eigen::Quaterniond(initial_transform.linear());
 
   // set nullspace equilibrium configuration to initial q
   q_d_nullspace_ = q_initial;
@@ -337,6 +340,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   stiffness and damping matrices target by filtering*/
   cartesian_stiffness_ =  filter_params_ * cartesian_stiffness_target_ + (1.0 - filter_params_) * cartesian_stiffness_;
   cartesian_damping_ =    filter_params_ * cartesian_damping_target_ + (1.0 - filter_params_) * cartesian_damping_;
+  position_d_ = filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
+  orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
 
 
 }
@@ -379,15 +384,15 @@ void VariableImpedanceController::desiredImpedance_Callback(
 void VariableImpedanceController::desiredTrajectoryCallback(
     const panda_controllers::DesiredTrajectoryConstPtr& msg) {
   
-  position_d_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+  position_d_target_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
   dposition_d_ << msg->velocity.position.x, msg->velocity.position.y, msg->velocity.position.z;
 
-  Eigen::Quaterniond last_orientation_d_target(orientation_d_);
-  orientation_d_.coeffs() << msg->pose.orientation.x, msg->pose.orientation.y,
+  Eigen::Quaterniond last_orientation_d_target(orientation_d_target_);
+  orientation_d_target_.coeffs() << msg->pose.orientation.x, msg->pose.orientation.y,
       msg->pose.orientation.z, msg->pose.orientation.w;
 
-  if (last_orientation_d_target.coeffs().dot(orientation_d_.coeffs()) < 0.0)
-    orientation_d_.coeffs() << -orientation_d_.coeffs();
+  if (last_orientation_d_target.coeffs().dot(orientation_d_target_.coeffs()) < 0.0)
+    orientation_d_target_.coeffs() << -orientation_d_target_.coeffs();
 
 }
 

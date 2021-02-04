@@ -30,4 +30,17 @@
    </description>
   </class>
 
+  <class name="panda_controllers/JointPositionController" type="panda_controllers::JointPositionController" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Joint position controller.
+   </description>
+  </class>7
+
+    <class name="panda_controllers/CartesianImpedanceControllerSoftbots" type="panda_controllers::CartesianImpedanceControllerSoftbots" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Variable impedance controller.
+   </description>
+  </class>
+
+
 </library>
