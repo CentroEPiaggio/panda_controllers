@@ -9,7 +9,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 
-#include "pseudo_inversion.h"
+#include "utils/pseudo_inversion.h"
 
 namespace panda_controllers {
 
@@ -180,34 +180,6 @@ void CartesianImpedanceControllerSoftbots::update(const ros::Time& /*time*/,
   pub_endeffector_pose_.publish(msg_endeffector_pose_);
 
 
-
-  /*std::cout << "POSITION x= " << position(0)
-            << " y=" << position(1)
-            << " z=" << position(2) << std::endl;*/
-
-
-  /*std::cout << "ACTUAL ORIENTATION QUATERNION x= " << orientation.x()
-            << " y=" << orientation.y()
-            << " z=" << orientation.z()
-            << " w= " << orientation.w() << std::endl;*/
-
-  // std::cout << "ACTUAL Euler x= " << angle.x()
-  //            << " y=" << angle.y()
-  //           << " z=" << angle.z() << std::endl;
-  
-  // Eigen::AngleAxisd aa_orientation(orientation);
-  // std::cout << "ORIENTATION AA x= " << aa_orientation.axis()(0)
-  //           << " y=" << aa_orientation.axis()(1)
-  //           << " z=" << aa_orientation.axis()(2)
-  //           << " angle= " << aa_orientation.angle() << std::endl;
-
-
-  /*Eigen::AngleAxisd aa_orientation_recieved(orientation_d_target_);
-  std::cout << "ORIENTATION AA RECEIVED x= " << aa_orientation_recieved.axis()(0)
-            << " y=" << aa_orientation_recieved.axis()(1)
-            << " z=" << aa_orientation_recieved.axis()(2)
-            << " angle= " << aa_orientation_recieved.angle() << std::endl;*/
-
   // compute error to desired pose
   // position error
   Eigen::Matrix<double, 6, 1> error;
@@ -218,61 +190,17 @@ void CartesianImpedanceControllerSoftbots::update(const ros::Time& /*time*/,
   error.head(3) << position - position_d_;
 
   
-
-
   // orientation error
   if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0) {
     orientation.coeffs() << -orientation.coeffs();
   }
 
 
-  // "difference" quaternion
-  Eigen::Quaterniond error_quaternion(orientation * orientation_d_.inverse());
-  // convert to axis angle
-  Eigen::AngleAxisd error_quaternion_angle_axis(error_quaternion);
+  Eigen::Quaterniond error_quaternion(orientation.inverse() * orientation_d_);
+  error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+  // Transform to base frame
+  error.tail(3) << -transform.linear() * error.tail(3);
 
-  static Eigen::AngleAxisd error_quaternion_angle_axis_prev(error_quaternion);
-  // compute "orientation error"
-
-  while( abs(error_quaternion_angle_axis.angle()) > M_PI/2)
-  {  
-    if ( error_quaternion_angle_axis.angle() > M_PI/2 )
-    {
-        error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() - M_PI/2;
-    }
-    else if ( error_quaternion_angle_axis.angle() < -M_PI/2)
-    {
-        error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() + M_PI/2;
-    }
-  }
-
-  error.tail(3) << error_quaternion_angle_axis.axis() * error_quaternion_angle_axis.angle();
-
-
-  /*nowTime = ros::Time::now();
-  if(first_cycle)
-  {
-    lastTime = nowTime;
-    error_prev = error;
-    dot_error.setZero();
-    dot_error_filt.setZero();
-    first_cycle = false;
-  }
-  else
-  {
-    deltaT = nowTime - lastTime;
-    lastTime = nowTime;
-
-    dot_error = (error - error_prev) / deltaT.toSec();
-    error_prev = error;
-  } 
-
-  dot_error_filt = 0.00005 * dot_error + (1.0 - 0.00005) * dot_error_filt;
-
-  std::cout << deltaT.toSec() << " x=" << dot_error_filt(3) << " y=" << dot_error_filt(4) << " z=" << dot_error_filt(5) << std::endl;*/
-
-  // compute control
-  // allocate variables
   Eigen::VectorXd tau_task(7), tau_nullspace(7), tau_d(7);
 
   // pseudoinverse for nullspace handling
@@ -280,9 +208,6 @@ void CartesianImpedanceControllerSoftbots::update(const ros::Time& /*time*/,
   Eigen::MatrixXd jacobian_transpose_pinv;
   pseudoInverse(jacobian.transpose(), jacobian_transpose_pinv);
 
-  // Cartesian PD control with damping ratio = 1
-  //tau_task << jacobian.transpose() *
-   //               (-cartesian_stiffness_ * error - cartesian_damping_ * dot_error);
 
   tau_task << jacobian.transpose() * (-cartesian_stiffness_ * error - cartesian_damping_ * (jacobian * dq));
   // nullspace PD control with damping ratio = 1
@@ -291,8 +216,8 @@ void CartesianImpedanceControllerSoftbots::update(const ros::Time& /*time*/,
                        (nullspace_stiffness_ * (q_d_nullspace_ - q) -
                         (2.0 * sqrt(nullspace_stiffness_)) * dq);
   // Desired torque
-  // tau_d << tau_task + tau_nullspace + coriolis;
-  tau_d << tau_task + coriolis;
+  tau_d << tau_task + tau_nullspace + coriolis;
+  //tau_d << tau_task + coriolis;
 
   // Saturate torque rate to avoid discontinuities
   tau_d << saturateTorqueRate(tau_d, tau_J_d);
@@ -309,15 +234,7 @@ void CartesianImpedanceControllerSoftbots::update(const ros::Time& /*time*/,
   nullspace_stiffness_ =
       filter_params_ * nullspace_stiffness_target_ + (1.0 - filter_params_) * nullspace_stiffness_;
   position_d_ = filter_params_ * position_d_target_ + (1.0 - filter_params_) * position_d_;
-  /*Eigen::AngleAxisd aa_orientation_d(orientation_d_);
-  Eigen::AngleAxisd aa_orientation_d_target(orientation_d_target_);
-  aa_orientation_d.axis() = filter_params_ * aa_orientation_d_target.axis() +
-                            (1.0 - filter_params_) * aa_orientation_d.axis();
-  aa_orientation_d.angle() = filter_params_ * aa_orientation_d_target.angle() +
-                             (1.0 - filter_params_) * aa_orientation_d.angle();
-  orientation_d_ = Eigen::Quaterniond(aa_orientation_d);*/
-
-  orientation_d_ = orientation_d_target_;
+  orientation_d_ = orientation_d_.slerp(filter_params_, orientation_d_target_);
 }
 
 Eigen::Matrix<double, 7, 1> CartesianImpedanceControllerSoftbots::saturateTorqueRate(
