@@ -31,6 +31,8 @@ add_message_files(FILES
   DesiredImpedance.msg
   DesiredTrajectory.msg
   DesiredProjectTrajectory.msg
+  EEpose.msg
+  ExternalForces.msg
   
 )
 
@@ -71,6 +73,7 @@ add_library(${PROJECT_NAME}
   src/backstepping.cpp #Backstepping controller
   src/variable_impedance_controller.cpp #Backstepping controller
   src/project_impedance_controller.cpp #Project variable impedance controller
+  src/planner.cpp #Planner
 ) 
 
 add_dependencies(${PROJECT_NAME}

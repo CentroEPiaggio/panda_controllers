@@ -26,7 +26,8 @@
 #include <franka_msgs/SetJointImpedance.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
-
+#include <panda_controllers/EEpose.h>
+#include <panda_controllers/ExternalForces.h>
 // #include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
 #include <panda_controllers/RobotState.h>
@@ -62,21 +63,22 @@ class ProjectImpedanceController : public controller_interface::MultiInterfaceCo
 
   bool var_damp;                                                  //freely variable damping or critically damped
   double filter_params_{0.1};                                     //exponential filter parameter
-  double nullspace_stiffness_{5.0};                               //nullspace stiffness [Nm/rad]
+  double nullspace_stiffness_{10.0};                               //nullspace stiffness [Nm/rad]
   const double delta_tau_max_{1.0};                               //torque rate limit [Nm/ms], from datasheet https://frankaemika.github.io/docs/control_parameters.html
   Eigen::Matrix<double, 7, 1> tau_limit;                          //joint torque limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
-  Eigen::Matrix<double, 3, 3> cartesian_stiffness_;               //actual stiffness matrix
+  Eigen::Matrix<double, 6, 6> cartesian_stiffness_;               //actual stiffness matrix
   // Eigen::Matrix<double, 6, 6> cartesian_stiffness_target_;        //target stiffness matrix
-  Eigen::Matrix<double, 3, 3> cartesian_damping_;                 //actual damping matrix
+  Eigen::Matrix<double, 6, 6> cartesian_damping_;                 //actual damping matrix
   // Eigen::Matrix<double, 6, 6> cartesian_damping_target_;          //target damping matrix
-  Eigen::Matrix<double, 3, 3> cartesian_mass_;                   // desired mass matrix 
+  Eigen::Matrix<double, 6, 6> cartesian_mass_;                   // desired mass matrix 
   Eigen::Matrix<double, 7, 1> q_d_nullspace_;                     //desired joint position (controlled in the nullspace)
   Eigen::Vector3d position_d_;                                    //desired position
-  Eigen::Quaterniond orientation_d_;                              //desired orientation
-  Eigen::Vector3d dposition_d_;                                   //desired position velocity
-  Eigen::Vector3d ddposition_d_;                                  //desired acceleration
+  Eigen::Vector3d or_des;                                         // orientation for project impedance
+  //Eigen::Quaterniond orientation_d_;                              //desired orientation
+  Eigen::Matrix<double, 6, 1> dpose_d_;                           //desired  velocity
+  Eigen::Matrix<double, 6, 1> ddpose_d_;                        //desired acceleration
   // force is taken from sensors
-  Eigen::Vector3d F_ext_;                                           //External Forces in x y z 
+  Eigen::Matrix<double, 6, 1> F_ext;                                           //External Forces in x y z 
   
  // added: DesiredTrajectoryConstPtr 
   ros::Subscriber sub_des_traj_proj_;
@@ -84,6 +86,10 @@ class ProjectImpedanceController : public controller_interface::MultiInterfaceCo
 
   ros::Subscriber sub_des_imp_proj_;
   void desiredImpedanceProjectCallback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
+
+  // external forces
+  ros::Subscriber sub_ext_forces;
+  void f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg);
 
 /*
   ros::Subscriber sub_desired_stiffness_matrix_;
@@ -98,12 +104,14 @@ class ProjectImpedanceController : public controller_interface::MultiInterfaceCo
   ros::Publisher pub_pos_error;
   ros::Publisher pub_cmd_force;
   ros::Publisher pub_endeffector_pose_;
+  ros::Publisher pub_ee_pose_;
   ros::Publisher pub_robot_state_;
   ros::Publisher pub_impedance_;
 
   geometry_msgs::TwistStamped   pos_error_msg;
   geometry_msgs::WrenchStamped  force_cmd_msg;  
   panda_controllers::RobotState robot_state_msg;
+  panda_controllers::EEpose ee_pos_msg;
   
 };
 
