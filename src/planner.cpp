@@ -11,15 +11,15 @@
 
 #include "panda_controllers/planner.h"
 
-#define     F_MAX       2.0
-#define     E_MAX       0.01
-#define     F_INT_MAX   5.0
-#define     MASS        1.0
-#define     BETA        0.98
-#define     A0          0.99
-#define     CSI         1.0
-#define     K_OR        300
-#define     D_OR        2*sqrt(300)
+#define     F_MAX       2.0         // [N]
+#define     E_MAX       0.01        // [m]
+#define     F_INT_MAX   5.0         // [N]
+#define     MASS        1.0         // [kg]
+#define     BETA        0.98        // []
+#define     A0          0.99        // []
+#define     CSI         1.0         // []
+#define     K_OR        300         // [Nm/rad]
+#define     D_OR        2*sqrt(300) // [Nm*sec/rad]
 
 
 //----------------------------------------------------------//
@@ -241,9 +241,9 @@ bool planner_node::init(ros::NodeHandle& node_handle){
 }
 
 void planner_node::update() {
-    double kx_f = planner_x.planning(F_MAX, F_ext.coeff(0), E_MAX, F_INT_MAX, ee_pos.coeff(0), pos_d.coeff(0), dpos_d.coeff(0), interaction.coeff(0), compensation.coeff(0));
-    double ky_f = planner_y.planning(F_MAX, F_ext.coeff(1), E_MAX, F_INT_MAX, ee_pos.coeff(1), pos_d.coeff(1), dpos_d.coeff(1), interaction.coeff(1), compensation.coeff(1));
-    double kz_f = planner_z.planning(F_MAX, F_ext.coeff(2), E_MAX, F_INT_MAX, ee_pos.coeff(2), pos_d.coeff(2), dpos_d.coeff(2), interaction.coeff(2), compensation.coeff(2));
+    double kx_f = planner_x.planning(F_MAX, F_ext(0), E_MAX, F_INT_MAX, ee_pos(0), pos_d(0), dpos_d(0), interaction(0), compensation(0));
+    double ky_f = planner_y.planning(F_MAX, F_ext(1), E_MAX, F_INT_MAX, ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
+    double kz_f = planner_z.planning(F_MAX, F_ext(2), E_MAX, F_INT_MAX, ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
     interpolator(kx_f,ky_f,kz_f);
 
     for ( int i = 0; i <36; i++){

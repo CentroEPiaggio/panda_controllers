@@ -1,6 +1,7 @@
 #include <panda_controllers/project_impedance_controller.h>
 #include "utils/Jacobians.h"
 #include <cmath>
+#include <math.h>
 
 #include <controller_interface/controller_base.h>
 #include <franka/robot_state.h>
@@ -198,9 +199,9 @@ void ProjectImpedanceController::starting(const ros::Time& /*time*/) {
    // define R matrix for orientation
   Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(initial_state.O_T_EE.data()).topLeftCorner(3,3));
 
-  double phi = atan2(R.coeff(1,0),R.coeff(0,0));
-  double theta = atan2(-R.coeff(2,0),sqrt(pow(R.coeff(2,1),2) + pow(R.coeff(2,2),2)));
-  double psi = atan2(R.coeff(2,1),R.coeff(2,2));
+  double phi = atan2(R(1,0),R(0,0));
+  double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
+  double psi = atan2(R(2,1),R(2,2));
 
   // orientation
   or_des << phi, theta, psi;
@@ -271,24 +272,42 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
   
   double q_array[7], dq_array[7];
   for (int i=0; i<7; i++){
-    q_array[i] = q.coeff(i);
-    dq_array[i] = dq.coeff(i);
+    q_array[i] = q(i);
+    dq_array[i] = dq(i);
   }
 
   // Compute Ja 
   get_Ja_proj(q_array, ja_array);
-    Eigen::Map<Eigen::Matrix<double, 6, 7> > ja(ja_array);
+    Eigen::Matrix<double, 6, 7> ja;
+    for (int i=0; i<6; i++){
+        for(int j=0; j<7; j++){
+            if (std::isnan(ja_array[i*7+j])){
+                ja(i,j) = 1;
+            }else{
+              ja(i,j) = ja_array[i*7+j];
+            }
+        }
+    }
 
   // Compute Ja_dot
   get_Ja_dot_proj(q_array, dq_array,ja_dot_array);
-  Eigen::Map<Eigen::Matrix<double, 6, 7> > ja_dot(ja_dot_array);
+  Eigen::Matrix<double, 6, 7> ja_dot;
+  for (int i=0; i<6; i++){
+        for(int j=0; j<7; j++){
+            if (std::isnan(ja_dot_array[i*7+j])){
+                ja_dot(i,j) = 1;
+            }else{
+              ja_dot(i,j) = ja_dot_array[i*7+j];
+            }
+        }
+  }
 
   // define R matrix for orientation
   Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
 
-  double phi = atan2(R.coeff(1,0),R.coeff(0,0));
-  double theta = atan2(-R.coeff(2,0),sqrt(pow(R.coeff(2,1),2) + pow(R.coeff(2,2),2)));
-  double psi = atan2(R.coeff(2,1),R.coeff(2,2));
+  double phi = atan2(R(1,0),R(0,0));
+  double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
+  double psi = atan2(R(2,1),R(2,2));
 
   // orientation
   Eigen::Matrix<double, 3, 1> or_proj = {phi, theta, psi};
@@ -310,33 +329,11 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
   derror.head(3) << dpose.head(3) - dpose_d_.head(3);
   derror.tail(3) << ja.bottomLeftCorner(3,7)*dq - dpose_d_.tail(3);
 
-/*
-  // orientation error expressed in the base frame
-   if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0)
-    orientation.coeffs() << -orientation.coeffs();
-  
-  // "difference" quaternion
-  Eigen::Quaterniond error_quaternion(orientation * orientation_d_.inverse());
-  // convert to axis angle
-  Eigen::AngleAxisd error_quaternion_angle_axis(error_quaternion);
-  // limit orientation error amplitude to avoid bad robot behaviour
-  while( abs(error_quaternion_angle_axis.angle()) > M_PI/2){  
-    if ( error_quaternion_angle_axis.angle() > M_PI/2 )
-        error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() - M_PI/2;
-    else if ( error_quaternion_angle_axis.angle() < -M_PI/2)
-        error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() + M_PI/2;
-  }
-  error.tail(3) << error_quaternion_angle_axis.axis() * error_quaternion_angle_axis.angle();
-  
-  // transposition of the linear and angular errors in the end-effector
-  // error.head(3) = transform.linear().transpose()*error.head(3);
-  // error.tail(3) = transform.linear().transpose()*error.tail(3);
+  //--------------- WRAP-TO-PI-----------------//
 
-  // TODO: implement velocity orientation error
-  derror.tail(3) = dposition.tail(3);
-*/
-
-
+  error(3) = atan2(sin(error(3)),cos(error(3)));
+  error(4) = atan2(sin(error(4)),cos(error(4)));
+  error(5) = atan2(sin(error(5)),cos(error(5)));
 
   //------------------------------------------------------------------//
   //                    COMPUTE IMPEDANCE CONTROL                     //
@@ -356,6 +353,14 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
   // define robot mass in task space
   Eigen::Matrix<double, 6, 6> task_mass;
   task_mass << (ja*mass.inverse()*ja.transpose()).inverse();    // 6x6
+  for (int i=0; i<6; i++){
+        for(int j=0; j<6; j++){
+            if (std::isnan(task_mass(i,j))){
+                task_mass(i,j) = 1;
+            }
+        }
+    }
+
 
 // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
 // project impedance controller
@@ -443,9 +448,9 @@ tau_task << ja.transpose()*wrench_task + coriolis + gravity;
 
   pub_endeffector_pose_.publish(postion_endeff);
 
-  ee_pos_msg.pose.position.x = position.coeff(0);
-  ee_pos_msg.pose.position.y = position.coeff(1);
-  ee_pos_msg.pose.position.z = position.coeff(2);
+  ee_pos_msg.pose.position.x = position(0);
+  ee_pos_msg.pose.position.y = position(1);
+  ee_pos_msg.pose.position.z = position(2);
 
   pub_ee_pose_.publish(ee_pos_msg);
 
@@ -456,17 +461,6 @@ tau_task << ja.transpose()*wrench_task + coriolis + gravity;
   impedance_msg.data = std::pow(cartesian_stiffness_.norm(),2) + std::pow(cartesian_damping_.norm(),2);
 
   pub_impedance_.publish(impedance_msg);
-
-  //-------------------------------------------------//
-  //              UPDATE desired cartesian          //
-  //-------------------------------------------------//
-
-  //stiffness and damping matrices target by filtering
-  /*
-
-  cartesian_stiffness_ =  filter_params_ * cartesian_stiffness_target_ + (1.0 - filter_params_) * cartesian_stiffness_;
-  cartesian_damping_ =    filter_params_ * cartesian_damping_target_ + (1.0 - filter_params_) * cartesian_damping_;
-  */
 
 }
 
@@ -516,22 +510,6 @@ void ProjectImpedanceController::desiredProjectTrajectoryCallback(
 void ProjectImpedanceController::f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg){
     F_ext << msg->forces[0], msg->forces[1], msg->forces[2], 0, 0, 0;
 }
-/*
-void ProjectImpedanceController::desiredTrajectoryCallback(
-    const panda_controllers::DesiredTrajectoryConstPtr& msg) {
-  
-  position_d_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-  dposition_d_ << msg->velocity.position.x, msg->velocity.position.y, msg->velocity.position.z;
-
-  Eigen::Quaterniond last_orientation_d_target(orientation_d_);
-  orientation_d_.coeffs() << msg->pose.orientation.x, msg->pose.orientation.y,
-      msg->pose.orientation.z, msg->pose.orientation.w;
-
-  if (last_orientation_d_target.coeffs().dot(orientation_d_.coeffs()) < 0.0)
-    orientation_d_.coeffs() << -orientation_d_.coeffs();
-
-}
-*/
 
 }  // namespace franka_softbots
 
