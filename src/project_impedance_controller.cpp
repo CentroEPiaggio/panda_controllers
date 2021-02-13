@@ -14,14 +14,14 @@ namespace panda_controllers {
 
 // added "extern" 
 // puo' dare noia utilizzare la stessa stringa per più controlli.cpp? 
-  extern std::string name_space;
+extern std::string name_space;
 
 //---------------------------------------------------------------//
 //                          INIT                                 //
 //--------------------------------------------------------------//
 
-bool ProjectImpedanceController::init(hardware_interface::RobotHW* robot_hw,
-                                               ros::NodeHandle& node_handle) {
+bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw, 
+                                        ros::NodeHandle& node_handle) {
   
   // Name space extraction for add a prefix to the topic name
   int n = 0;
@@ -35,32 +35,33 @@ bool ProjectImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   //------------------------------------------------------------//
 
   // subscribers for impedance_project
-  sub_des_traj_proj_ = node_handle.subscribe(
-      name_space+"/desired_project_trajectory", 10, &ProjectImpedanceController::desiredProjectTrajectoryCallback, this,
-      ros::TransportHints().reliable().tcpNoDelay());
+  sub_des_traj_proj_ =  node_handle.subscribe(  name_space+"/desired_project_trajectory", 10, 
+                                                &ProjectImpedanceController::desiredProjectTrajectoryCallback, this,
+                                                ros::TransportHints().reliable().tcpNoDelay());
 
-  sub_des_imp_proj_ = node_handle.subscribe(
-      name_space+"/desired_impedance_project", 10, &ProjectImpedanceController::desiredImpedanceProjectCallback, this,
-      ros::TransportHints().reliable().tcpNoDelay());
+  sub_des_imp_proj_ =   node_handle.subscribe(  name_space+"/desired_impedance_project", 10, 
+                                                &ProjectImpedanceController::desiredImpedanceProjectCallback, this,
+                                                ros::TransportHints().reliable().tcpNoDelay());
 
-  sub_ext_forces = node_handle.subscribe(
-    name_space+"/f_ext", 1, &ProjectImpedanceController::f_ext_Callback, this,
-    ros::TransportHints().reliable().tcpNoDelay());
+  sub_ext_forces =      node_handle.subscribe(  name_space+"/f_ext", 1, 
+                                                &ProjectImpedanceController::f_ext_Callback, this,
+                                                ros::TransportHints().reliable().tcpNoDelay());
 
-  pub_pos_error    = node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
-  pub_cmd_force   = node_handle.advertise<geometry_msgs::WrenchStamped>(name_space+"/cmd_force", 1);
+  pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
+  pub_cmd_force =         node_handle.advertise<geometry_msgs::WrenchStamped>(name_space+"/cmd_force", 1);
   pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
-  pub_robot_state_ = node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
-  pub_impedance_ = node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
+  pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
+  pub_impedance_ =        node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
 
   //------------------------------------------------------------//
   //              INITIALIZE SERVICE CLIENTS                    //
   //------------------------------------------------------------//
 
-  collBehaviourClient = node_handle.serviceClient<franka_msgs::SetFullCollisionBehavior>(
-      name_space + "/franka_control/set_full_collision_behavior");
-  jointImpedanceClient = node_handle.serviceClient<franka_msgs::SetJointImpedance>(
-      name_space + "/franka_control/set_joint_impedance");
+  collBehaviourClient = node_handle.serviceClient<franka_msgs::SetFullCollisionBehavior>( name_space 
+                                                                                          + "/franka_control/set_full_collision_behavior");
+
+  jointImpedanceClient = node_handle.serviceClient<franka_msgs::SetJointImpedance>( name_space 
+                                                                                    + "/franka_control/set_joint_impedance");
 
   //------------------------------------------------------------//
   //      INITIALIZE NODE, ROBOT HANDLER AND ROBOT INTERFACE    //
@@ -82,11 +83,9 @@ bool ProjectImpedanceController::init(hardware_interface::RobotHW* robot_hw,
     return false;
   }
 
-  franka_hw::FrankaModelInterface* model_interface =
-      robot_hw->get<franka_hw::FrankaModelInterface>();
+  franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
   if (model_interface == nullptr) {
-    ROS_ERROR_STREAM(
-        "ProjectImpedanceController: Error getting model interface from hardware");
+    ROS_ERROR_STREAM("ProjectImpedanceController: Error getting model interface from hardware");
     return false;
   }
   try {
@@ -225,8 +224,8 @@ void ProjectImpedanceController::starting(const ros::Time& /*time*/) {
   //                            UPDATE                        //
   //----------------------------------------------------------//
 
-void ProjectImpedanceController::update(const ros::Time& /*time*/,
-                                                 const ros::Duration& /*period*/) {
+void ProjectImpedanceController::update(  const ros::Time& /*time*/,
+                                          const ros::Duration& /*period*/) {
 
   // get state variables
   franka::RobotState robot_state = state_handle_->getRobotState();         // robot state
@@ -276,30 +275,30 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
     dq_array[i] = dq(i);
   }
 
-  // Compute Ja 
+  // Compute Ja and NaN removal
   get_Ja_proj(q_array, ja_array);
-    Eigen::Matrix<double, 6, 7> ja;
-    for (int i=0; i<6; i++){
-        for(int j=0; j<7; j++){
-            if (std::isnan(ja_array[i*7+j])){
-                ja(i,j) = 1;
-            }else{
-              ja(i,j) = ja_array[i*7+j];
-            }
-        }
+  Eigen::Matrix<double, 6, 7> ja;
+  for (int i=0; i<6; i++){
+    for(int j=0; j<7; j++){
+      if (std::isnan(ja_array[i*7+j])){
+        ja(i,j) = 1;
+      }else{
+        ja(i,j) = ja_array[i*7+j];
+      }
     }
+  }
 
-  // Compute Ja_dot
+  // Compute Ja_dot and NaN removal
   get_Ja_dot_proj(q_array, dq_array,ja_dot_array);
   Eigen::Matrix<double, 6, 7> ja_dot;
   for (int i=0; i<6; i++){
-        for(int j=0; j<7; j++){
-            if (std::isnan(ja_dot_array[i*7+j])){
-                ja_dot(i,j) = 1;
-            }else{
-              ja_dot(i,j) = ja_dot_array[i*7+j];
-            }
-        }
+    for(int j=0; j<7; j++){
+      if (std::isnan(ja_dot_array[i*7+j])){
+        ja_dot(i,j) = 1;
+      }else{
+        ja_dot(i,j) = ja_dot_array[i*7+j];
+      }
+    }
   }
 
   // define R matrix for orientation
@@ -354,26 +353,28 @@ void ProjectImpedanceController::update(const ros::Time& /*time*/,
   Eigen::Matrix<double, 6, 6> task_mass;
   task_mass << (ja*mass.inverse()*ja.transpose()).inverse();    // 6x6
   for (int i=0; i<6; i++){
-        for(int j=0; j<6; j++){
-            if (std::isnan(task_mass(i,j))){
-                task_mass(i,j) = 1;
-            }
-        }
+    for(int j=0; j<6; j++){
+      if (std::isnan(task_mass(i,j))){
+        task_mass(i,j) = 1;
+      }
     }
+  }
 
 
-// from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
-// project impedance controller
-  wrench_task << task_mass*ddpose_d_ 
+  // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
+  // project impedance controller
+  wrench_task <<  task_mass*ddpose_d_ 
                   - (task_mass*cartesian_mass_.inverse())*(cartesian_damping_*derror + cartesian_stiffness_*error)
                   + (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext
                   - task_mass*ja_dot*dq;
 
-// from matlab: tau = (Ja')*F_tau + S*q_dot + tau_fric + G;
- //final tau in joint space
-tau_task << ja.transpose()*wrench_task + coriolis + gravity;
+  // from matlab: tau = (Ja')*F_tau + S*q_dot + tau_fric + G;
+  //final tau in joint space
+  tau_task << ja.transpose()*wrench_task 
+              + coriolis 
+              + gravity;
 
-/*
+  /*
   // Cartesian PD control with damping ratio = 1 - Cartesian desired Wrench as output
    wrench_task << ( - cartesian_stiffness_ * error               // proportional term
                     - cartesian_damping_ * derror );               // derivative term
@@ -388,9 +389,8 @@ tau_task << ja.transpose()*wrench_task + coriolis + gravity;
   Eigen::Matrix <double, 7, 7> N;
   N << Eigen::MatrixXd::Identity(7, 7) - ja.transpose()*ja_t_inv;
 
-  tau_nullspace <<  N * 
-                    ( nullspace_stiffness_ * (q_d_nullspace_ - q)       // proportional term
-                    - (2.0 * sqrt(nullspace_stiffness_)) * dq);         // derivative term
+  tau_nullspace <<  N * ( nullspace_stiffness_ * (q_d_nullspace_ - q)       // proportional term
+                          - (2.0 * sqrt(nullspace_stiffness_)) * dq);       // derivative term
 
   // Desired torque
   tau_d << tau_task + tau_nullspace;
@@ -484,14 +484,14 @@ Eigen::Matrix<double, 7, 1> ProjectImpedanceController::saturateTorqueRate(
 
 //we don't considerer cartesian_damping_target_
 void ProjectImpedanceController::desiredImpedanceProjectCallback(
-    const panda_controllers::DesiredImpedance::ConstPtr& msg){
-  
-    for (int i=0; i<6; i++){
-     for (int j=0; j<6; j++){
-        cartesian_stiffness_(i, j) = msg->stiffness_matrix[i*6 + j];
-        cartesian_damping_(i, j) = msg->damping_matrix[i*6 + j];
-     }
+  const panda_controllers::DesiredImpedance::ConstPtr& msg){
+
+  for (int i=0; i<6; i++){
+    for (int j=0; j<6; j++){
+      cartesian_stiffness_(i, j) = msg->stiffness_matrix[i*6 + j];
+      cartesian_damping_(i, j) = msg->damping_matrix[i*6 + j];
     }
+  }
 }
 
 // abbiamo creato un nuovo file DesiredProjectTrajectory.msg per includere 
@@ -508,7 +508,7 @@ void ProjectImpedanceController::desiredProjectTrajectoryCallback(
 }
 
 void ProjectImpedanceController::f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg){
-    F_ext << msg->forces[0], msg->forces[1], msg->forces[2], 0, 0, 0;
+  F_ext << msg->forces[0], msg->forces[1], msg->forces[2], 0, 0, 0;
 }
 
 }  // namespace franka_softbots

@@ -30,7 +30,7 @@ class planner_class{
         int sign(double x);
     public:
         planner_class();
-        double planning(double F_max, double F_ext, double e_max, double F_int_max, double z, double z_des, double dz_des, int inter, int comp);
+        double planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp);
 };
 
 class planner_node{
@@ -52,8 +52,8 @@ class planner_node{
         Eigen::Vector3d F_ext;                      // External Forces in x y z
         Eigen::Vector3d pos_d;                      // desired position
         Eigen::Vector3d dpos_d;                     // desired position velocity
-        Eigen::Vector3i interaction;          // interaction flags
-        Eigen::Vector3i compensation;         // compensation flags
+        Eigen::Vector3i interaction;                // interaction flags
+        Eigen::Vector3i compensation;               // compensation flags
         Eigen::Vector3d ee_pos;                     // end-effector position
         double K[36];                               // stiffness matrix
         double D[36];                               // damping matrix
