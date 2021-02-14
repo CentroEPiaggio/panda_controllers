@@ -198,6 +198,9 @@ planner_node::planner_node(){
         D[i] = 0;
     }
     time_prec = ros::Time::now();
+    kx = F_MAX/E_MAX;
+    ky = F_MAX/E_MAX;
+    kz = F_MAX/E_MAX;
 }
 //----------------------------------------------------------//
 bool planner_node::init(ros::NodeHandle& node_handle){
