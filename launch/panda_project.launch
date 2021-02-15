@@ -15,12 +15,12 @@
     </include>
 
     <!-- Load Gripper -->
-    <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
+    <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
         <arg name="robot_ip" value="$(arg robot_ip)" />
-    </include>
+    </include> -->
 
     <!-- Load Gripper Close Node -->
-    <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/>
+    <!-- <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/> -->
 
     <!-- Bags record path -->
     <!-- <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>

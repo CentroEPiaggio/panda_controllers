@@ -36,7 +36,7 @@ planner_class::planner_class(){
 }
 
 int planner_class::sign(double x){
-    float tmp = x/fabs(x);
+    float tmp = x/std::abs(x);
     if(tmp<0)
         return -1;
     else
@@ -51,7 +51,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // X axes
     if (inter == 1){
         // detection of an interaction 
-        if (fabs(F_ext-F_comp) > F_MAX){
+        if (std::abs(F_ext-F_comp) > F_MAX){
             if (z_int > 999 ){                     // z_int has not been set yet
                 z_int = z;
                 z_int_dir = -sign(F_ext-F_comp);
@@ -59,10 +59,10 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
             }
         }
         // setting of ki
-        if (fabs(F_ext-F_comp) > F_int_max){
+        if (std::abs(F_ext-F_comp) > F_int_max){
             // if interaction force is higher than threshold
-            if (ki*fabs(z-z_des) > F_int_max){
-                double ktemp_x = F_int_max/fabs(z-z_des);
+            if (ki*std::abs(z-z_des) > F_int_max){
+                double ktemp_x = F_int_max/std::abs(z-z_des);
                 if (ktemp_x < ki){                // ki needs to be only decreased
                     ki = ktemp_x;
                 }
@@ -77,8 +77,8 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     if (comp == 1){
         // compensation detection
         if (z_int > 999){                     // z_int not set before
-            if (fabs(F_ext)/kc > e_max){         
-                kc = fabs(F_ext)/e_max;
+            if (std::abs(F_ext)/kc > e_max){         
+                kc = std::abs(F_ext)/e_max;
                 if (set_F_comp == 1){
                     F_comp = F_ext;
                 }
@@ -86,8 +86,8 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }else{
             if (z_int_dir == 1){                // obstacle in above
                 if (z < z_int){
-                    if (fabs(F_ext)/kc > e_max){ 
-                        kc = fabs(F_ext)/e_max;
+                    if (std::abs(F_ext)/kc > e_max){ 
+                        kc = std::abs(F_ext)/e_max;
                         if (set_F_comp == 1){
                             F_comp = F_ext;
                         }
@@ -95,8 +95,8 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                 }
             }else{                                // obstacle is below
                 if (z > z_int){
-                    if (fabs(F_ext)/kc > e_max){
-                        kc = fabs(F_ext)/e_max;
+                    if (std::abs(F_ext)/kc > e_max){
+                        kc = std::abs(F_ext)/e_max;
                         if (set_F_comp == 1){
                             F_comp = F_ext;
                         }
@@ -138,7 +138,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // Selection of Final Values of D-K
     // default values
-    double k = fabs(F_max)/e_max;
+    double k = std::abs(F_max)/e_max;
 
     // compensation
     if (comp == 1){
@@ -327,8 +327,8 @@ void planner_node::desiredProjectTrajectoryCallback(const panda_controllers::Des
     compensation << msg->compensation[0], msg->compensation[1], msg->compensation[2];
 }
 
-void planner_node::f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg){
-    F_ext << msg->forces[0], msg->forces[1], msg->forces[2];
+void planner_node::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
+  F_ext << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z;
 }
 
 
@@ -344,9 +344,9 @@ int main(int argc, char **argv){
     planner.init(node_planner);
 
     while (ros::ok()){
-        planner.update();
-
         ros::spinOnce();
+        
+        planner.update();
 
         loop_rate.sleep();
     }

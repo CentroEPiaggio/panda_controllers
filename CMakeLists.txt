@@ -33,8 +33,6 @@ add_message_files(FILES
   DesiredTrajectory.msg
   DesiredProjectTrajectory.msg
   EEpose.msg
-  ExternalForces.msg
-  
 )
 
 ##
@@ -71,10 +69,11 @@ add_library(${PROJECT_NAME}
   src/cartesian_velocity_controller.cpp
   src/pdcontroller.cpp #PD controller
   src/computed_torque.cpp #Computed Torque controller
-  src/backstepping.cpp #Backstepping controller
+  # src/backstepping.cpp #Backstepping controller
   src/variable_impedance_controller.cpp #Backstepping controller
   src/project_impedance_controller.cpp #Project variable impedance controller
   src/planner.cpp #Planner
+  src/Jacobians.cpp
 ) 
 
 add_dependencies(${PROJECT_NAME}
@@ -93,6 +92,7 @@ add_executable(trajectory src/trajectory.cpp) # in case of not object oriented m
 add_executable(trajectory_oo src/trajectory_oo.cpp) # in case of object oriented method
 
 add_executable(planner src/planner.cpp)
+add_executable(test_jac src/test_jac.cpp)
 ##
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -107,6 +107,7 @@ target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriente
 target_link_libraries(trajectory_oo ${PROJECT_NAME}) #In case of object oriented method
 
 target_link_libraries(planner ${PROJECT_NAME})
+target_link_libraries(test_jac ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}

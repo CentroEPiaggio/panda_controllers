@@ -22,7 +22,6 @@ extern std::string name_space;
 
 bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw, 
                                         ros::NodeHandle& node_handle) {
-  
   // Name space extraction for add a prefix to the topic name
   int n = 0;
   // std::string name_space;
@@ -43,7 +42,7 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
                                                 &ProjectImpedanceController::desiredImpedanceProjectCallback, this,
                                                 ros::TransportHints().reliable().tcpNoDelay());
 
-  sub_ext_forces =      node_handle.subscribe(  name_space+"/f_ext", 1, 
+  sub_ext_forces =      node_handle.subscribe(  "/franka_state_controller/F_ext", 1, 
                                                 &ProjectImpedanceController::f_ext_Callback, this,
                                                 ros::TransportHints().reliable().tcpNoDelay());
 
@@ -297,6 +296,11 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
     }
   }
 
+  // std::cout << "Jacobian:" << std::endl;
+  // std::cout << ja << std::endl;
+  // std::cout << "Jacobian Dot:" << std::endl;
+  // std::cout << ja_dot << std::endl;
+
   // define R matrix for orientation
   Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
 
@@ -335,7 +339,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   //------------------------------------------------------------------//
 
   // allocate variables
-  Eigen::VectorXd wrench_task(3), tau_task(7), tau_nullspace(7), tau_d(7);
+  Eigen::VectorXd wrench_task(6), tau_task(7), tau_nullspace(7), tau_d(7);
 
   // pseudoinverse for nullspace handling - kinematic pseuoinverse
   Eigen::MatrixXd ja_transpose_pinv;
@@ -355,7 +359,6 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
       }
     }
   }
-
 
   // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
   // project impedance controller
@@ -389,10 +392,19 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 
   // Desired torque
   tau_d << tau_task + tau_nullspace;
-  // tau_d << tau_task + coriolis;
+  // tau_d << tau_task;
+
+  std::cout << "Commanded torque:" << std::endl;
+  std::cout << tau_d << std::endl;
+
+  std::cout << "Internal torque:" << std::endl;
+  std::cout << tau_J_d << std::endl;
 
   // Saturate torque rate to avoid discontinuities
   tau_d << saturateTorqueRate(tau_d, tau_J_d);
+
+  std::cout << "Commanded torque 2:" << std::endl;
+  std::cout << tau_d << std::endl;
 
   // Saturate torque to avoid torque limit
   for (int i = 0; i < 7; ++i){
@@ -400,6 +412,24 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
     if( ith_torque_rate > 1)
       tau_d = tau_d / ith_torque_rate;
   }
+
+  // std::cout << "Error:" << std::endl;
+  // std::cout << error << std::endl;
+
+  // std::cout << "dError:" << std::endl;
+  // std::cout << derror << std::endl;
+
+  // std::cout << "T1:" << std::endl;
+  // std::cout << (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext << std::endl;
+
+  // std::cout << "T2:" << std::endl;
+  // std::cout << (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6)) << std::endl;
+
+  // std::cout << "F_ext:" << std::endl;
+  // std::cout << F_ext << std::endl;
+
+  std::cout << "Commanded torque after sat:" << std::endl;
+  std::cout << tau_d << std::endl;
 
   //set arm command torques
   for (size_t i = 0; i < 7; ++i)
@@ -502,8 +532,8 @@ void ProjectImpedanceController::desiredProjectTrajectoryCallback(
 
 }
 
-void ProjectImpedanceController::f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg){
-  F_ext << msg->forces[0], msg->forces[1], msg->forces[2], 0, 0, 0;
+void ProjectImpedanceController::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
+  F_ext << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z, 0, 0, 0;
 }
 
 }  // namespace franka_softbots

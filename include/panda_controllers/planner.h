@@ -14,9 +14,10 @@
 #include <ros/node_handle.h>
 #include <eigen3/Eigen/Dense>
 
+#include <geometry_msgs/WrenchStamped.h>
+
 #include <panda_controllers/DesiredProjectTrajectory.h>
 #include <panda_controllers/EEpose.h>
-#include <panda_controllers/ExternalForces.h>
 // #include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
 #include "std_msgs/Float64MultiArray.h"
@@ -69,7 +70,7 @@ class planner_node{
         void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);
         // external forces
         ros::Subscriber sub_ext_forces;
-        void f_ext_Callback(const panda_controllers::ExternalForcesConstPtr& msg);
+        void f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg);
 
         // publishers
         ros::Publisher pub_impedance;
