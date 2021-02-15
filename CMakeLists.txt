@@ -73,7 +73,7 @@ add_library(${PROJECT_NAME}
   src/variable_impedance_controller.cpp #Backstepping controller
   src/project_impedance_controller.cpp #Project variable impedance controller
   src/planner.cpp #Planner
-  src/Jacobians.cpp
+  src/Jacobians_ee.cpp #end-effector Jacobians
 ) 
 
 add_dependencies(${PROJECT_NAME}

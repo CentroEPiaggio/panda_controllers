@@ -1,5 +1,5 @@
 #include <panda_controllers/project_impedance_controller.h>
-#include "utils/Jacobians.h"
+#include "utils/Jacobians_ee.h"
 #include <cmath>
 #include <math.h>
 
@@ -9,6 +9,11 @@
 #include <ros/ros.h>
 
 #include "utils/pseudo_inversion.h"
+
+#define   EE_X  0
+#define   EE_Y  0
+#define   EE_Z  0.1
+
 
 namespace panda_controllers {
 
@@ -269,7 +274,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   }
 
   // Compute Ja and NaN removal
-  get_Ja_proj(q_array, ja_array);
+  get_Ja_proj(q_array, EE_X, EE_Y, EE_Z, ja_array);
   // Eigen::Map<Eigen::Matrix<double,6,7,Eigen::RowMajor> > ja(ja_array);
   Eigen::Matrix<double,6,7> ja;
 
@@ -284,7 +289,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   }
 
   // Compute Ja_dot and NaN removal
-  get_Ja_dot_proj(q_array, dq_array,ja_dot_array);
+  get_Ja_dot_proj(q_array, dq_array, EE_X, EE_Y, EE_Z, ja_dot_array);
   Eigen::Matrix<double, 6, 7> ja_dot;
   for (int i=0; i<6; i++){
     for(int j=0; j<7; j++){
