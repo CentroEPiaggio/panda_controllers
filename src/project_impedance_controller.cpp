@@ -245,7 +245,6 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // publish mass and jacobian
   robot_state_msg.header.stamp = ros::Time::now();
   std::copy(mass_array.begin(), mass_array.end(), robot_state_msg.mass_matrix.begin());
-  //std::copy(jacobian_array.begin(), jacobian_array.end(), robot_state_msg.jacobian_matrix.begin());
 
   pub_robot_state_.publish(robot_state_msg);
 
