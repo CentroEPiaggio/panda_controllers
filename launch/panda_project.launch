@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<launch>
+    <!-- Panda params -->
+    <arg name="robot_ip" default="172.16.0.2"/>
+    <arg name="load_gripper" default="false"/>
+
+    <!-- Controller name -->
+    <arg name="controller" default="project_impedance_controller"/>
+    
+    <!-- Franka control node -->
+    <include file="$(find panda_controllers)/launch/panda_controller.launch" >
+        <arg name="robot_ip" value="$(arg robot_ip)" />
+        <arg name="load_gripper" value="$(arg load_gripper)" />
+        <arg name="controller_name" value="$(arg controller)" />
+    </include>
+
+    <!-- Load Gripper -->
+    <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
+        <arg name="robot_ip" value="$(arg robot_ip)" />
+    </include>
+
+    <!-- Load Gripper Close Node -->
+    <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/>
+
+    <!-- Bags record path -->
+    <!-- <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>
+    <arg name="record_topics" default="/variable_impedance_controller/desired_impedance 
+        /variable_impedance_controller/pos_error /franka_state_controller/F_ext /impedance_planning/bounds
+        /variable_impedance_controller/robot_state"/> -->
+
+    <!-- Load Rosbag record server -->
+    <!-- <include file="$(find record_ros)/launch/record_ros.launch" >
+        <arg name="path_save" value="$(arg record_path)" />
+        <arg name="topic" value="$(arg record_topics)" />
+    </include> -->
+    
+</launch>
