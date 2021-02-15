@@ -231,9 +231,6 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   franka::RobotState robot_state = state_handle_->getRobotState();         // robot state
   std::array<double, 49> mass_array = model_handle_->getMass();
   std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
-  std::array<double, 7> gravity_array = model_handle_->getGravity();
-  // std::array<double, 42> jacobian_array = model_handle_->getBodyJacobian(franka::Frame::kEndEffector);
-  std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
   
   // define Jacobian and Jacobian_dot for project impedance
   double ja_array[42];                  // define Ja matrix
@@ -248,15 +245,13 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // publish mass and jacobian
   robot_state_msg.header.stamp = ros::Time::now();
   std::copy(mass_array.begin(), mass_array.end(), robot_state_msg.mass_matrix.begin());
-  std::copy(jacobian_array.begin(), jacobian_array.end(), robot_state_msg.jacobian_matrix.begin());
+  //std::copy(jacobian_array.begin(), jacobian_array.end(), robot_state_msg.jacobian_matrix.begin());
 
   pub_robot_state_.publish(robot_state_msg);
 
   // convert to Eigen
   Eigen::Map<Eigen::Matrix<double, 7, 7> > mass(mass_array.data());                 // mass matrix [kg]
   Eigen::Map<Eigen::Matrix<double, 7, 1> > coriolis(coriolis_array.data());         // coriolis forces  [Nm]
-  Eigen::Map<Eigen::Matrix<double, 7, 1> > gravity(gravity_array.data());           // gravity forces [N]
-  Eigen::Map<Eigen::Matrix<double, 6, 7> > jacobian(jacobian_array.data());         // jacobian
   Eigen::Map<Eigen::Matrix<double, 7, 1> > q(robot_state.q.data());                 // joint positions  [rad]
   Eigen::Map<Eigen::Matrix<double, 7, 1> > dq(robot_state.dq.data());               // joint velocities [rad/s]
   Eigen::Map<Eigen::Matrix<double, 7, 1> > tau_J_d(robot_state.tau_J_d.data());     // previous cycle commanded torques [Nm]
@@ -277,7 +272,9 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 
   // Compute Ja and NaN removal
   get_Ja_proj(q_array, ja_array);
-  Eigen::Matrix<double, 6, 7> ja;
+  // Eigen::Map<Eigen::Matrix<double,6,7,Eigen::RowMajor> > ja(ja_array);
+  Eigen::Matrix<double,6,7> ja;
+
   for (int i=0; i<6; i++){
     for(int j=0; j<7; j++){
       if (std::isnan(ja_array[i*7+j])){
@@ -371,8 +368,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // from matlab: tau = (Ja')*F_tau + S*q_dot + tau_fric + G;
   //final tau in joint space
   tau_task << ja.transpose()*wrench_task 
-              + coriolis 
-              + gravity;
+              + coriolis;
 
   /*
   // Cartesian PD control with damping ratio = 1 - Cartesian desired Wrench as output
