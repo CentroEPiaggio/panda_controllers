@@ -79,7 +79,7 @@ variable_impedance_controller:
         - panda_joint7
     var_damp: true 
 
-    project_impedance_controller:
+project_impedance_controller:
     type: panda_controllers/ProjectImpedanceController
     arm_id: panda
     joint_names:

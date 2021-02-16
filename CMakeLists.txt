@@ -94,6 +94,7 @@ add_executable(trajectory_oo src/trajectory_oo.cpp) # in case of object oriented
 add_executable(planner src/planner.cpp)
 #add_executable(test_jac src/test_jac.cpp)
 add_executable(commands src/commands.cpp)
+
 ##
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
@@ -110,6 +111,7 @@ target_link_libraries(trajectory_oo ${PROJECT_NAME}) #In case of object oriented
 target_link_libraries(planner ${PROJECT_NAME})
 #target_link_libraries(test_jac ${PROJECT_NAME})
 target_link_libraries(commands ${PROJECT_NAME})
+
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}

@@ -15,23 +15,23 @@
     </include>
 
     <!-- Load Gripper -->
-    <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
+    <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
         <arg name="robot_ip" value="$(arg robot_ip)" />
-    </include>
+    </include> -->
 
     <!-- Load Gripper Close Node -->
-    <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/>
+    <!-- <node pkg="panda_controllers" name="gripper_control" type="gripper_control.py" output="screen"/> -->
 
     <!-- Bags record path -->
-    <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>
+    <!-- <arg name="record_path" default="/home/george/Desktop/Impedance_Planning/Experiments/Bags"/>
     <arg name="record_topics" default="/variable_impedance_controller/desired_impedance 
         /variable_impedance_controller/pos_error /franka_state_controller/F_ext /impedance_planning/bounds
-        /variable_impedance_controller/robot_state"/>
+        /variable_impedance_controller/robot_state"/> -->
 
     <!-- Load Rosbag record server -->
-    <include file="$(find record_ros)/launch/record_ros.launch" >
+    <!-- <include file="$(find record_ros)/launch/record_ros.launch" >
         <arg name="path_save" value="$(arg record_path)" />
         <arg name="topic" value="$(arg record_topics)" />
-    </include>
+    </include> -->
     
 </launch>

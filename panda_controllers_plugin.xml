@@ -18,11 +18,11 @@
    </description>
   </class>
   
-  <class name="panda_controllers/BackStepping" type="panda_controllers::BackStepping" base_class_type="controller_interface::ControllerBase">
+  <!-- <class name="panda_controllers/BackStepping" type="panda_controllers::BackStepping" base_class_type="controller_interface::ControllerBase">
    <description>
       Backstepping controller.
    </description>
-  </class>
+  </class> -->
 
   <class name="panda_controllers/VariableImpedanceController" type="panda_controllers::VariableImpedanceController" base_class_type="controller_interface::ControllerBase">
    <description>
