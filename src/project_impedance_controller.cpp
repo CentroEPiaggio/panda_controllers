@@ -155,11 +155,13 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   cartesian_mass_.setIdentity();
 
   // SET MATRICES
-  cartesian_stiffness_.topLeftCorner(3, 3) << 200*Eigen::Matrix3d::Identity();
-  cartesian_stiffness_.bottomRightCorner(3, 3) << 20*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.topLeftCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.bottomRightCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
+  // cartesian_stiffness_(1,1) = 100;
   // Damping ratio = 1
-  cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(200)*Eigen::Matrix3d::Identity();
-  cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(20)*Eigen::Matrix3d::Identity();
+  cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(100)*Eigen::Matrix3d::Identity();
+  cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(100)*Eigen::Matrix3d::Identity();
+  // cartesian_damping_(1,1) = 2.0 * sqrt(100);
   
   tau_limit << 87, 87, 87, 87, 12, 12, 12;  //joint torques limit vector
 
@@ -208,7 +210,7 @@ void ProjectImpedanceController::starting(const ros::Time& /*time*/) {
   double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
   double psi = atan2(R(2,1),R(2,2));
 
-  // orientation
+  // orientation // GABICCINI (ZYX) but appended as (x=Z, y=Y, z=X)
   or_des << phi, theta, psi;
 
   // set nullspace equilibrium configuration to initial q  (q_d_nullspace_ = q_initial;)
@@ -316,8 +318,8 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
   double psi = atan2(R(2,1),R(2,2));
 
-  // orientation
-  Eigen::Matrix<double, 3, 1> or_proj = {psi, theta, phi};
+  // orientation // GABICCINI (ZYX) but appended as (x=Z, y=Y, z=X)
+  Eigen::Matrix<double, 3, 1> or_proj = {phi, theta, psi};
 
 
   //-----------------------------------------------------------------------//
@@ -424,20 +426,26 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
       tau_d = tau_d / ith_torque_rate;
   }
 
-  // std::cout << "Error:" << std::endl;
-  // std::cout << error << std::endl;
+  std::cout << "Error:" << std::endl;
+  std::cout << error << std::endl;
 
   // std::cout << "dError:" << std::endl;
   // std::cout << derror << std::endl;
 
-  // std::cout << "M1:" << std::endl;
-  // std::cout << (task_mass*cartesian_mass_.inverse()) << std::endl;
+  Eigen::Matrix<double,6,1> temp_erroro;
+  temp_erroro << 0, 0, 0, error(3), error(4), error(5);
+  Eigen::Matrix<double,6,1> temp_errorp;
+  temp_errorp << error(0), error(1), error(2), 0, 0, 0;
+  std::cout << "Mo:" << std::endl;
+  std::cout << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_erroro << std::endl;
+  std::cout << "Mp:" << std::endl;
+  std::cout << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_errorp << std::endl;
 
-  std::cout << "Wrench:" << std::endl;
-  std::cout << wrench_task << std::endl;
+  // std::cout << "Wrench:" << std::endl;
+  // std::cout << wrench_task << std::endl;
 
-  std::cout << "Ja:" << std::endl;
-  std::cout << ja << std::endl;
+  // std::cout << "Ja:" << std::endl;
+  // std::cout << ja << std::endl;
 
   // std::cout << "Commanded torque after sat:" << std::endl;
   // std::cout << tau_d << std::endl;
@@ -478,10 +486,10 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   postion_endeff.pose.position.y = position.y();
   postion_endeff.pose.position.z = position.z();
   postion_endeff.pose.orientation.w = 0.0;
-  // GABICCINI (ZYX)
-  postion_endeff.pose.orientation.x = or_proj(2);
+  // GABICCINI (ZYX) but appended as (x=Z, y=Y, z=X)
+  postion_endeff.pose.orientation.x = or_proj(0);
   postion_endeff.pose.orientation.y = or_proj(1);
-  postion_endeff.pose.orientation.z = or_proj(0);
+  postion_endeff.pose.orientation.z = or_proj(2);
 
   pub_endeffector_pose_.publish(postion_endeff);
 

@@ -2,6 +2,10 @@
 #include <iostream>
 #include <eigen3/Eigen/Dense>
 
+#include <unistd.h>
+#include <cstdlib>
+#include <signal.h>
+
 #include <geometry_msgs/PoseStamped.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
@@ -13,6 +17,13 @@ using namespace std;
 
 Eigen::Vector3d pos_d;
 Eigen::Vector3d or_d;
+
+// Define the function to be called when ctrl-c (SIGINT) is sent to process
+void signal_callback_handler(int signum) {
+   cout << "Caught signal " << signum << endl;
+   // Terminate program
+   exit(signum);
+}
 
 void poseCallback(
     const geometry_msgs::PoseStampedConstPtr& msg) {
@@ -37,13 +48,16 @@ int main(int argc, char **argv)
   panda_controllers::DesiredProjectTrajectory traj;
    
   double dx, dy, dz, dphi, dpsi, dtheta;
+
+  signal(SIGINT, signal_callback_handler);
+
   while (ros::ok())
   {
-    cout<<"delta_pos: enter each coeff"<<endl;
+    cout<<"delta_pos: (x y z)"<<endl;
     cin>>dx;
     cin>>dy;
     cin>>dz;
-    cout<<"delta_or: enter each coeff"<<endl;
+    cout<<"delta_or: (phi (z) thetha (y) psi (x))"<<endl;
     cin>>dpsi;
     cin>>dtheta;
     cin>>dphi;
