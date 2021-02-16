@@ -12,7 +12,7 @@
 
 #define   EE_X  0
 #define   EE_Y  0
-#define   EE_Z  0.1
+#define   EE_Z  0
 
 
 namespace panda_controllers {
@@ -155,9 +155,11 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   cartesian_mass_.setIdentity();
 
   // SET MATRICES
-  cartesian_stiffness_ << 200 * Eigen::Matrix3d::Identity();
-  cartesian_damping_ << 2.0 * sqrt(200)*Eigen::Matrix3d::Identity();
-  cartesian_mass_ << 1.0 * Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.topLeftCorner(3, 3) << 200*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.bottomRightCorner(3, 3) << 20*Eigen::Matrix3d::Identity();
+  // Damping ratio = 1
+  cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(200)*Eigen::Matrix3d::Identity();
+  cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(20)*Eigen::Matrix3d::Identity();
   
   tau_limit << 87, 87, 87, 87, 12, 12, 12;  //joint torques limit vector
 
@@ -309,12 +311,13 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // define R matrix for orientation
   Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
 
-  double phi = atan2(R(1,0),R(0,0));
+  // GABICCINI (ZYX)
+  double phi = atan2(R(1,0),R(0,0));                          
   double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
   double psi = atan2(R(2,1),R(2,2));
 
   // orientation
-  Eigen::Matrix<double, 3, 1> or_proj = {phi, theta, psi};
+  Eigen::Matrix<double, 3, 1> or_proj = {psi, theta, phi};
 
 
   //-----------------------------------------------------------------------//
@@ -365,6 +368,9 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
     }
   }
 
+  // SETTING Fext to ZERO!!! REMOVE THIS!
+  F_ext.setZero();
+
   // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
   // project impedance controller
   wrench_task <<  task_mass*ddpose_d_ 
@@ -396,20 +402,20 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
                           - (2.0 * sqrt(nullspace_stiffness_)) * dq);       // derivative term
 
   // Desired torque
-  tau_d << tau_task + tau_nullspace;
-  // tau_d << tau_task;
+  // tau_d << tau_task + tau_nullspace;
+  tau_d << tau_task;
 
-  std::cout << "Commanded torque:" << std::endl;
-  std::cout << tau_d << std::endl;
+  // std::cout << "Commanded torque:" << std::endl;
+  // std::cout << tau_d << std::endl;
 
-  std::cout << "Internal torque:" << std::endl;
-  std::cout << tau_J_d << std::endl;
+  // std::cout << "Internal torque:" << std::endl;
+  // std::cout << tau_J_d << std::endl;
 
   // Saturate torque rate to avoid discontinuities
   tau_d << saturateTorqueRate(tau_d, tau_J_d);
 
-  std::cout << "Commanded torque 2:" << std::endl;
-  std::cout << tau_d << std::endl;
+  // std::cout << "Commanded torque 2:" << std::endl;
+  // std::cout << tau_d << std::endl;
 
   // Saturate torque to avoid torque limit
   for (int i = 0; i < 7; ++i){
@@ -424,17 +430,17 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // std::cout << "dError:" << std::endl;
   // std::cout << derror << std::endl;
 
-  // std::cout << "T1:" << std::endl;
-  // std::cout << (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext << std::endl;
+  // std::cout << "M1:" << std::endl;
+  // std::cout << (task_mass*cartesian_mass_.inverse()) << std::endl;
 
-  // std::cout << "T2:" << std::endl;
-  // std::cout << (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6)) << std::endl;
+  std::cout << "Wrench:" << std::endl;
+  std::cout << wrench_task << std::endl;
 
-  // std::cout << "F_ext:" << std::endl;
-  // std::cout << F_ext << std::endl;
+  std::cout << "Ja:" << std::endl;
+  std::cout << ja << std::endl;
 
-  std::cout << "Commanded torque after sat:" << std::endl;
-  std::cout << tau_d << std::endl;
+  // std::cout << "Commanded torque after sat:" << std::endl;
+  // std::cout << tau_d << std::endl;
 
   //set arm command torques
   for (size_t i = 0; i < 7; ++i)
@@ -471,10 +477,11 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   postion_endeff.pose.position.x = position.x();
   postion_endeff.pose.position.y = position.y();
   postion_endeff.pose.position.z = position.z();
-  postion_endeff.pose.orientation.w = orientation.w();
-  postion_endeff.pose.orientation.x = orientation.x();
-  postion_endeff.pose.orientation.y = orientation.y();
-  postion_endeff.pose.orientation.z = orientation.z();
+  postion_endeff.pose.orientation.w = 0.0;
+  // GABICCINI (ZYX)
+  postion_endeff.pose.orientation.x = or_proj(2);
+  postion_endeff.pose.orientation.y = or_proj(1);
+  postion_endeff.pose.orientation.z = or_proj(0);
 
   pub_endeffector_pose_.publish(postion_endeff);
 
