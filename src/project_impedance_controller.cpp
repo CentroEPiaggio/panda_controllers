@@ -14,11 +14,18 @@
 #define   EE_Y  0
 #define   EE_Z  0
 
+/*
+modifiche:
+  aumentata massa desiderata a 10 kg in task space
+ 
+da fare:
+  provare il debug
+  provare ad usare una massa desiderata come diagonale della massa vera
+*/
+
 
 namespace panda_controllers {
 
-// added "extern" 
-// puo' dare noia utilizzare la stessa stringa per più controlli.cpp? 
 extern std::string name_space;
 
 //---------------------------------------------------------------//
@@ -155,6 +162,7 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   cartesian_mass_.setIdentity();
 
   // SET MATRICES
+  cartesian_mass_ << cartesian_mass_*10; //---------------------------------------------------------------AUMENTATA MASSA 
   cartesian_stiffness_.topLeftCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
   cartesian_stiffness_.bottomRightCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
   // cartesian_stiffness_(1,1) = 100;
@@ -245,7 +253,6 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   double ja_dot_array[42];              // define Ja_dot matrix
 
  
-
   //----------------------------------------------------------------------//
   /*                      PUBLISH MATRICES FOR PLANNING                  */
   //----------------------------------------------------------------------//
@@ -334,7 +341,8 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   error.tail(3) << or_proj - or_des;
 
   // velocity error
-  Eigen::Matrix<double, 6, 1> dpose = ja * dq;
+  Eigen::Matrix<double, 6, 1> dpose;
+  dpose << ja * dq;
   derror.head(3) << dpose.head(3) - dpose_d_.head(3);
   derror.tail(3) << ja.bottomLeftCorner(3,7)*dq - dpose_d_.tail(3);
 

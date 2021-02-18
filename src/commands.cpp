@@ -71,6 +71,20 @@ int main(int argc, char **argv)
     traj.pose.orientation.y = or_d.y() + dtheta;
     traj.pose.orientation.z = or_d.z() + dphi;
     
+    traj.velocity.position.x = 0;
+    traj.velocity.position.y = 0;
+    traj.velocity.position.z = 0;
+    traj.velocity.orientation.x = 0;
+    traj.velocity.orientation.y = 0;
+    traj.velocity.orientation.z = 0;
+
+    traj.acceleration.position.x = 0;
+    traj.acceleration.position.y = 0;
+    traj.acceleration.position.z = 0;
+    traj.acceleration.orientation.x = 0;
+    traj.acceleration.orientation.y = 0;
+    traj.acceleration.orientation.z = 0;
+
     pub_cmd.publish(traj);
 
     loop_rate.sleep();
