@@ -366,6 +366,14 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   //                    COMPUTE IMPEDANCE CONTROL                     //
   //------------------------------------------------------------------//
 
+
+  // SETTING Fext to ZERO!!!   -----------------------------------------------------------------------   REMOVE THIS!   -------
+  F_ext.setZero();
+
+  //==========================================================================================//
+  //                           Controllo ad impedenza 6 dof                                   //
+  //==========================================================================================//
+
   // allocate variables
   Eigen::VectorXd wrench_task(6), tau_task(7), tau_nullspace(7), tau_d(7);
 
@@ -387,13 +395,6 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
       }
     }
   }
-
-  // SETTING Fext to ZERO!!!   -----------------------------------------------------------------------   REMOVE THIS!   -------
-  F_ext.setZero();
-
-  //==========================================================================================//
-  //                           Controllo ad impedenza 6 dof                                   //
-  //==========================================================================================//
 
   // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
   // project impedance controller
@@ -430,18 +431,17 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // tau_d << tau_task + tau_nullspace;
   tau_d << tau_task;
   //
-  //=========================================================================================
+  //===========================| Fine controllo impedenza 6 dof |==============================
   //
 
 
   //==========================================================================================//
-  //              Controllo ad impedenza positione, quaternioni orientazione                  //
+  //              Controllo ad impedenza posizione, quaternioni orientazione                  //
   //==========================================================================================//
-  // da fare se necessario
+  // da fare se serve
   //
   //=========================================================================================
   //
-
 
 
   // std::cout << "Commanded torque:" << std::endl;
