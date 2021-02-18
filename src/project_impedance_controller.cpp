@@ -1,5 +1,6 @@
 #include <panda_controllers/project_impedance_controller.h>
 #include "utils/Jacobians_ee.h"
+#include "utils/FrictionTorque.h"
 #include <cmath>
 #include <math.h>
 
@@ -21,6 +22,8 @@ modifiche:
 da fare:
   provare il debug
   provare ad usare una massa desiderata come diagonale della massa vera
+  provare tau_fric
+  controllare bene il controllo
 */
 
 
@@ -247,11 +250,12 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   franka::RobotState robot_state = state_handle_->getRobotState();         // robot state
   std::array<double, 49> mass_array = model_handle_->getMass();
   std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
+  double tau_fric_array[7];       // joint friction torque [Cognetti]
   
   // define Jacobian and Jacobian_dot for project impedance
   double ja_array[42];                  // define Ja matrix
   double ja_dot_array[42];              // define Ja_dot matrix
-
+  
  
   //----------------------------------------------------------------------//
   /*                      PUBLISH MATRICES FOR PLANNING                  */
@@ -269,13 +273,14 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   Eigen::Map<Eigen::Matrix<double, 7, 1> > q(robot_state.q.data());                 // joint positions  [rad]
   Eigen::Map<Eigen::Matrix<double, 7, 1> > dq(robot_state.dq.data());               // joint velocities [rad/s]
   Eigen::Map<Eigen::Matrix<double, 7, 1> > tau_J_d(robot_state.tau_J_d.data());     // previous cycle commanded torques [Nm]
+  Eigen::Matrix<double,7,1> tau_fric;                                               // joint friction forces vector
   Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));       // ee-base homog. transf. matrix
   Eigen::Vector3d position(transform.translation());                                // ee-base position [m]
   Eigen::Quaterniond orientation(transform.linear());                               // ee-base orientation
 
 
   //---------------------------------------------------------------------//
-  //                        COMPUTE Ja and Ja_dot                        //
+  //                    COMPUTE Ja, Ja_dot and tau_fric                  //
   //---------------------------------------------------------------------//
   
   double q_array[7], dq_array[7];
@@ -310,6 +315,11 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
         ja_dot(i,j) = ja_dot_array[i*7+j];
       }
     }
+  }
+
+  get_friction_torque(dq_array, tau_fric_array);
+  for(int i=0; i<7; i++){
+    tau_fric(i) = tau_fric_array[i];
   }
 
   // std::cout << "Jacobian:" << std::endl;
@@ -378,8 +388,12 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
     }
   }
 
-  // SETTING Fext to ZERO!!! REMOVE THIS!
+  // SETTING Fext to ZERO!!!   -----------------------------------------------------------------------   REMOVE THIS!   -------
   F_ext.setZero();
+
+  //==========================================================================================//
+  //                           Controllo ad impedenza 6 dof                                   //
+  //==========================================================================================//
 
   // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
   // project impedance controller
@@ -392,6 +406,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   //final tau in joint space
   tau_task << ja.transpose()*wrench_task 
               + coriolis;
+              //+ tau_fric;
 
   /*
   // Cartesian PD control with damping ratio = 1 - Cartesian desired Wrench as output
@@ -414,6 +429,20 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // Desired torque
   // tau_d << tau_task + tau_nullspace;
   tau_d << tau_task;
+  //
+  //=========================================================================================
+  //
+
+
+  //==========================================================================================//
+  //              Controllo ad impedenza positione, quaternioni orientazione                  //
+  //==========================================================================================//
+  // da fare se necessario
+  //
+  //=========================================================================================
+  //
+
+
 
   // std::cout << "Commanded torque:" << std::endl;
   // std::cout << tau_d << std::endl;

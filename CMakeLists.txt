@@ -74,6 +74,7 @@ add_library(${PROJECT_NAME}
   src/project_impedance_controller.cpp #Project variable impedance controller
   src/planner.cpp #Planner
   src/Jacobians_ee.cpp #end-effector Jacobians
+  src/FrictionTorque.cpp #friction torque vector
 ) 
 
 add_dependencies(${PROJECT_NAME}
