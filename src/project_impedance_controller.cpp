@@ -66,6 +66,7 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
   pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
   pub_impedance_ =        node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
+  pub_info_debug =        node_handle.advertise<panda_controllers::InfoDebug>(name_space+"/info_debug", 1);
 
   //------------------------------------------------------------//
   //              INITIALIZE SERVICE CLIENTS                    //
@@ -165,13 +166,13 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   cartesian_mass_.setIdentity();
 
   // SET MATRICES
-  cartesian_mass_ << cartesian_mass_*10; //---------------------------------------------------------------AUMENTATA MASSA 
+  cartesian_mass_ << cartesian_mass_*1; //---------------------------------------------------------------AUMENTATA MASSA 
   cartesian_stiffness_.topLeftCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
-  cartesian_stiffness_.bottomRightCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.bottomRightCorner(3, 3) << 500*Eigen::Matrix3d::Identity();
   // cartesian_stiffness_(1,1) = 100;
   // Damping ratio = 1
   cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(100)*Eigen::Matrix3d::Identity();
-  cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(100)*Eigen::Matrix3d::Identity();
+  cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(500)*Eigen::Matrix3d::Identity();
   // cartesian_damping_(1,1) = 2.0 * sqrt(100);
   
   tau_limit << 87, 87, 87, 87, 12, 12, 12;  //joint torques limit vector
@@ -463,8 +464,8 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
       tau_d = tau_d / ith_torque_rate;
   }
 
-  std::cout << "Error:" << std::endl;
-  std::cout << error << std::endl;
+  // std::cout << "Error:" << std::endl;
+  // std::cout << error << std::endl;
 
   // std::cout << "dError:" << std::endl;
   // std::cout << derror << std::endl;
@@ -473,10 +474,11 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   temp_erroro << 0, 0, 0, error(3), error(4), error(5);
   Eigen::Matrix<double,6,1> temp_errorp;
   temp_errorp << error(0), error(1), error(2), 0, 0, 0;
-  std::cout << "Mo:" << std::endl;
-  std::cout << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_erroro << std::endl;
-  std::cout << "Mp:" << std::endl;
-  std::cout << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_errorp << std::endl;
+  // std::cout << "Mo:" << std::endl;
+  Eigen::Matrix<double,7,1> Mo = ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_erroro;
+  Eigen::Matrix<double,7,1> Mp = ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_errorp;
+  //std::cout << "Mp:" << std::endl;
+  // std::cout << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_errorp << std::endl;
 
   // std::cout << "Wrench:" << std::endl;
   // std::cout << wrench_task << std::endl;
@@ -536,6 +538,19 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 
   pub_ee_pose_.publish(ee_pos_msg);
 
+  // debug information
+  info_debug_msg.pose_error.position.y = error[1];
+  info_debug_msg.pose_error.position.x = error[0];
+  info_debug_msg.pose_error.position.z = error[2];
+  info_debug_msg.pose_error.orientation.x = error[5];
+  info_debug_msg.pose_error.orientation.y = error[4];
+  info_debug_msg.pose_error.orientation.z = error[3];
+  for(int i=0; i<7;i++){
+    info_debug_msg.tau_pos[i] = Mp(i);
+    info_debug_msg.tau_or[i] = Mo(i);
+    info_debug_msg.tau_internal[i] = tau_J_d(i);
+  }
+  pub_info_debug.publish(info_debug_msg);
 
 
   // Current impedance

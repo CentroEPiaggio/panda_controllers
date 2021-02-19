@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(panda_controllers)
 
 set(CMAKE_BUILD_TYPE Release)
-#set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +33,7 @@ add_message_files(FILES
   DesiredTrajectory.msg
   DesiredProjectTrajectory.msg
   EEpose.msg
+  InfoDebug.msg
 )
 
 ##
@@ -89,8 +90,8 @@ add_dependencies(${PROJECT_NAME}
 ##
 add_executable(command_publisher src/command_publisher.cpp)
 
-add_executable(trajectory src/trajectory.cpp) # in case of not object oriented method
-add_executable(trajectory_oo src/trajectory_oo.cpp) # in case of object oriented method
+# add_executable(trajectory src/trajectory.cpp) # in case of not object oriented method
+# add_executable(trajectory_oo src/trajectory_oo.cpp) # in case of object oriented method
 
 add_executable(planner src/planner.cpp)
 #add_executable(test_jac src/test_jac.cpp)
@@ -106,8 +107,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(command_publisher ${PROJECT_NAME})
 
-target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriented method
-target_link_libraries(trajectory_oo ${PROJECT_NAME}) #In case of object oriented method
+# target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriented method
+# target_link_libraries(trajectory_oo ${PROJECT_NAME}) #In case of object oriented method
 
 target_link_libraries(planner ${PROJECT_NAME})
 #target_link_libraries(test_jac ${PROJECT_NAME})

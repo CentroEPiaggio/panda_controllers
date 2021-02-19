@@ -27,6 +27,7 @@
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
 #include <panda_controllers/EEpose.h>
+#include <panda_controllers/InfoDebug.h>
 // #include <panda_controllers/DesiredTrajectory.h>
 #include <panda_controllers/DesiredImpedance.h>
 #include <panda_controllers/RobotState.h>
@@ -106,11 +107,14 @@ class ProjectImpedanceController : public controller_interface::MultiInterfaceCo
   ros::Publisher pub_ee_pose_;
   ros::Publisher pub_robot_state_;
   ros::Publisher pub_impedance_;
+  ros::Publisher pub_info_debug;
+  
 
   geometry_msgs::TwistStamped   pos_error_msg;
   geometry_msgs::WrenchStamped  force_cmd_msg;  
   panda_controllers::RobotState robot_state_msg;
   panda_controllers::EEpose ee_pos_msg;
+  panda_controllers::InfoDebug info_debug_msg;
   
 };
 

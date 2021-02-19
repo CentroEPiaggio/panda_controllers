@@ -10,9 +10,9 @@
 
 #include "panda_controllers/planner.h"
 
-#define     F_MAX       2.0         // [N]
-#define     E_MAX       0.01        // [m]
-#define     F_INT_MAX   5.0         // [N]
+#define     F_MAX       5.0         // [N]
+#define     E_MAX       0.05        // [m]
+#define     F_INT_MAX   7.0         // [N]
 #define     MASS        1.0         // [kg]
 #define     BETA        0.98        // []
 #define     A0          0.99        // []
@@ -49,6 +49,9 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // set ki in order to match a desired interaction force with the
     // envirorment, and store interaction's position when detected
     // X axes
+    std::cout << "F_ext: " << F_ext << std::endl;
+    std::cout << "inter: " << inter << std::endl;
+
     if (inter == 1){
         // detection of an interaction 
         if (std::abs(F_ext-F_comp) > F_MAX){
@@ -183,6 +186,9 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
             }
         }
     }
+
+    std::cout << "k: " << k << std::endl;
+
     return k;
 }
 
@@ -216,19 +222,19 @@ bool planner_node::init(ros::NodeHandle& node_handle){
   //----------------INITIALIZE SUBSCRIBERS AND PUBLISHERS------//
 
   sub_des_traj_proj_ = node_handle.subscribe(
-      name_space+"/desired_project_trajectory", 10, &planner_node::desiredProjectTrajectoryCallback, this,
+      "/project_impedance_controller/desired_project_trajectory", 10, &planner_node::desiredProjectTrajectoryCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ee_pose = node_handle.subscribe(
-      name_space+"/ee_pose", 1, &planner_node::ee_pose_Callback, this,
+      "/project_impedance_controller/ee_pose", 1, &planner_node::ee_pose_Callback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ext_forces = node_handle.subscribe(
-      name_space+"/f_ext", 1, &planner_node::f_ext_Callback, this,
+      "/franka_state_controller/F_ext", 1, &planner_node::f_ext_Callback, this,
       ros::TransportHints().reliable().tcpNoDelay());
   
 
-  pub_impedance = node_handle.advertise<panda_controllers::DesiredImpedance>(name_space+"/desired_impedance_project", 1);
+  pub_impedance = node_handle.advertise<panda_controllers::DesiredImpedance>("/project_impedance_controller/desired_impedance_project", 1);
   
 
   /*-------------------INITIALIZE VARIABLES---------------*/
@@ -236,6 +242,9 @@ bool planner_node::init(ros::NodeHandle& node_handle){
    pos_d.setZero();                      
    dpos_d.setZero();
    interaction.setZero();
+   interaction(0)=1;
+   interaction(1)=1;
+   interaction(2)=1;
    compensation.setZero();
 
   return true;
@@ -251,6 +260,8 @@ void planner_node::update() {
         desired_impedance_msg.stiffness_matrix[i] = K[i];
         desired_impedance_msg.damping_matrix[i] = D[i];
     }
+
+    desired_impedance_msg.header.stamp = ros::Time::now();
 
     pub_impedance.publish(desired_impedance_msg);
 }
