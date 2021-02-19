@@ -43,14 +43,16 @@ int planner_class::sign(double x){
         return 1;
 }
 
+
+
 double planner_class::planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp){
 
     // INTERACTION
     // set ki in order to match a desired interaction force with the
     // envirorment, and store interaction's position when detected
     // X axes
-    std::cout << "F_ext: " << F_ext << std::endl;
-    std::cout << "inter: " << inter << std::endl;
+    // std::cout << "F_ext: " << F_ext << std::endl;
+    // std::cout << "inter: " << inter << std::endl;
 
     if (inter == 1){
         // detection of an interaction 
@@ -187,7 +189,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }
     }
 
-    std::cout << "k: " << k << std::endl;
+    // std::cout << "k: " << k << std::endl;
 
     return k;
 }
@@ -226,7 +228,7 @@ bool planner_node::init(ros::NodeHandle& node_handle){
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ee_pose = node_handle.subscribe(
-      "/project_impedance_controller/ee_pose", 1, &planner_node::ee_pose_Callback, this,
+      "/project_impedance_controller/franka_ee_pose", 1, &planner_node::ee_pose_Callback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ext_forces = node_handle.subscribe(
@@ -242,10 +244,14 @@ bool planner_node::init(ros::NodeHandle& node_handle){
    pos_d.setZero();                      
    dpos_d.setZero();
    interaction.setZero();
-   interaction(0)=1;
-   interaction(1)=1;
-   interaction(2)=1;
+//    interaction(0)=1;
+//    interaction(1)=1;
+//    interaction(2)=1;
    compensation.setZero();
+
+   compensation(0)=1;
+   compensation(1)=1;
+   compensation(2)=1;
 
   return true;
 }
@@ -255,6 +261,13 @@ void planner_node::update() {
     double ky_f = planner_y.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(1), ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2), ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
     interpolator(kx_f,ky_f,kz_f);
+
+    std::cout << "x_real: " << ee_pos(0) << "  x_des: " << pos_d(0) << std::endl;
+    std::cout << "y_real: " << ee_pos(1) << "  y_des: " << pos_d(1) << std::endl;
+    std::cout << "z_real: " << ee_pos(2) << "  z_des: " << pos_d(2) << std::endl;
+
+
+
 
     for ( int i = 0; i <36; i++){
         desired_impedance_msg.stiffness_matrix[i] = K[i];
@@ -325,7 +338,7 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
 
 
 //-----------------------CALLBACKS-------------------------//
-void planner_node::ee_pose_Callback(const panda_controllers::EEposeConstPtr& msg) {
+void planner_node::ee_pose_Callback(const geometry_msgs::PoseStampedConstPtr& msg) {
   
     ee_pos << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
 }

@@ -15,6 +15,7 @@
 #include <eigen3/Eigen/Dense>
 
 #include <geometry_msgs/WrenchStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
 #include <panda_controllers/EEpose.h>
@@ -64,7 +65,7 @@ class planner_node{
         // subscribers
         // end-effector position
         ros::Subscriber sub_ee_pose;
-        void ee_pose_Callback(const panda_controllers::EEposeConstPtr& msg);
+        void ee_pose_Callback(const geometry_msgs::PoseStampedConstPtr& msg);
         // trajectory
         ros::Subscriber sub_des_traj_proj_;
         void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);

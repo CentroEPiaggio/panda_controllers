@@ -68,6 +68,7 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
   pub_impedance_ =        node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
   pub_info_debug =        node_handle.advertise<panda_controllers::InfoDebug>(name_space+"/info_debug", 1);
 
+
   //------------------------------------------------------------//
   //              INITIALIZE SERVICE CLIENTS                    //
   //------------------------------------------------------------//
@@ -431,6 +432,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   // Desired torque
   // tau_d << tau_task + tau_nullspace;
   tau_d << tau_task;
+ 
   //
   //===========================| Fine controllo impedenza 6 dof |==============================
   //
@@ -529,14 +531,9 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
   postion_endeff.pose.orientation.x = or_proj(0);
   postion_endeff.pose.orientation.y = or_proj(1);
   postion_endeff.pose.orientation.z = or_proj(2);
-
+  
   pub_endeffector_pose_.publish(postion_endeff);
 
-  ee_pos_msg.pose.position.x = position(0);
-  ee_pos_msg.pose.position.y = position(1);
-  ee_pos_msg.pose.position.z = position(2);
-
-  pub_ee_pose_.publish(ee_pos_msg);
 
   // debug information
   info_debug_msg.pose_error.position.y = error[1];

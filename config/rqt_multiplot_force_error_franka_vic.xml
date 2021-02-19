@@ -104,8 +104,8 @@
                                 </y_axis>
                             </axes>
                             <color>
-                                <custom_color>#000000</custom_color>
-                                <type>0</type>
+                                <custom_color>#0055ff</custom_color>
+                                <type>1</type>
                             </color>
                             <data>
                                 <circular_buffer_capacity>1000</circular_buffer_capacity>
@@ -125,6 +125,57 @@
                             <subscriber_queue_size>100</subscriber_queue_size>
                             <title>y force</title>
                         </curve_1>
+                        <curve_2>
+                            <axes>
+                                <x_axis>
+                                    <field>header/stamp</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/franka_state_controller/F_ext</topic>
+                                    <type>geometry_msgs/WrenchStamped</type>
+                                </x_axis>
+                                <y_axis>
+                                    <field>wrench/force/z</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/franka_state_controller/F_ext</topic>
+                                    <type>geometry_msgs/WrenchStamped</type>
+                                </y_axis>
+                            </axes>
+                            <color>
+                                <custom_color>#000000</custom_color>
+                                <type>0</type>
+                            </color>
+                            <data>
+                                <circular_buffer_capacity>1000</circular_buffer_capacity>
+                                <time_frame_length>10</time_frame_length>
+                                <type>0</type>
+                            </data>
+                            <style>
+                                <lines_interpolate>false</lines_interpolate>
+                                <pen_style>1</pen_style>
+                                <pen_width>1</pen_width>
+                                <render_antialias>false</render_antialias>
+                                <steps_invert>false</steps_invert>
+                                <sticks_baseline>0</sticks_baseline>
+                                <sticks_orientation>2</sticks_orientation>
+                                <type>0</type>
+                            </style>
+                            <subscriber_queue_size>100</subscriber_queue_size>
+                            <title>z force</title>
+                        </curve_2>
                     </curves>
                     <legend>
                         <visible>true</visible>
@@ -162,11 +213,11 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/pos_error</topic>
-                                    <type>geometry_msgs/TwistStamped</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>twist/linear/x</field>
+                                    <field>stiffness_matrix/0</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
@@ -175,12 +226,12 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/pos_error</topic>
-                                    <type>geometry_msgs/TwistStamped</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </y_axis>
                             </axes>
                             <color>
-                                <custom_color>#005500</custom_color>
+                                <custom_color>#b90508</custom_color>
                                 <type>1</type>
                             </color>
                             <data>
@@ -191,7 +242,7 @@
                             <style>
                                 <lines_interpolate>false</lines_interpolate>
                                 <pen_style>1</pen_style>
-                                <pen_width>3</pen_width>
+                                <pen_width>2</pen_width>
                                 <render_antialias>false</render_antialias>
                                 <steps_invert>false</steps_invert>
                                 <sticks_baseline>0</sticks_baseline>
@@ -199,7 +250,7 @@
                                 <type>0</type>
                             </style>
                             <subscriber_queue_size>100</subscriber_queue_size>
-                            <title>x error</title>
+                            <title>STIFF_X</title>
                         </curve_0>
                         <curve_1>
                             <axes>
@@ -213,11 +264,11 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/pos_error</topic>
-                                    <type>geometry_msgs/TwistStamped</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>twist/linear/y</field>
+                                    <field>stiffness_matrix/7</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
@@ -226,12 +277,12 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/pos_error</topic>
-                                    <type>geometry_msgs/TwistStamped</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </y_axis>
                             </axes>
                             <color>
-                                <custom_color>#aa007f</custom_color>
+                                <custom_color>#3615df</custom_color>
                                 <type>1</type>
                             </color>
                             <data>
@@ -242,7 +293,7 @@
                             <style>
                                 <lines_interpolate>false</lines_interpolate>
                                 <pen_style>1</pen_style>
-                                <pen_width>3</pen_width>
+                                <pen_width>2</pen_width>
                                 <render_antialias>false</render_antialias>
                                 <steps_invert>false</steps_invert>
                                 <sticks_baseline>0</sticks_baseline>
@@ -250,14 +301,65 @@
                                 <type>0</type>
                             </style>
                             <subscriber_queue_size>100</subscriber_queue_size>
-                            <title>y error</title>
+                            <title>STIFF_Y</title>
                         </curve_1>
+                        <curve_2>
+                            <axes>
+                                <x_axis>
+                                    <field>header/stamp</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </x_axis>
+                                <y_axis>
+                                    <field>stiffness_matrix/14</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </y_axis>
+                            </axes>
+                            <color>
+                                <custom_color>#19930b</custom_color>
+                                <type>1</type>
+                            </color>
+                            <data>
+                                <circular_buffer_capacity>1000</circular_buffer_capacity>
+                                <time_frame_length>10</time_frame_length>
+                                <type>0</type>
+                            </data>
+                            <style>
+                                <lines_interpolate>false</lines_interpolate>
+                                <pen_style>1</pen_style>
+                                <pen_width>2</pen_width>
+                                <render_antialias>false</render_antialias>
+                                <steps_invert>false</steps_invert>
+                                <sticks_baseline>0</sticks_baseline>
+                                <sticks_orientation>2</sticks_orientation>
+                                <type>0</type>
+                            </style>
+                            <subscriber_queue_size>100</subscriber_queue_size>
+                            <title>STIFF_Z</title>
+                        </curve_2>
                     </curves>
                     <legend>
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Errors</title>
+                    <title>STIFFNESS</title>
                 </column_0>
             </row_1>
             <row_2>
@@ -280,8 +382,8 @@
                         <curve_0>
                             <axes>
                                 <x_axis>
-                                    <field></field>
-                                    <field_type>1</field_type>
+                                    <field>header/stamp</field>
+                                    <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
                                         <absolute_minimum>0</absolute_minimum>
@@ -289,11 +391,11 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/current_impedance</topic>
-                                    <type>std_msgs/Float64</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>data</field>
+                                    <field>damping_matrix/0</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>360</absolute_maximum>
@@ -302,12 +404,12 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/variable_impedance_controller/current_impedance</topic>
-                                    <type>std_msgs/Float64</type>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
                                 </y_axis>
                             </axes>
                             <color>
-                                <custom_color>#55aa7f</custom_color>
+                                <custom_color>#de0627</custom_color>
                                 <type>1</type>
                             </color>
                             <data>
@@ -318,7 +420,7 @@
                             <style>
                                 <lines_interpolate>false</lines_interpolate>
                                 <pen_style>1</pen_style>
-                                <pen_width>3</pen_width>
+                                <pen_width>2</pen_width>
                                 <render_antialias>false</render_antialias>
                                 <steps_invert>false</steps_invert>
                                 <sticks_baseline>0</sticks_baseline>
@@ -326,14 +428,116 @@
                                 <type>0</type>
                             </style>
                             <subscriber_queue_size>100</subscriber_queue_size>
-                            <title>cost</title>
+                            <title>DAMP_X</title>
                         </curve_0>
+                        <curve_1>
+                            <axes>
+                                <x_axis>
+                                    <field>header/stamp</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </x_axis>
+                                <y_axis>
+                                    <field>damping_matrix/7</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </y_axis>
+                            </axes>
+                            <color>
+                                <custom_color>#341fd3</custom_color>
+                                <type>1</type>
+                            </color>
+                            <data>
+                                <circular_buffer_capacity>1000</circular_buffer_capacity>
+                                <time_frame_length>10</time_frame_length>
+                                <type>0</type>
+                            </data>
+                            <style>
+                                <lines_interpolate>false</lines_interpolate>
+                                <pen_style>1</pen_style>
+                                <pen_width>2</pen_width>
+                                <render_antialias>false</render_antialias>
+                                <steps_invert>false</steps_invert>
+                                <sticks_baseline>0</sticks_baseline>
+                                <sticks_orientation>2</sticks_orientation>
+                                <type>0</type>
+                            </style>
+                            <subscriber_queue_size>100</subscriber_queue_size>
+                            <title>DAMP_Y</title>
+                        </curve_1>
+                        <curve_2>
+                            <axes>
+                                <x_axis>
+                                    <field>header/stamp</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </x_axis>
+                                <y_axis>
+                                    <field>damping_matrix/14</field>
+                                    <field_type>0</field_type>
+                                    <scale>
+                                        <absolute_maximum>1000</absolute_maximum>
+                                        <absolute_minimum>0</absolute_minimum>
+                                        <relative_maximum>0</relative_maximum>
+                                        <relative_minimum>-1000</relative_minimum>
+                                        <type>0</type>
+                                    </scale>
+                                    <topic>/project_impedance_controller/desired_impedance_project</topic>
+                                    <type>panda_controllers/DesiredImpedance</type>
+                                </y_axis>
+                            </axes>
+                            <color>
+                                <custom_color>#1aaf33</custom_color>
+                                <type>1</type>
+                            </color>
+                            <data>
+                                <circular_buffer_capacity>1000</circular_buffer_capacity>
+                                <time_frame_length>10</time_frame_length>
+                                <type>0</type>
+                            </data>
+                            <style>
+                                <lines_interpolate>false</lines_interpolate>
+                                <pen_style>1</pen_style>
+                                <pen_width>2</pen_width>
+                                <render_antialias>false</render_antialias>
+                                <steps_invert>false</steps_invert>
+                                <sticks_baseline>0</sticks_baseline>
+                                <sticks_orientation>2</sticks_orientation>
+                                <type>0</type>
+                            </style>
+                            <subscriber_queue_size>100</subscriber_queue_size>
+                            <title>DAMP_Z</title>
+                        </curve_2>
                     </curves>
                     <legend>
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Impedance</title>
+                    <title>DAMPING</title>
                 </column_0>
             </row_2>
         </plots>
