@@ -36,86 +36,79 @@
 #include "std_msgs/Float64.h"
 
 namespace panda_controllers {
-// Cosa sono minore e maggiore?
-class ProjectImpedanceController : public controller_interface::MultiInterfaceController<
-                                                franka_hw::FrankaModelInterface,
+
+//==========================================================================================//
+//                                    CLASS CONTROLLER                                      //
+//==========================================================================================//
+class ProjectImpedanceController : public controller_interface::MultiInterfaceController
+												<franka_hw::FrankaModelInterface,
                                                 hardware_interface::EffortJointInterface,
                                                 franka_hw::FrankaStateInterface> {
- public:
-  bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
-  void starting(const ros::Time&) override;
-  void update(const ros::Time&, const ros::Duration& period) override;
-  franka_msgs::SetFullCollisionBehavior collBehaviourSrvMsg;
-  ros::ServiceClient collBehaviourClient;
-  franka_msgs::SetJointImpedance jointImpedanceSrvMsg;
-  ros::ServiceClient jointImpedanceClient;
+ 	public:
+		bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
+		void starting(const ros::Time&) override;
+		void update(const ros::Time&, const ros::Duration& period) override;
+		franka_msgs::SetFullCollisionBehavior collBehaviourSrvMsg;
+		ros::ServiceClient collBehaviourClient;
+		franka_msgs::SetJointImpedance jointImpedanceSrvMsg;
+		ros::ServiceClient jointImpedanceClient;
+
+ 	private:
+		//----------FRANKA STUFFS----------//
+		Eigen::Matrix<double, 7, 1> saturateTorqueRate(
+			const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
+			const Eigen::Matrix<double, 7, 1>& tau_J_d);  // NOLINT (readability-identifier-naming)
+
+		std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
+		std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
+		std::vector<hardware_interface::JointHandle> joint_handles_;
 
 
- private:
-  // Saturation
-  Eigen::Matrix<double, 7, 1> saturateTorqueRate(
-      const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
-      const Eigen::Matrix<double, 7, 1>& tau_J_d);  // NOLINT (readability-identifier-naming)
+		//----------VARIABLES----------//
+		bool var_damp;                                            // freely variable damping or critically damped
+		double filter_params_{0.1};                               // exponential filter parameter
+		double nullspace_stiffness_{50.0};                        // nullspace stiffness [Nm/rad]
+		const double delta_tau_max_{1.0};                         // torque rate limit [Nm/ms], from datasheet https://frankaemika.github.io/docs/control_parameters.html
+		Eigen::Matrix<double, 7, 1> tau_limit;                    // joint torque limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
+		Eigen::Matrix<double, 6, 6> cartesian_stiffness_;         // actual stiffness matrix
+		Eigen::Matrix<double, 6, 6> cartesian_damping_;           // actual damping matrix
+		Eigen::Matrix<double, 6, 6> cartesian_mass_;              // desired mass matrix 
+		Eigen::Matrix<double, 7, 1> q_d_nullspace_;               // desired joint position (controlled in the nullspace)
+		Eigen::Vector3d position_d_;                              // desired position
+		Eigen::Vector3d or_des;                                   // orientation for project impedance
+		Eigen::Matrix<double, 6, 1> dpose_d_;                     // desired velocity
+		Eigen::Matrix<double, 6, 1> ddpose_d_;                    // desired acceleration
+		Eigen::Matrix<double, 6, 1> F_ext;                        // external Forces in x y z 
+		
 
-  std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
-  std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
-  std::vector<hardware_interface::JointHandle> joint_handles_;
+		//----------SUBSCRIBERS----------//
+		ros::Subscriber sub_des_traj_proj_;
+		void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);
 
-  bool var_damp;                                                  //freely variable damping or critically damped
-  double filter_params_{0.1};                                     //exponential filter parameter
-  double nullspace_stiffness_{50.0};                               //nullspace stiffness [Nm/rad]
-  const double delta_tau_max_{1.0};                               //torque rate limit [Nm/ms], from datasheet https://frankaemika.github.io/docs/control_parameters.html
-  Eigen::Matrix<double, 7, 1> tau_limit;                          //joint torque limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
-  Eigen::Matrix<double, 6, 6> cartesian_stiffness_;               //actual stiffness matrix
-  // Eigen::Matrix<double, 6, 6> cartesian_stiffness_target_;        //target stiffness matrix
-  Eigen::Matrix<double, 6, 6> cartesian_damping_;                 //actual damping matrix
-  // Eigen::Matrix<double, 6, 6> cartesian_damping_target_;          //target damping matrix
-  Eigen::Matrix<double, 6, 6> cartesian_mass_;                   // desired mass matrix 
-  Eigen::Matrix<double, 7, 1> q_d_nullspace_;                     //desired joint position (controlled in the nullspace)
-  Eigen::Vector3d position_d_;                                    //desired position
-  Eigen::Vector3d or_des;                                         // orientation for project impedance
-  //Eigen::Quaterniond orientation_d_;                              //desired orientation
-  Eigen::Matrix<double, 6, 1> dpose_d_;                           //desired  velocity
-  Eigen::Matrix<double, 6, 1> ddpose_d_;                        //desired acceleration
-  // force is taken from sensors
-  Eigen::Matrix<double, 6, 1> F_ext;                                           //External Forces in x y z 
-  
- // added: DesiredTrajectoryConstPtr 
-  ros::Subscriber sub_des_traj_proj_;
-  void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);
+		ros::Subscriber sub_des_imp_proj_;
+		void desiredImpedanceProjectCallback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
 
-  ros::Subscriber sub_des_imp_proj_;
-  void desiredImpedanceProjectCallback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
+		// external forces
+		ros::Subscriber sub_ext_forces;
+		void f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg);
 
-  // external forces
-  ros::Subscriber sub_ext_forces;
-  void f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg);
 
-/*
-  ros::Subscriber sub_desired_stiffness_matrix_;
-  void desiredImpedance_Callback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
-  // void CartesianImpedanceControllerSoftbots::desiredRightStiffnessMatrix_Callback(const std_msgs::Float64MultiArray::ConstPtr& array);
+		//----------PUBLISHERS----------//
+		ros::Publisher pub_pos_error;
+		ros::Publisher pub_cmd_force;
+		ros::Publisher pub_endeffector_pose_;
+		ros::Publisher pub_ee_pose_;
+		ros::Publisher pub_robot_state_;
+		ros::Publisher pub_impedance_;
+		ros::Publisher pub_info_debug;
+		
 
-  // Equilibrium pose subscriber
-  ros::Subscriber sub_des_traj_;
-  void desiredTrajectoryCallback(const panda_controllers::DesiredTrajectoryConstPtr& msg);
-*/
-
-  ros::Publisher pub_pos_error;
-  ros::Publisher pub_cmd_force;
-  ros::Publisher pub_endeffector_pose_;
-  ros::Publisher pub_ee_pose_;
-  ros::Publisher pub_robot_state_;
-  ros::Publisher pub_impedance_;
-  ros::Publisher pub_info_debug;
-  
-
-  geometry_msgs::TwistStamped   pos_error_msg;
-  geometry_msgs::WrenchStamped  force_cmd_msg;  
-  panda_controllers::RobotState robot_state_msg;
-  panda_controllers::EEpose ee_pos_msg;
-  panda_controllers::InfoDebug info_debug_msg;
-  
+		//----------MESSAGES----------//
+		geometry_msgs::TwistStamped   pos_error_msg;
+		geometry_msgs::WrenchStamped  force_cmd_msg;  
+		panda_controllers::RobotState robot_state_msg;
+		panda_controllers::EEpose ee_pos_msg;
+		panda_controllers::InfoDebug info_debug_msg;	
 };
 
 }  // namespace franka_softbots

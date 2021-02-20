@@ -10,20 +10,20 @@
 
 #include "panda_controllers/planner.h"
 
-#define     F_MAX       5.0         // [N]
-#define     E_MAX       0.05        // [m]
-#define     F_INT_MAX   7.0         // [N]
-#define     MASS        1.0         // [kg]
-#define     BETA        0.98        // []
-#define     A0          0.99        // []
-#define     CSI         1.0         // []
-#define     K_OR        300         // [Nm/rad]
-#define     D_OR        2*sqrt(300) // [Nm*sec/rad]
+#define     F_MAX       5.0         // [N]          disturbance threshold
+#define     E_MAX       0.05        // [m]          maximum tollerated error 
+#define     F_INT_MAX   7.0         // [N]          maximum tollerated force in interaction
+#define     MASS        1.0         // [kg]         virtual mass (inertia shaping)
+#define     BETA        0.98        // []           <1 due to stability
+#define     A0          0.99        // []           <1 due to stability
+#define     CSI         1.0         // []           critically damped system
+#define     K_OR        500         // [Nm/rad]     orientation stiffness
+#define     D_OR        2*sqrt(500) // [Nm*sec/rad] orientation damping
 
 
-//----------------------------------------------------------//
-//                      PLANNER_CLASS                       //
-//----------------------------------------------------------//
+//==========================================================================================//
+//                                      CLASS PLANNER                                       //
+//==========================================================================================//
 planner_class::planner_class(){
     ki = F_MAX/E_MAX;
     kc = F_MAX/E_MAX;
@@ -43,17 +43,11 @@ int planner_class::sign(double x){
         return 1;
 }
 
-
-
 double planner_class::planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp){
 
     // INTERACTION
     // set ki in order to match a desired interaction force with the
     // envirorment, and store interaction's position when detected
-    // X axes
-    // std::cout << "F_ext: " << F_ext << std::endl;
-    // std::cout << "inter: " << inter << std::endl;
-
     if (inter == 1){
         // detection of an interaction 
         if (std::abs(F_ext-F_comp) > F_MAX){
@@ -78,7 +72,6 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // COMPENSATION
     // set kc in order to compensate the effect of the weight of the object,
     // and store it
-    // X axes
     if (comp == 1){
         // compensation detection
         if (z_int > 999){                     // z_int not set before
@@ -189,17 +182,15 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }
     }
 
-    // std::cout << "k: " << k << std::endl;
-
     return k;
 }
 
 
 
+//==========================================================================================//
+//                                      NODE PLANNER                                        //
+//==========================================================================================//
 
-//----------------------------------------------------------//
-//                      PLANNER_NODE                        //
-//----------------------------------------------------------//
 planner_node::planner_node(){
     for(int i=0;i<36;i++){
         K[i] = 0;
@@ -210,18 +201,14 @@ planner_node::planner_node(){
     ky = F_MAX/E_MAX;
     kz = F_MAX/E_MAX;
 }
-//----------------------------------------------------------//
-bool planner_node::init(ros::NodeHandle& node_handle){
-                      
-  // Name space extraction for add a prefix to the topic name
-  int n = 0;
-  std::string name_space;
-  name_space = node_handle.getNamespace();
-  n = name_space.find("/", 2);
-  name_space = name_space.substr(0,n);
 
- 
-  //----------------INITIALIZE SUBSCRIBERS AND PUBLISHERS------//
+
+//------------------------------------------------------------------//
+//                              INIT                                //
+//------------------------------------------------------------------//
+bool planner_node::init(ros::NodeHandle& node_handle){
+
+  //---------------SUBSCRIBERS AND PUBLISHERS---------------//
 
   sub_des_traj_proj_ = node_handle.subscribe(
       "/project_impedance_controller/desired_project_trajectory", 10, &planner_node::desiredProjectTrajectoryCallback, this,
@@ -239,7 +226,7 @@ bool planner_node::init(ros::NodeHandle& node_handle){
   pub_impedance = node_handle.advertise<panda_controllers::DesiredImpedance>("/project_impedance_controller/desired_impedance_project", 1);
   
 
-  /*-------------------INITIALIZE VARIABLES---------------*/
+  //---------------INITIALIZE VARIABLES---------------//
    F_ext.setZero();                      
    pos_d.setZero();                      
    dpos_d.setZero();
@@ -248,68 +235,56 @@ bool planner_node::init(ros::NodeHandle& node_handle){
 //    interaction(1)=1;
 //    interaction(2)=1;
    compensation.setZero();
-
+//------------------------------------------------------------------------------------------------REMOVE THIS!
    compensation(0)=1;
    compensation(1)=1;
    compensation(2)=1;
-
+//---------------------------end
   return true;
 }
 
+
+//------------------------------------------------------------------//
+//                             UPDATE                               //
+//------------------------------------------------------------------//
 void planner_node::update() {
+
+    //---------------PLANNING---------------//
+
     double kx_f = planner_x.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(0), ee_pos(0), pos_d(0), dpos_d(0), interaction(0), compensation(0));
     double ky_f = planner_y.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(1), ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2), ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
+
     interpolator(kx_f,ky_f,kz_f);
 
+//------------------------------------------------------------------------------------------------REMOVE THIS!
     std::cout << "x_real: " << ee_pos(0) << "  x_des: " << pos_d(0) << std::endl;
     std::cout << "y_real: " << ee_pos(1) << "  y_des: " << pos_d(1) << std::endl;
     std::cout << "z_real: " << ee_pos(2) << "  z_des: " << pos_d(2) << std::endl;
+//------------------------end
 
+    //---------------PUBLISHIG----------------//
 
-
+    desired_impedance_msg.header.stamp = ros::Time::now();
 
     for ( int i = 0; i <36; i++){
         desired_impedance_msg.stiffness_matrix[i] = K[i];
         desired_impedance_msg.damping_matrix[i] = D[i];
     }
 
-    desired_impedance_msg.header.stamp = ros::Time::now();
-
     pub_impedance.publish(desired_impedance_msg);
 }
 
 
-
-double planner_node::calc_k(double k, double k_f){
-    // set k from desired one 
-    ros::Time time = ros::Time::now();
-    //double interval = time.toSec() - time_prec.toSec();
-    double interval = (time - time_prec).toSec();
-    if (k_f <= k){
-        k = k_f;
-    }else{
-        // increese k in accordance with the stability conditions
-        double k_i = k;
-        double k_dot = BETA*(4*A0*sqrt(k_i/MASS)*pow(k_i,3/2))/(sqrt(k_i) + 2*A0*CSI*sqrt(k_i));
-        double k_temp = k_i + k_dot*interval;
-        if (k_temp > k_f){
-            k = k_f;
-        }else{
-            k = k_temp;
-        }
-    }
-    return k;
-}
-
+//------------------------------------------------------------------//
+//                          INTERPOLATOR                            //
+//------------------------------------------------------------------//
 void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
 
     ros::Time time = ros::Time::now();
 
     kx = calc_k(kx, kx_f);
-
     ky = calc_k(ky, ky_f);
-
     kz = calc_k(kz, kz_f);
 
     time_prec = time;
@@ -336,8 +311,36 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
 }
 
 
+//------------------------------------------------------------------//
+//                             CALK_K                               //
+//------------------------------------------------------------------//
+// Compute K taking into account stability
+double planner_node::calc_k(double k, double k_f){
+    // set k from desired one 
+    ros::Time time = ros::Time::now();
+    //double interval = time.toSec() - time_prec.toSec();
+    double interval = (time - time_prec).toSec();
+    if (k_f <= k){
+        k = k_f;
+    }else{
+        // increase k in accordance with the stability conditions
+        double k_i = k;
+        double k_dot = BETA*(4*A0*sqrt(k_i/MASS)*pow(k_i,3/2))/(sqrt(k_i) + 2*A0*CSI*sqrt(k_i));
+        double k_temp = k_i + k_dot*interval;
+        if (k_temp > k_f){
+            k = k_f;
+        }else{
+            k = k_temp;
+        }
+    }
+    return k;
+}
 
-//-----------------------CALLBACKS-------------------------//
+
+
+//------------------------------------------------------------------//
+//                           CALLBACKS                              //
+//------------------------------------------------------------------//
 void planner_node::ee_pose_Callback(const geometry_msgs::PoseStampedConstPtr& msg) {
   
     ee_pos << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
@@ -357,6 +360,9 @@ void planner_node::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& ms
 
 
 
+//==========================================================================================//
+//                                         MAIN                                             //
+//==========================================================================================//
 int main(int argc, char **argv){
     
     ros::init(argc, argv, "planner");

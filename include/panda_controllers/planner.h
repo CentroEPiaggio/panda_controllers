@@ -25,6 +25,11 @@
 #include "std_msgs/Float64.h"
 
 
+
+//==========================================================================================//
+//                                      CLASS PLANNER                                       //
+//==========================================================================================//
+// It is the planner in one direction
 class planner_class{
     private:
         double ki, kc, F_comp, z_int;
@@ -35,10 +40,14 @@ class planner_class{
         double planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp);
 };
 
+
+//==========================================================================================//
+//                                      NODE PLANNER                                        //
+//==========================================================================================//
+// Contains planners for x, y, z and the interpolator 
 class planner_node{
     public:
         bool init(ros::NodeHandle& node_handle);
-        // void starting(const ros::Time&);
         void update();
         planner_node();
 
@@ -48,9 +57,9 @@ class planner_node{
         planner_class planner_y;
         planner_class planner_z;
         void interpolator(double kx_f, double ky_f, double kz_f);
-        double calc_k(double k, double k_f);
+        double calc_k(double k, double k_f);        // used by interpolator to ensure stability
 
-        // variables
+        //-----variables-----//
         Eigen::Vector3d F_ext;                      // External Forces in x y z
         Eigen::Vector3d pos_d;                      // desired position
         Eigen::Vector3d dpos_d;                     // desired position velocity
@@ -62,22 +71,21 @@ class planner_node{
         double kx, ky, kz;                          // stiffness values
         ros::Time time_prec;                        // time prec
 
-        // subscribers
-        // end-effector position
+        //-----subscribers-----//
         ros::Subscriber sub_ee_pose;
         void ee_pose_Callback(const geometry_msgs::PoseStampedConstPtr& msg);
+
         // trajectory
         ros::Subscriber sub_des_traj_proj_;
         void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);
+
         // external forces
         ros::Subscriber sub_ext_forces;
         void f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg);
 
-        // publishers
+        //-----publishers-----//
         ros::Publisher pub_impedance;
         panda_controllers::DesiredImpedance desired_impedance_msg;
-
-    
 };
 
 
