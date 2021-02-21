@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(panda_controllers)
 
-set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_BUILD_TYPE Debug)
+# set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -96,6 +96,7 @@ add_executable(command_publisher src/command_publisher.cpp)
 add_executable(planner src/planner.cpp)
 #add_executable(test_jac src/test_jac.cpp)
 add_executable(commands src/commands.cpp)
+add_executable(proj_trajectory src/proj_trajectory.cpp)
 
 ##
 
@@ -113,6 +114,7 @@ target_link_libraries(command_publisher ${PROJECT_NAME})
 target_link_libraries(planner ${PROJECT_NAME})
 #target_link_libraries(test_jac ${PROJECT_NAME})
 target_link_libraries(commands ${PROJECT_NAME})
+target_link_libraries(proj_trajectory ${PROJECT_NAME})
 
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC

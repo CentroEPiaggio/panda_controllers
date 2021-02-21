@@ -54,7 +54,7 @@ class ProjectImpedanceController : public controller_interface::MultiInterfaceCo
 		ros::ServiceClient jointImpedanceClient;
 
  	private:
-		//----------FRANKA STUFFS----------//
+		//----------FRANKA STUFF----------//
 		Eigen::Matrix<double, 7, 1> saturateTorqueRate(
 			const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
 			const Eigen::Matrix<double, 7, 1>& tau_J_d);  // NOLINT (readability-identifier-naming)

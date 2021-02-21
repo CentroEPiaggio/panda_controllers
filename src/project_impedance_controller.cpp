@@ -442,7 +442,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 	pub_pos_error.publish(pos_error_msg);
 
 
-	//----------- COMMANDED WRENC -------------//
+	//----------- COMMANDED WRENCH -------------//
 
 	force_cmd_msg.wrench.force.x = wrench_task(0);
 	force_cmd_msg.wrench.force.y = wrench_task(1);
