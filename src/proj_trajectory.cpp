@@ -46,7 +46,8 @@ void interpolator(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
                             Eigen::Vector3d vel){
 
     double ta = alpha*tf;                       // time interval of acceleration
-    Eigen::Vector3d xa = (1/2)*vel*ta;          // space done during the acceleration
+    Eigen::Vector3d xa;
+    xa << (1/2)*vel*ta;          // space done during the acceleration
     
     if ((t >= 0) && (t < ta)){
         
@@ -57,7 +58,7 @@ void interpolator(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
     else if ((t >= ta) && (t < (tf-ta))){
         traj.acc_des << 0, 0, 0; 
         traj.vel_des << vel; 
-        traj.pos_des << pos_i + xa + traj.pos_des*(t-ta);
+        traj.pos_des << pos_i + xa + traj.vel_des*(t-ta);
     }
     else if ((t >= (tf- ta)) && (t < tf)){
         
@@ -86,7 +87,7 @@ int main(int argc, char **argv)
   ros::Subscriber sub_cmd =  node_handle.subscribe("/project_impedance_controller/franka_ee_pose", 1, 
                                                 &poseCallback);
 
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(100);
 
   panda_controllers::DesiredProjectTrajectory traj_msg;
    
@@ -95,6 +96,7 @@ int main(int argc, char **argv)
   double tf;
   Eigen::Vector3d vel;
   Eigen::Vector3d pos_init;
+  int inter_x, inter_y, inter_z, comp_x, comp_y, comp_z;
 
 
   signal(SIGINT, signal_callback_handler);
@@ -111,20 +113,27 @@ int main(int argc, char **argv)
     cin>> pos_f.x();
     cin>> pos_f.y();
     cin>> pos_f.z();
+    cout<<"interaction: "<<endl;
+    cin>>inter_x;
+    cin>>inter_y;
+    cin>>inter_z;
+    cout<<"compensation: "<<endl;
+    cin>>comp_x;
+    cin>>comp_y;
+    cin>>comp_z;
 
 
-    // ros::spinOnce();
+    ros::spinOnce();
 
     t_init = ros::Time::now();
     pos_init = pos;
+    vel << (pos_f.x() - pos_init.x())/((1-alpha)*tf), (pos_f.y() - pos_init.y())/((1-alpha)*tf), (pos_f.z() - pos_init.z())/((1-alpha)*tf);
+
+    t = (ros::Time::now() - t_init).toSec();
 
     while (t <= tf)
     {
 
-
-      t = (ros::Time::now() - t_init).toSec();
-
-      vel << (pos_f.x() - pos_init.x())/((1-alpha)*tf), (pos_f.y() - pos_init.y())/((1-alpha)*tf), (pos_f.z() - pos_init.z())/((1-alpha)*tf);
       interpolator(pos_init, pos_f, tf, t, vel);
 
       traj_msg.header.stamp = ros::Time::now();
@@ -150,9 +159,18 @@ int main(int argc, char **argv)
       traj_msg.acceleration.orientation.y = 0;
       traj_msg.acceleration.orientation.z = 0;
 
+      traj_msg.interaction[0] = inter_x;
+      traj_msg.interaction[1] = inter_y;
+      traj_msg.interaction[2] = inter_z;
+      traj_msg.compensation[0] = comp_x;
+      traj_msg.compensation[1] = comp_y;
+      traj_msg.compensation[2] = comp_z;
+
       pub_cmd.publish(traj_msg);
 
       loop_rate.sleep();
+
+      t = (ros::Time::now() - t_init).toSec();
     }
   }
   return 0;

@@ -60,6 +60,8 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         // setting of ki
         if (std::abs(F_ext-F_comp) > F_int_max){
             // if interaction force is higher than threshold
+            std::cout<<"Limit condition is: "<< ki*std::abs(z-z_des) << std::endl;
+            std::cout<<"ki is: "<<ki<<std::endl;
             if (ki*std::abs(z-z_des) > F_int_max){
                 double ktemp_x = F_int_max/std::abs(z-z_des);
                 if (ktemp_x < ki){                // ki needs to be only decreased
@@ -147,6 +149,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // if "away" from obstacle set k = kc else ki
     if (inter == 1){
         k = ki;
+        std::cout<<"ok "<<std::endl;
         if (comp == 1){
             if (z_int > 999){
                 k = kc;                       // obstacle not reached
@@ -166,22 +169,26 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                 }
             }
         }else{
+            std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
                 k = F_max/e_max;            // restore to default
             }else{
+                std::cout <<"ok2 "<<std::endl;
                 if (z_int_dir == 1){
                     if (z_des < z_int){
                         k = F_max/e_max;    // restore because "going away"
                     }
                 }else{
+                    std::cout<<"ok3 "<<std::endl;
                     if (z_des > z_int){
+                        std::cout<<"going away "<<std::endl;
                         k = F_max/e_max;    // restore because "going away"
                     }
                 }
             }
         }
     }
-
+    std::cout <<"k is " << k << std::endl;
     return k;
 }
 
@@ -211,7 +218,7 @@ bool planner_node::init(ros::NodeHandle& node_handle){
   //---------------SUBSCRIBERS AND PUBLISHERS---------------//
 
   sub_des_traj_proj_ = node_handle.subscribe(
-      "/project_impedance_controller/desired_project_trajectory", 10, &planner_node::desiredProjectTrajectoryCallback, this,
+      "/project_impedance_controller/desired_project_trajectory", 1, &planner_node::desiredProjectTrajectoryCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ee_pose = node_handle.subscribe(
@@ -236,9 +243,9 @@ bool planner_node::init(ros::NodeHandle& node_handle){
 //    interaction(2)=1;
    compensation.setZero();
 //------------------------------------------------------------------------------------------------REMOVE THIS!
-   compensation(0)=1;
-   compensation(1)=1;
-   compensation(2)=1;
+//    compensation(0)=1;
+//    compensation(1)=1;
+//    compensation(2)=1;
 //---------------------------end
   return true;
 }
@@ -253,7 +260,7 @@ void planner_node::update() {
 
     double kx_f = planner_x.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(0), ee_pos(0), pos_d(0), dpos_d(0), interaction(0), compensation(0));
     double ky_f = planner_y.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(1), ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
-    double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2), ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
+    double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2) , ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
 
     interpolator(kx_f,ky_f,kz_f);
 

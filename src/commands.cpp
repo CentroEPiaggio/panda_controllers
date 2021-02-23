@@ -48,6 +48,7 @@ int main(int argc, char **argv)
   panda_controllers::DesiredProjectTrajectory traj;
    
   double dx, dy, dz, dphi, dpsi, dtheta;
+  int inter_x, inter_y, inter_z, comp_x, comp_y, comp_z;
 
   signal(SIGINT, signal_callback_handler);
 
@@ -61,8 +62,18 @@ int main(int argc, char **argv)
     cin>>dpsi;
     cin>>dtheta;
     cin>>dphi;
+    cout<<"interaction: "<<endl;
+    cin>>inter_x;
+    cin>>inter_y;
+    cin>>inter_z;
+    cout<<"compensation: "<<endl;
+    cin>>comp_x;
+    cin>>comp_y;
+    cin>>comp_z;
     
     ros::spinOnce();
+
+    traj.header.stamp = ros::Time::now();
 
     traj.pose.position.x = pos_d.x() + dx;
     traj.pose.position.y = pos_d.y() + dy;
@@ -84,6 +95,13 @@ int main(int argc, char **argv)
     traj.acceleration.orientation.x = 0;
     traj.acceleration.orientation.y = 0;
     traj.acceleration.orientation.z = 0;
+
+    traj.interaction[0] = inter_x;
+    traj.interaction[1] = inter_y;
+    traj.interaction[2] = inter_z;
+    traj.compensation[0] = comp_x;
+    traj.compensation[1] = comp_y;
+    traj.compensation[2] = comp_z;
 
     pub_cmd.publish(traj);
 

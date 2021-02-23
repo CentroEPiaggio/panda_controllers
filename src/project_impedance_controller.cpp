@@ -14,8 +14,8 @@
 #define   	EE_X  		0
 #define   	EE_Y  		0
 #define   	EE_Z  		0
-#define 	K_INIT_POS	100
-#define 	K_INIT_OR	500
+#define 	K_INIT_POS	300
+#define 	K_INIT_OR	1000
 #define 	COLL_LIMIT	100
 #define 	JOINT_STIFF	{3000, 3000, 3000, 3000, 3000, 2000, 100}
 //#define 	COLL_LIMIT	2000
@@ -46,11 +46,11 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
 
 	//--------------- INITIALIZE SUBSCRIBERS AND PUBLISHERS -----------------//
 
-	sub_des_traj_proj_ =  node_handle.subscribe(  name_space+"/desired_project_trajectory", 10, 
+	sub_des_traj_proj_ =  node_handle.subscribe(  name_space+"/desired_project_trajectory", 1, 
 													&ProjectImpedanceController::desiredProjectTrajectoryCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
-	sub_des_imp_proj_ =   node_handle.subscribe(  name_space+"/desired_impedance_project", 10, 
+	sub_des_imp_proj_ =   node_handle.subscribe(  name_space+"/desired_impedance_project", 1, 
 													&ProjectImpedanceController::desiredImpedanceProjectCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
@@ -373,8 +373,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 	// from matlab: tau = (Ja')*F_tau + S*q_dot + G + tau_fric;
 	// final tau in joint space for primary task
 	tau_task << ja.transpose()*wrench_task 
-				+ coriolis;
-				//+ tau_fric;
+				+ coriolis + tau_fric;
 
 	//null projection
 	ja_t_inv << (ja*mass.inverse()*ja.transpose()).inverse()*ja*mass.inverse();
@@ -425,8 +424,10 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 	temp_err_o << 0, 0, 0, error(3), error(4), error(5);
 	Eigen::Matrix<double,6,1> temp_err_p;
 	temp_err_p << error(0), error(1), error(2), 0, 0, 0;
-	Eigen::Matrix<double,7,1> Mo = ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_o;
-	Eigen::Matrix<double,7,1> Mp = ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_p;
+	Eigen::Matrix<double,7,1> Mo;
+	Mo << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_o;
+	Eigen::Matrix<double,7,1> Mp;
+	Mp << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_p;
 
 
 	//----------- POSE ERROR -------------//
@@ -481,6 +482,7 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 		info_debug_msg.tau_pos[i] = Mp(i);
 		info_debug_msg.tau_or[i] = Mo(i);
 		info_debug_msg.tau_internal[i] = tau_J_d(i);
+		info_debug_msg.tau_fric[i] = tau_fric(i);
 	}
 	pub_info_debug.publish(info_debug_msg);
 
