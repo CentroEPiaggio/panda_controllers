@@ -1,34 +1,34 @@
 <library path="lib/libpanda_controllers">
   
-  <class name="panda_controllers/CartesianVelocityController" type="panda_controllers::CartesianVelocityController" base_class_type="controller_interface::ControllerBase">
+  <!-- <class name="panda_controllers/CartesianVelocityController" type="panda_controllers::CartesianVelocityController" base_class_type="controller_interface::ControllerBase">
     <description>
       A controller that tracks a provided cartesian velocity
     </description>
-  </class>
+  </class> -->
   
-  <class name="panda_controllers/PdController" type="panda_controllers::PdController" base_class_type="controller_interface::ControllerBase">
+  <!-- <class name="panda_controllers/PdController" type="panda_controllers::PdController" base_class_type="controller_interface::ControllerBase">
    <description>
       PD controller.
    </description>
-  </class>
+  </class> -->
   
-  <class name="panda_controllers/ComputedTorque" type="panda_controllers::ComputedTorque" base_class_type="controller_interface::ControllerBase">
+  <!-- <class name="panda_controllers/ComputedTorque" type="panda_controllers::ComputedTorque" base_class_type="controller_interface::ControllerBase">
    <description>
       Computed Torque controller.
    </description>
-  </class>
+  </class> -->
   
   <!-- <class name="panda_controllers/BackStepping" type="panda_controllers::BackStepping" base_class_type="controller_interface::ControllerBase">
    <description>
       Backstepping controller.
    </description>
-  </class> -->
+  </class> --> 
 
   <class name="panda_controllers/VariableImpedanceController" type="panda_controllers::VariableImpedanceController" base_class_type="controller_interface::ControllerBase">
    <description>
       Variable impedance controller.
    </description>
-  </class>
+  </class> 
 
   <class name="panda_controllers/ProjectImpedanceController" type="panda_controllers::ProjectImpedanceController" base_class_type="controller_interface::ControllerBase">
    <description>

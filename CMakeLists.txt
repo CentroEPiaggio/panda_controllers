@@ -67,9 +67,9 @@ catkin_package(
 )
 
 add_library(${PROJECT_NAME}   
-  src/cartesian_velocity_controller.cpp
-  src/pdcontroller.cpp #PD controller
-  src/computed_torque.cpp #Computed Torque controller
+  # src/cartesian_velocity_controller.cpp
+  # src/pdcontroller.cpp #PD controller
+  # src/computed_torque.cpp #Computed Torque controller
   # src/backstepping.cpp #Backstepping controller
   src/variable_impedance_controller.cpp #Backstepping controller
   src/project_impedance_controller.cpp #Project variable impedance controller

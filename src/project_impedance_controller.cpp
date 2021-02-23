@@ -46,11 +46,11 @@ bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
 
 	//--------------- INITIALIZE SUBSCRIBERS AND PUBLISHERS -----------------//
 
-	sub_des_traj_proj_ =  node_handle.subscribe(  name_space+"/desired_project_trajectory", 1, 
+	sub_des_traj_proj_ =  node_handle.subscribe(  "/project_impedance_controller/desired_project_trajectory", 1, 
 													&ProjectImpedanceController::desiredProjectTrajectoryCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
-	sub_des_imp_proj_ =   node_handle.subscribe(  name_space+"/desired_impedance_project", 1, 
+	sub_des_imp_proj_ =   node_handle.subscribe(  "/project_impedance_controller/desired_impedance_project", 1, 
 													&ProjectImpedanceController::desiredImpedanceProjectCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
@@ -484,6 +484,11 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 		info_debug_msg.tau_internal[i] = tau_J_d(i);
 		info_debug_msg.tau_fric[i] = tau_fric(i);
 	}
+	for (int i = 0; i <6; i++){
+		for (int j = 0; j<6; j++){
+			info_debug_msg.cartesian_stiffness[i*6+j] = cartesian_stiffness_(i,j);
+		}
+	}
 	pub_info_debug.publish(info_debug_msg);
 
 
@@ -525,7 +530,9 @@ void ProjectImpedanceController::desiredImpedanceProjectCallback(
 			cartesian_damping_(i, j) = msg->damping_matrix[i*6 + j];
 		}
 	}
+	// std::cout<< "cartesian_stiffness "<< cartesian_stiffness_ << std::endl;
 }
+
 
 //----------- DESIRED TRAJECTORY -------------//
 void ProjectImpedanceController::desiredProjectTrajectoryCallback(

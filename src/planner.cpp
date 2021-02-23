@@ -49,25 +49,37 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // set ki in order to match a desired interaction force with the
     // envirorment, and store interaction's position when detected
     if (inter == 1){
+            std::cout << " F_comp " << F_comp << std::endl;
+            std::cout << " F_ext " << F_ext << std::endl;
         // detection of an interaction 
         if (std::abs(F_ext-F_comp) > F_MAX){
+            std::cout << " F_ext > F_max" << std::endl;
             if (z_int > 999 ){                     // z_int has not been set yet
                 z_int = z;
                 z_int_dir = -sign(F_ext-F_comp);
                 set_F_comp = 0; 
             }
         }
+        // std::cout << "z_int is: " << z_int << std::endl;
+        // std::cout << "z_int_dir is: " << z_int_dir << std::endl;
         // setting of ki
+        // std::cout << "F_ext is: " << F_ext << std::endl;
         if (std::abs(F_ext-F_comp) > F_int_max){
-            // if interaction force is higher than threshold
-            std::cout<<"Limit condition is: "<< ki*std::abs(z-z_des) << std::endl;
-            std::cout<<"ki is: "<<ki<<std::endl;
-            if (ki*std::abs(z-z_des) > F_int_max){
-                double ktemp_x = F_int_max/std::abs(z-z_des);
+            std::cout << "F_ext > F_int_max" << std::endl;
+        //     if interaction force is higher than threshold
+        //    std::cout << "Limit condition is: "<< ki*std::abs(z-z_des) << std::endl;
+        //    std::cout << "ki is: " << ki << std::endl;
+        //    if (ki*std::abs(z-z_des) > F_int_max){
+                double ktemp_x = F_int_max/std::abs(z_int-z_des);
+                std::cout << "ktemp_x: " << ktemp_x << std::endl;
+                std::cout << "z_int: " << z_int << std::endl;
+                std::cout << "z_des: " << z_des << std::endl;
                 if (ktemp_x < ki){                // ki needs to be only decreased
+                    //std::cout << "ktempx " << ktemp_x << std::endl;
                     ki = ktemp_x;
+                    //std::cout << " ki before " << ki << std::endl;
                 }
-            }
+        //    }
         }
     }
 
@@ -118,6 +130,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // from int to comp and vice versa
     if (inter==1 && int_prec==0){
+        std::cout << "entro una sola volta" << std::endl;
         if (comp_prec == 1){
             ki = kc;
         }
@@ -149,10 +162,12 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // if "away" from obstacle set k = kc else ki
     if (inter == 1){
         k = ki;
-        std::cout<<"ok "<<std::endl;
+        std::cout <<"ki = " << ki << std::endl;
+        // std::cout<<"ok "<<std::endl;
         if (comp == 1){
             if (z_int > 999){
-                k = kc;                       // obstacle not reached
+                k = kc;   
+                // std::cout<<" not ok " << std::endl;                    // obstacle not reached
             }else{
                 if (z_int_dir == 1){
                     if (z_des < z_int){
@@ -169,26 +184,29 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                 }
             }
         }else{
-            std::cout <<"ok1 "<<std::endl;
+        //    std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
                 k = F_max/e_max;            // restore to default
+                std::cout <<"z_int > 999 " << std::endl;
             }else{
-                std::cout <<"ok2 "<<std::endl;
+        //        std::cout <<"ok2 "<<std::endl;
                 if (z_int_dir == 1){
+                    // std::cout <<"z_int_dir == 1 " << std::endl;
                     if (z_des < z_int){
+                        // std::cout <<"z_des < z_int " << std::endl;
                         k = F_max/e_max;    // restore because "going away"
                     }
                 }else{
-                    std::cout<<"ok3 "<<std::endl;
+                    std::cout<<" z_int_dir == -1 "<<std::endl;
                     if (z_des > z_int){
-                        std::cout<<"going away "<<std::endl;
+                        std::cout<<"z_des > z_int "<<std::endl;
                         k = F_max/e_max;    // restore because "going away"
                     }
                 }
             }
         }
     }
-    std::cout <<"k is " << k << std::endl;
+    std::cout <<"k after " << k << std::endl;
     return k;
 }
 
@@ -262,21 +280,24 @@ void planner_node::update() {
     double ky_f = planner_y.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(1), ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2) , ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
 
+    std::cout << "k_after is equal to kz_f?  " << kz_f << std::endl;
+
     interpolator(kx_f,ky_f,kz_f);
 
 //------------------------------------------------------------------------------------------------REMOVE THIS!
-    std::cout << "x_real: " << ee_pos(0) << "  x_des: " << pos_d(0) << std::endl;
-    std::cout << "y_real: " << ee_pos(1) << "  y_des: " << pos_d(1) << std::endl;
-    std::cout << "z_real: " << ee_pos(2) << "  z_des: " << pos_d(2) << std::endl;
+    //std::cout << "x_real: " << ee_pos(0) << "  x_des: " << pos_d(0) << std::endl;
+    //std::cout << "y_real: " << ee_pos(1) << "  y_des: " << pos_d(1) << std::endl;
+    //std::cout << "z_real: " << ee_pos(2) << "  z_des: " << pos_d(2) << std::endl;
 //------------------------end
 
-    //---------------PUBLISHIG----------------//
+    //---------------PUBLISHING----------------//
 
     desired_impedance_msg.header.stamp = ros::Time::now();
 
     for ( int i = 0; i <36; i++){
         desired_impedance_msg.stiffness_matrix[i] = K[i];
         desired_impedance_msg.damping_matrix[i] = D[i];
+        // std::cout << "kz_publisher: " << K[14] << std::endl;
     }
 
     pub_impedance.publish(desired_impedance_msg);
@@ -308,6 +329,8 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
     K[21] = K_OR;
     K[28] = K_OR;
     K[35] = K_OR;
+
+    // std::cout << "kz: " << kz << std::endl;
 
     D[0] = dx;
     D[7] = dy;
