@@ -16,7 +16,10 @@
 #define   	EE_Z  		0
 #define 	K_INIT_POS	300
 #define 	K_INIT_OR	1000
+#define 	PD_K_OR		1000
+#define 	PD_D_OR		2.0*sqrt(PD_K_OR)
 #define 	COLL_LIMIT	100
+#define 	NULL_STIFF	100
 #define 	JOINT_STIFF	{3000, 3000, 3000, 3000, 3000, 2000, 100}
 //#define 	COLL_LIMIT	2000
 
@@ -332,69 +335,151 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 	derror.tail(3) << ja.bottomLeftCorner(3,7)*dq - dpose_d_.tail(3);
 
 	
-	//===========================| IMPEDANCE CONTROL 6 dof|=============================//
+	// //===========================| IMPEDANCE CONTROL 6 dof|=============================//
 
+	// // SETTING Fext to ZERO!!!   ---------------------------------------------------------------------------   REMOVE THIS!
+	// F_ext.setZero();
+
+
+	// //----------- VARIABLES -------------//
+
+	// //Eigen::VectorXd wrench_task(6), tau_task(7), tau_nullspace(7), tau_d(7); 	// replaced to avoid dynamic allocation
+
+	// Eigen::Matrix <double, 6, 1> wrench_task;	// task space wrench
+	// Eigen::Matrix <double, 7, 1> tau_task;		// tau for primary task
+	// Eigen::Matrix <double, 7, 1> tau_nullspace;	// tau for nullspace task
+	// Eigen::Matrix <double, 7, 1> tau_d;			// final desired torque
+	// Eigen::Matrix <double, 6, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
+	// Eigen::Matrix <double, 7, 7> N;				// null projector
+	// Eigen::Matrix <double, 6, 6> task_mass;		// mass in task space
+
+
+	// // define robot mass in task space and NaN substitution
+	// task_mass << (ja*mass.inverse()*ja.transpose()).inverse();    // 6x6
+	// for (int i=0; i<6; i++){
+	// 	for (int j=0; j<6; j++){
+	// 		if (std::isnan(task_mass(i,j))){
+	// 			task_mass(i,j) = 1;
+	// 		}
+	// 	}
+	// }
+
+	// //---------------- CONTROL COMPUTATION -----------------//
+
+	// // project impedance controller
+	// // from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
+	// wrench_task <<  task_mass*ddpose_d_ 
+	// 				- (task_mass*cartesian_mass_.inverse())*(cartesian_damping_*derror + cartesian_stiffness_*error)
+	// 				+ (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext
+	// 				- task_mass*ja_dot*dq;
+
+	// // from matlab: tau = (Ja')*F_tau + S*q_dot + G + tau_fric;
+	// // final tau in joint space for primary task
+	// tau_task << ja.transpose()*wrench_task 
+	// 			+ coriolis + tau_fric;
+
+	// //null projection
+	// ja_t_inv << (ja*mass.inverse()*ja.transpose()).inverse()*ja*mass.inverse();
+	// N << Eigen::MatrixXd::Identity(7, 7) - ja.transpose()*ja_t_inv;
+
+	// tau_nullspace <<  N * ( nullspace_stiffness_ * (q_d_nullspace_ - q)       // proportional term
+	// 						- (2.0 * sqrt(nullspace_stiffness_)) * dq);       // derivative term
+
+	// // Desired torque
+	// // tau_d << tau_task + tau_nullspace;
+	// tau_d << tau_task;
+	
+	// //=================================| END CONTROL |==================================//
+
+
+
+	//======================| IMPEDANCE POSITION, PD ORIENTATION |======================//
+	
 	// SETTING Fext to ZERO!!!   ---------------------------------------------------------------------------   REMOVE THIS!
 	F_ext.setZero();
-
 
 	//----------- VARIABLES -------------//
 
 	//Eigen::VectorXd wrench_task(6), tau_task(7), tau_nullspace(7), tau_d(7); 	// replaced to avoid dynamic allocation
 
-	Eigen::Matrix <double, 6, 1> wrench_task;	// task space wrench
+	Eigen::Matrix <double, 3, 1> wrench_task;	// task space wrench
 	Eigen::Matrix <double, 7, 1> tau_task;		// tau for primary task
 	Eigen::Matrix <double, 7, 1> tau_nullspace;	// tau for nullspace task
 	Eigen::Matrix <double, 7, 1> tau_d;			// final desired torque
-	Eigen::Matrix <double, 6, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
+	Eigen::Matrix <double, 3, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
 	Eigen::Matrix <double, 7, 7> N;				// null projector
-	Eigen::Matrix <double, 6, 6> task_mass;		// mass in task space
+	Eigen::Matrix <double, 3, 3> task_mass;		// mass in task space
 
+	Eigen::Matrix <double, 3, 7> ja_pos;
+	Eigen::Matrix <double, 3, 7> ja_or;
+	Eigen::Matrix <double, 3, 7> ja_dot_pos;
+	Eigen::Matrix <double, 3, 3> cartesian_mass_pos;
+	Eigen::Matrix <double, 3, 3> cartesian_damping_pos;
+	Eigen::Matrix <double, 3, 3> cartesian_stiffness_pos;
+	Eigen::Matrix <double, 3, 1> derror_pos;
+	Eigen::Matrix <double, 3, 1> derror_or;
+	Eigen::Matrix <double, 3, 1> error_pos;
+	Eigen::Matrix <double, 3, 1> error_or;
+	Eigen::Matrix <double, 3, 1> ja_pos_t_inv;
+	Eigen::Matrix <double, 7, 1> tau_or;
+	Eigen::Matrix <double, 3, 3> I3;
+	
+	ja_pos << ja.topLeftCorner(3,7);
+	ja_dot_pos << ja_dot.topLeftCorner(3,7);
+	cartesian_damping_pos << cartesian_damping_.topLeftCorner(3,3);
+	cartesian_stiffness_pos << cartesian_stiffness_.topLeftCorner(3,3);
+	cartesian_mass_pos << 1.0 * Eigen::MatrixXd::Identity(3, 3);
+	error_pos << error.head(3);
+	derror_pos << derror.head(3);
+	error_or << error.tail(3);
+	derror_or << derror.tail(3);
+	I3 = Eigen::MatrixXd::Identity(3, 3);
 
 	// define robot mass in task space and NaN substitution
-	task_mass << (ja*mass.inverse()*ja.transpose()).inverse();    // 6x6
-	for (int i=0; i<6; i++){
-		for (int j=0; j<6; j++){
+	task_mass << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse();    // 3x3
+	for (int i=0; i<3; i++){
+		for (int j=0; j<3; j++){
 			if (std::isnan(task_mass(i,j))){
 				task_mass(i,j) = 1;
 			}
 		}
 	}
 
-	//---------------- CONTROL COMPUTATION -----------------//
+
+	//---------------- POSITION CONTROL COMPUTATION -----------------//
 
 	// project impedance controller
 	// from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
-	wrench_task <<  task_mass*ddpose_d_ 
-					- (task_mass*cartesian_mass_.inverse())*(cartesian_damping_*derror + cartesian_stiffness_*error)
-					+ (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext
-					- task_mass*ja_dot*dq;
+	wrench_task <<  task_mass*ddpose_d_.head(3)
+					- (task_mass*cartesian_mass_pos.inverse())*(cartesian_damping_pos*derror_pos + cartesian_stiffness_pos*error_pos)
+					+ (task_mass*cartesian_mass_pos.inverse() - I3*F_ext.head(3))
+					- task_mass*ja_dot_pos*dq;
 
 	// from matlab: tau = (Ja')*F_tau + S*q_dot + G + tau_fric;
 	// final tau in joint space for primary task
-	tau_task << ja.transpose()*wrench_task 
+	tau_task << ja_pos.transpose()*wrench_task 
 				+ coriolis + tau_fric;
 
-	//null projection
-	ja_t_inv << (ja*mass.inverse()*ja.transpose()).inverse()*ja*mass.inverse();
-	N << Eigen::MatrixXd::Identity(7, 7) - ja.transpose()*ja_t_inv;
 
-	tau_nullspace <<  N * ( nullspace_stiffness_ * (q_d_nullspace_ - q)       // proportional term
-							- (2.0 * sqrt(nullspace_stiffness_)) * dq);       // derivative term
+	//---------------- ORIENTATION CONTROL COMPUTATION -----------------//
+
+	//null projection
+	ja_pos_t_inv << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse()*ja_pos*mass.inverse();
+	N << Eigen::MatrixXd::Identity(7, 7) - ja_pos.transpose()*ja_pos_t_inv;
+
+	tau_or = N * ja_or.transpose() * ( -PD_K_OR*I3*error_or -PD_D_OR*I3*derror_or );
+
+	//---------------- NULLSPACE CONTROL COMPUTATION -----------------//
+
+	// tau_nullspace <<  N * ( NULL_STIFF * (q_d_nullspace_ - q)       // proportional term
+	// 						- (2.0 * sqrt(NULL_STIFF)) * dq);       // derivative term
 
 	// Desired torque
-	// tau_d << tau_task + tau_nullspace;
-	tau_d << tau_task;
+	tau_d << tau_task + tau_or;
+	// tau_d << tau_task;
+
+	//=================================| END CONTROL |==================================//
 	
-	//=================================| END CONTROL |==================================//
-
-
-
-	//======================| IMPEDANCE POSITION, PD ORIENTATION |======================//
-	// not implemented
-	//
-	//=================================| END CONTROL |==================================//
-	//
 
 
 	//----------- TORQUE SATURATION and COMMAND-------------//
@@ -530,7 +615,6 @@ void ProjectImpedanceController::desiredImpedanceProjectCallback(
 			cartesian_damping_(i, j) = msg->damping_matrix[i*6 + j];
 		}
 	}
-	// std::cout<< "cartesian_stiffness "<< cartesian_stiffness_ << std::endl;
 }
 
 
