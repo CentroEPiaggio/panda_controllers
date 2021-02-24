@@ -5,7 +5,8 @@
     <arg name="load_gripper" default="false"/>
 
     <!-- Controller name -->
-    <arg name="controller" default="project_impedance_controller"/>
+    <!-- <arg name="controller" default="project_impedance_controller"/> -->
+    <arg name="controller" default="project_impedance_controller_pos"/>
     
     <!-- Franka control node -->
     <include file="$(find panda_controllers)/launch/panda_controller.launch" >
