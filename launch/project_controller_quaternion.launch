@@ -9,7 +9,7 @@
     <arg name="controller" default="project_impedance_controller"/>
     
     <!-- Franka control node -->
-    <include file="$(find panda_controllers)/launch/panda_controller.launch" >
+    <include file="$(find panda_controllers)/launch/panda_controller_pos.launch" >
         <arg name="robot_ip" value="$(arg robot_ip)" />
         <arg name="load_gripper" value="$(arg load_gripper)" />
         <arg name="controller_name" value="$(arg controller)" />

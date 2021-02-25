@@ -1,4 +1,4 @@
-#include <panda_controllers/project_impedance_controller_pos.h>
+#include <panda_controllers/project_impedance_controller.h>
 #include "utils/Jacobians_ee.h"
 #include "utils/FrictionTorque.h"
 #include <cmath>
@@ -11,23 +11,24 @@
 
 #include "utils/pseudo_inversion.h"
 
-#define   	EE_X  			0
-#define   	EE_Y  			0
-#define   	EE_Z  			0
-#define 	K_INIT_POS		200
-#define 	K_INIT_OR		500
-#define 	PD_K_OR			50
-#define 	PD_D_OR			2.0*sqrt(PD_K_OR)
-#define 	PD_K_OR_QUAT	50
-#define 	PD_D_OR_QUAT	2.0*sqrt(PD_K_OR)
-#define 	COLL_LIMIT		25
-#define 	NULL_STIFF		10
-#define 	JOINT_STIFF		{3000, 3000, 3000, 3000, 3000, 2000, 100}
-//#define 	COLL_LIMIT		2000
+#define   	EE_X  		0
+#define   	EE_Y  		0
+#define   	EE_Z  		0
+#define 	K_INIT_POS	300
+#define 	K_INIT_OR	1000
+#define 	PD_K_OR		1000
+#define 	PD_D_OR		2.0*sqrt(PD_K_OR)
+#define 	COLL_LIMIT	100
+#define 	NULL_STIFF	100
+#define 	JOINT_STIFF	{3000, 3000, 3000, 3000, 3000, 2000, 100}
+//#define 	COLL_LIMIT	2000
 
 /* 
 da fare:
-  
+  provare il debug
+  provare ad usare una massa desiderata come diagonale della massa vera
+  provare tau_fric
+  controllare bene il controllo
 */
 
 namespace panda_controllers {
@@ -37,7 +38,7 @@ extern std::string name_space;
 //------------------------------------------------------------------------------//
 //                          		INIT										//
 //------------------------------------------------------------------------------//
-bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw, 
+bool ProjectImpedanceController::init(  hardware_interface::RobotHW* robot_hw, 
                                         ros::NodeHandle& node_handle) {
 	// Name space extraction for add a prefix to the topic name
 	int n = 0;
@@ -49,23 +50,23 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 	//--------------- INITIALIZE SUBSCRIBERS AND PUBLISHERS -----------------//
 
 	sub_des_traj_proj_ =  node_handle.subscribe(  "/project_impedance_controller/desired_project_trajectory", 1, 
-													&ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback, this,
+													&ProjectImpedanceController::desiredProjectTrajectoryCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
 	sub_des_imp_proj_ =   node_handle.subscribe(  "/project_impedance_controller/desired_impedance_project", 1, 
-													&ProjectImpedanceControllerPos::desiredImpedanceProjectCallback, this,
+													&ProjectImpedanceController::desiredImpedanceProjectCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
 	sub_ext_forces =      node_handle.subscribe(  "/franka_state_controller/F_ext", 1, 
-													&ProjectImpedanceControllerPos::f_ext_Callback, this,
+													&ProjectImpedanceController::f_ext_Callback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
-	pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>("/project_impedance_controller/pos_error", 1);
-	pub_cmd_force =         node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/cmd_force", 1);
-	pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>("/project_impedance_controller/franka_ee_pose", 1);
-	pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>("/project_impedance_controller/robot_state", 1);
-	pub_impedance_ =        node_handle.advertise<std_msgs::Float64>("/project_impedance_controller/current_impedance", 1);
-	pub_info_debug =        node_handle.advertise<panda_controllers::InfoDebug>("/project_impedance_controller/info_debug", 1);
+	pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
+	pub_cmd_force =         node_handle.advertise<geometry_msgs::WrenchStamped>(name_space+"/cmd_force", 1);
+	pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
+	pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
+	pub_impedance_ =        node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
+	pub_info_debug =        node_handle.advertise<panda_controllers::InfoDebug>(name_space+"/info_debug", 1);
 
 
 	//---------------- INITIALIZE SERVICE CLIENTS ------------------//
@@ -81,24 +82,24 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 
 	std::string arm_id;
 	if (!node_handle.getParam("arm_id", arm_id)) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Could not read parameter arm_id");
+		ROS_ERROR_STREAM("ProjectImpedanceController: Could not read parameter arm_id");
 		return false;
 	}
 	std::vector<std::string> joint_names;
 	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
 		ROS_ERROR(
-				"ProjectImpedanceControllerPos: Invalid or no joint_names parameters provided, "
+				"ProjectImpedanceController: Invalid or no joint_names parameters provided, "
 				"aborting controller init!");
 		return false;
 	}
 	if (!node_handle.getParam("var_damp", var_damp)) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Could not read parameter var_damp");
+		ROS_ERROR_STREAM("ProjectImpedanceController: Could not read parameter var_damp");
 		return false;
 	}
 
 	franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
 	if (model_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting model interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceController: Error getting model interface from hardware");
 		return false;
 	}
 	try {
@@ -106,14 +107,14 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 				new franka_hw::FrankaModelHandle(model_interface->getHandle(arm_id + "_model")));
 	} catch (hardware_interface::HardwareInterfaceException& ex) {
 		ROS_ERROR_STREAM(
-				"ProjectImpedanceControllerPos: Exception getting model handle from interface: "
+				"ProjectImpedanceController: Exception getting model handle from interface: "
 				<< ex.what());
 		return false;
 	}
 
 	franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
 	if (state_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting state interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceController: Error getting state interface from hardware");
 		return false;
 	}
 	try {
@@ -121,14 +122,14 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 				new franka_hw::FrankaStateHandle(state_interface->getHandle(arm_id + "_robot")));
 	} catch (hardware_interface::HardwareInterfaceException& ex) {
 		ROS_ERROR_STREAM(
-				"ProjectImpedanceControllerPos: Exception getting state handle from interface: "
+				"ProjectImpedanceController: Exception getting state handle from interface: "
 				<< ex.what());
 		return false;
 	}
 
 	hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
 	if (effort_joint_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting effort joint interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceController: Error getting effort joint interface from hardware");
 		return false;
 	}
 	for (size_t i = 0; i < 7; ++i) {
@@ -136,7 +137,7 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 			joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
 		} catch (const hardware_interface::HardwareInterfaceException& ex) {
 			ROS_ERROR_STREAM(
-					"ProjectImpedanceControllerPos: Exception getting joint handles: " << ex.what());
+					"ProjectImpedanceController: Exception getting joint handles: " << ex.what());
 		return false;
 		}
 	}
@@ -152,7 +153,6 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 	cartesian_stiffness_.setIdentity();		// stiffness matrix
 	cartesian_damping_.setIdentity();		// damping matrix
 	cartesian_mass_.setIdentity();			// virtual cartesian matrix   1 Kg
-	orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;           // desired orientation
 
 	cartesian_stiffness_.topLeftCorner(3, 3) 		<< 	K_INIT_POS*Eigen::Matrix3d::Identity();
 	cartesian_stiffness_.bottomRightCorner(3, 3) 	<< 	K_INIT_OR*Eigen::Matrix3d::Identity();
@@ -183,7 +183,7 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 //                          	  STARTING										//
 //------------------------------------------------------------------------------//
 
-void ProjectImpedanceControllerPos::starting(const ros::Time& /*time*/) {
+void ProjectImpedanceController::starting(const ros::Time& /*time*/) {
   
 	franka::RobotState initial_state = state_handle_->getRobotState();
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > q_initial(initial_state.q.data());
@@ -194,8 +194,6 @@ void ProjectImpedanceControllerPos::starting(const ros::Time& /*time*/) {
 
 	// define R matrix for orientation
 	Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(initial_state.O_T_EE.data()).topLeftCorner(3,3));
-
-	orientation_d_ = Eigen::Quaterniond(initial_transform.linear());
 
 	double phi 		= atan2(R(1,0),R(0,0));
 	double theta 	= atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
@@ -224,7 +222,7 @@ void ProjectImpedanceControllerPos::starting(const ros::Time& /*time*/) {
 //                          	    UPDATE										//
 //------------------------------------------------------------------------------//
 
-void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
+void ProjectImpedanceController::update(  const ros::Time& /*time*/,
                                           const ros::Duration& /*period*/) {
 
 	//----------- VARIABLES DECLARATIONS and DEFINITIONS -------------//
@@ -235,7 +233,7 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	double ja_dot_array[42];            	// Ja_dot array
 	Eigen::Matrix<double, 6, 1> error;  	// pose error 6x1: position error (3x1) [m] - orientation error XYZ [rad]
 	Eigen::Matrix<double, 6, 1> derror; 	// pose vel. error 6x1: vel. error (3x1) [m] - orientation vel. error IN XYZ rate
-	Eigen::Matrix<double, 7, 1> tau_fric;   // joint friction forces vector
+	Eigen::Matrix<double, 7, 1> tau_fric;    	// joint friction forces vector
 	Eigen::Matrix<double, 6, 7> ja;			// analytic Jacobian
 	Eigen::Matrix<double, 6, 7> ja_dot;		// analytic Jacobian dot
 	Eigen::Matrix<double, 3, 1> or_proj;	// current orientation
@@ -245,7 +243,6 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	franka::RobotState robot_state = state_handle_->getRobotState();        // robot state
 	std::array<double, 49> mass_array = model_handle_->getMass();			// mass matrix array
 	std::array<double, 7> coriolis_array = model_handle_->getCoriolis();	// coreolis vector
-	std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 	
 	// Eigen conversion
 	Eigen::Map<Eigen::Matrix<double, 7, 7> > mass(mass_array.data());                 // mass matrix [kg]
@@ -253,7 +250,6 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > q(robot_state.q.data());                 // joint positions  [rad]
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > dq(robot_state.dq.data());               // joint velocities [rad/s]
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > tau_J_d(robot_state.tau_J_d.data());     // previous cycle commanded torques [Nm]
-	Eigen::Map<Eigen::Matrix<double, 6, 7> > jacobian(jacobian_array.data());         // jacobian
 
 	Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));       // ee-base homog. transf. matrix
 	Eigen::Vector3d position(transform.translation());                                // ee-base position [m]
@@ -339,135 +335,62 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	derror.tail(3) << ja.bottomLeftCorner(3,7)*dq - dpose_d_.tail(3);
 
 	
+	//===========================| IMPEDANCE CONTROL 6 dof|=============================//
 
-	//======================| IMPEDANCE POSITION, PD ORIENTATION |======================//
-	
 	// SETTING Fext to ZERO!!!   ---------------------------------------------------------------------------   REMOVE THIS!
 	F_ext.setZero();
+
 
 	//----------- VARIABLES -------------//
 
 	//Eigen::VectorXd wrench_task(6), tau_task(7), tau_nullspace(7), tau_d(7); 	// replaced to avoid dynamic allocation
 
-	Eigen::Matrix <double, 3, 1> wrench_task;	// task space wrench
+	Eigen::Matrix <double, 6, 1> wrench_task;	// task space wrench
 	Eigen::Matrix <double, 7, 1> tau_task;		// tau for primary task
 	Eigen::Matrix <double, 7, 1> tau_nullspace;	// tau for nullspace task
 	Eigen::Matrix <double, 7, 1> tau_d;			// final desired torque
-	Eigen::Matrix <double, 3, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
+	Eigen::Matrix <double, 6, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
 	Eigen::Matrix <double, 7, 7> N;				// null projector
-	Eigen::Matrix <double, 3, 3> task_mass;		// mass in task space
+	Eigen::Matrix <double, 6, 6> task_mass;		// mass in task space
 
-	Eigen::Matrix <double, 3, 7> ja_pos;
-	Eigen::Matrix <double, 3, 7> ja_or;
-	Eigen::Matrix <double, 3, 7> ja_dot_pos;
-	Eigen::Matrix <double, 3, 3> cartesian_mass_pos;
-	Eigen::Matrix <double, 3, 3> cartesian_damping_pos;
-	Eigen::Matrix <double, 3, 3> cartesian_stiffness_pos;
-	Eigen::Matrix <double, 3, 1> derror_pos;
-	Eigen::Matrix <double, 3, 1> derror_or;
-	Eigen::Matrix <double, 3, 1> error_pos;
-	Eigen::Matrix <double, 3, 1> error_or;
-	Eigen::Matrix <double, 3, 7> ja_pos_t_inv;
-	Eigen::Matrix <double, 7, 1> tau_or;
-	Eigen::Matrix <double, 3, 3> I3;
-	Eigen::Matrix <double, 7, 3> ja_or_pinv;
-	
-	
-	ja_pos << ja.topLeftCorner(3,7);
-	ja_dot_pos << ja_dot.topLeftCorner(3,7);
-	cartesian_damping_pos << cartesian_damping_.topLeftCorner(3,3);
-	cartesian_stiffness_pos << cartesian_stiffness_.topLeftCorner(3,3);
-	cartesian_mass_pos << 1.0 * Eigen::MatrixXd::Identity(3, 3);
-	error_pos << error.head(3);
-	derror_pos << derror.head(3);
-	error_or << error.tail(3);
-	derror_or << derror.tail(3);
-	I3 = Eigen::MatrixXd::Identity(3, 3);
 
 	// define robot mass in task space and NaN substitution
-	task_mass << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse();    // 3x3
-	for (int i=0; i<3; i++){
-		for (int j=0; j<3; j++){
+	task_mass << (ja*mass.inverse()*ja.transpose()).inverse();    // 6x6
+	for (int i=0; i<6; i++){
+		for (int j=0; j<6; j++){
 			if (std::isnan(task_mass(i,j))){
 				task_mass(i,j) = 1;
 			}
 		}
 	}
 
-
-	//---------------- POSITION CONTROL COMPUTATION -----------------//
+	//---------------- CONTROL COMPUTATION -----------------//
 
 	// project impedance controller
 	// from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
-	wrench_task <<  task_mass*ddpose_d_.head(3)
-					- (task_mass*cartesian_mass_pos.inverse())*(cartesian_damping_pos*derror_pos + cartesian_stiffness_pos*error_pos)
-					+ (task_mass*cartesian_mass_pos.inverse() - I3) * F_ext.head(3)
-					- task_mass*ja_dot_pos*dq;
-
+	wrench_task <<  task_mass*ddpose_d_ 
+					- (task_mass*cartesian_mass_.inverse())*(cartesian_damping_*derror + cartesian_stiffness_*error)
+					+ (task_mass*cartesian_mass_.inverse() - Eigen::MatrixXd::Identity(6, 6))*F_ext
+					- task_mass*ja_dot*dq;
 
 	// from matlab: tau = (Ja')*F_tau + S*q_dot + G + tau_fric;
 	// final tau in joint space for primary task
-	tau_task << ja_pos.transpose()*wrench_task 
+	tau_task << ja.transpose()*wrench_task 
 				+ coriolis + tau_fric;
 
-
-	//---------------- ORIENTATION CONTROL COMPUTATION -----------------//
-
 	//null projection
-	ja_pos_t_inv << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse()*ja_pos*mass.inverse();
-	ja_or_pinv << (ja_or.transpose()*ja_or).inverse()*ja_or.transpose();
-	N << Eigen::MatrixXd::Identity(7, 7) - ja_pos.transpose()*ja_pos_t_inv;
+	ja_t_inv << (ja*mass.inverse()*ja.transpose()).inverse()*ja*mass.inverse();
+	N << Eigen::MatrixXd::Identity(7, 7) - ja.transpose()*ja_t_inv;
 
-	//-----Quaternion orientation-----//
-	Eigen::Matrix<double, 6, 1> dposition;
-	Eigen::Matrix<double,3,1> error_quat;
-	Eigen::Matrix<double,3,1> derror_quat;
-	Eigen::Matrix<double, 3, 1> wrench_task_or;
-
-	// orientation error expressed in the base frame
-	if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0)
-		orientation.coeffs() << -orientation.coeffs();
-	
-	// "difference" quaternion
-	Eigen::Quaterniond error_quaternion(orientation * orientation_d_.inverse());
-	// convert to axis angle
-	Eigen::AngleAxisd error_quaternion_angle_axis(error_quaternion);
-	// limit orientation error amplitude to avoid bad robot behaviour
-	while( abs(error_quaternion_angle_axis.angle()) > M_PI/2){  
-		if ( error_quaternion_angle_axis.angle() > M_PI/2 )
-			error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() - M_PI/2;
-		else if ( error_quaternion_angle_axis.angle() < -M_PI/2)
-			error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() + M_PI/2;
-	}
-	error_quat << error_quaternion_angle_axis.axis() * error_quaternion_angle_axis.angle();
-
-	dposition << jacobian * dq;
-
-	derror_quat << dposition.tail(3);
-
-	wrench_task_or << ( - PD_K_OR_QUAT * I3 * error_quat               // proportional term tested
-                 		- PD_D_OR_QUAT * I3 * derror_quat );               // derivative term
-
-	// PROVE
-	// tau_or << N * ( jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or );
-	// tau_or = N * ja_or.transpose() * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );
-	// tau_or = N * ja_or_pinv * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );
-	// tau_or = ja_or.transpose() * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );	// ? NaN coommand action ?
-
-	// FUNZIONANTE
-	tau_or << jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or; 	// PD_K_OR_QUAT 50
-
-	//---------------- NULLSPACE CONTROL COMPUTATION -----------------//
-
-	// tau_nullspace <<  N * ( NULL_STIFF * (q_d_nullspace_ - q)       // proportional term
-	// 						- (2.0 * sqrt(NULL_STIFF)) * dq);       // derivative term
+	tau_nullspace <<  N * ( nullspace_stiffness_ * (q_d_nullspace_ - q)       // proportional term
+							- (2.0 * sqrt(nullspace_stiffness_)) * dq);       // derivative term
 
 	// Desired torque
-	tau_d << tau_task + tau_or;
-	// tau_d << tau_task;
-
-	//=================================| END CONTROL |==================================//
+	// tau_d << tau_task + tau_nullspace;
+	tau_d << tau_task;
 	
+	//=================================| END CONTROL |==================================//
+
 
 
 	//----------- TORQUE SATURATION and COMMAND-------------//
@@ -493,10 +416,14 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 
 	//----------- DEBUG STUFF -------------//
 
+	Eigen::Matrix<double,6,1> temp_err_o;
+	temp_err_o << 0, 0, 0, error(3), error(4), error(5);
+	Eigen::Matrix<double,6,1> temp_err_p;
+	temp_err_p << error(0), error(1), error(2), 0, 0, 0;
 	Eigen::Matrix<double,7,1> Mo;
-	Mo << tau_or;
+	Mo << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_o;
 	Eigen::Matrix<double,7,1> Mp;
-	Mp << tau_task;
+	Mp << ja.transpose()*(task_mass*cartesian_mass_.inverse())*cartesian_stiffness_*temp_err_p;
 
 
 	//----------- POSE ERROR -------------//
@@ -517,9 +444,9 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	force_cmd_msg.wrench.force.x = wrench_task(0);
 	force_cmd_msg.wrench.force.y = wrench_task(1);
 	force_cmd_msg.wrench.force.z = wrench_task(2);
-	// force_cmd_msg.wrench.torque.x = wrench_task(3);
-	// force_cmd_msg.wrench.torque.y = wrench_task(4);
-	// force_cmd_msg.wrench.torque.z = wrench_task(5);
+	force_cmd_msg.wrench.torque.x = wrench_task(3);
+	force_cmd_msg.wrench.torque.y = wrench_task(4);
+	force_cmd_msg.wrench.torque.z = wrench_task(5);
 
 	pub_cmd_force.publish(force_cmd_msg);
 
@@ -553,9 +480,9 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 		info_debug_msg.tau_internal[i] = tau_J_d(i);
 		info_debug_msg.tau_fric[i] = tau_fric(i);
 	}
-	for (int i = 0; i <3; i++){
-		for (int j = 0; j<3; j++){
-			info_debug_msg.cartesian_stiffness[i*3+j] = cartesian_stiffness_pos(i,j);
+	for (int i = 0; i <6; i++){
+		for (int j = 0; j<6; j++){
+			info_debug_msg.cartesian_stiffness[i*6+j] = cartesian_stiffness_(i,j);
 		}
 	}
 	pub_info_debug.publish(info_debug_msg);
@@ -564,7 +491,7 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	//----------- CURRENT IMPEDANCE -------------//
 
 	std_msgs::Float64 impedance_msg;
-	impedance_msg.data = std::pow(cartesian_stiffness_pos.norm(),2) + std::pow(cartesian_damping_pos.norm(),2);
+	impedance_msg.data = std::pow(cartesian_stiffness_.norm(),2) + std::pow(cartesian_damping_.norm(),2);
 
 	pub_impedance_.publish(impedance_msg);
 }
@@ -573,7 +500,7 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 //---------------------------------------------------------------//
 //                    	TORQUE SATURATION                    	 //
 //---------------------------------------------------------------//
-Eigen::Matrix<double, 7, 1> ProjectImpedanceControllerPos::saturateTorqueRate(
+Eigen::Matrix<double, 7, 1> ProjectImpedanceController::saturateTorqueRate(
     	const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
     	const Eigen::Matrix<double, 7, 1>& tau_J_d) {  // NOLINT (readability-identifier-naming)
 	Eigen::Matrix<double, 7, 1> tau_d_saturated;
@@ -590,7 +517,7 @@ Eigen::Matrix<double, 7, 1> ProjectImpedanceControllerPos::saturateTorqueRate(
 //---------------------------------------------------------------//
 
 //----------- DESIRED IMPEDANCE -------------//
-void ProjectImpedanceControllerPos::desiredImpedanceProjectCallback(
+void ProjectImpedanceController::desiredImpedanceProjectCallback(
   		const panda_controllers::DesiredImpedance::ConstPtr& msg){
 
 	for (int i=0; i<6; i++){
@@ -603,7 +530,7 @@ void ProjectImpedanceControllerPos::desiredImpedanceProjectCallback(
 
 
 //----------- DESIRED TRAJECTORY -------------//
-void ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback(
+void ProjectImpedanceController::desiredProjectTrajectoryCallback(
     	const panda_controllers::DesiredProjectTrajectoryConstPtr& msg) {
   
 	position_d_ 	<< msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
@@ -615,12 +542,12 @@ void ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback(
 }
 
 //----------- EXTERNAL FORCES -------------//
-void ProjectImpedanceControllerPos::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
+void ProjectImpedanceController::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
   	F_ext << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z, 0, 0, 0;
 }
 
 }  // end namespace franka_softbots
 
 
-PLUGINLIB_EXPORT_CLASS(panda_controllers::ProjectImpedanceControllerPos,
+PLUGINLIB_EXPORT_CLASS(panda_controllers::ProjectImpedanceController,
                        controller_interface::ControllerBase)
