@@ -6,31 +6,25 @@
 #include <vector>
 #include <ros/ros.h>
 
-#include <controller_interface/multi_interface_controller.h>
-#include <dynamic_reconfigure/server.h>
+
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
 
-#include <hardware_interface/joint_command_interface.h>
-#include <hardware_interface/robot_hw.h>
+
+
 #include <ros/node_handle.h>
 #include <ros/time.h>
 #include <eigen3/Eigen/Dense>
 
-#include <franka_hw/franka_model_interface.h>
-#include <franka_hw/franka_state_interface.h>
 
-#include <franka_msgs/SetFullCollisionBehavior.h>
-#include <franka_msgs/SetJointImpedance.h>
 
-#include <panda_controllers/DesiredProjectTrajectory.h>
-#include <panda_controllers/EEpose.h>
 #include <panda_controllers/InfoDebug.h>
+#include <panda_controllers/InputsFromMatlab.h>
+#include <panda_controllers/OutputsToMatlab.h>
 // #include <panda_controllers/DesiredTrajectory.h>
-#include <panda_controllers/DesiredImpedance.h>
-#include <panda_controllers/RobotState.h>
+
 
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Float64.h"
@@ -43,8 +37,8 @@ namespace panda_controllers {
 class ProjectImpedanceControllerMatlab  {
  	public:
 		bool init(ros::NodeHandle& node_handle);
-		void starting(const ros::Time&);
-		void update(const ros::Time&, const ros::Duration& period);
+		void starting();
+		void update();
 
  	private:
 		//----------FRANKA STUFF----------//
@@ -70,36 +64,30 @@ class ProjectImpedanceControllerMatlab  {
 		Eigen::Matrix<double, 6, 1> dpose_d_;                     // desired velocity
 		Eigen::Matrix<double, 6, 1> ddpose_d_;                    // desired acceleration
 		Eigen::Matrix<double, 6, 1> F_ext;                        // external Forces in x y z 
-		
+		Eigen::Matrix<double, 7, 7> mass;                 		// mass matrix [kg]
+		Eigen::Matrix<double, 7, 1> coriolis;         // coriolis forces  [Nm]
+		Eigen::Matrix<double, 7, 1> q;                 // joint positions  [rad]
+		Eigen::Matrix<double, 7, 1> dq;               // joint velocities [rad/s]
+		Eigen::Matrix<double, 3, 3> R;
+		Eigen::Matrix<double, 3, 1> pos;
+		Eigen::Matrix<double, 7, 1> tau_fric;    	// joint friction forces vector
+		Eigen::Matrix<double, 7, 1> gravity;    	// gravity vector
 
 		//----------SUBSCRIBERS----------//
-		ros::Subscriber sub_des_traj_proj_;
-		void desiredProjectTrajectoryCallback(const panda_controllers::DesiredProjectTrajectoryConstPtr& msg);
 
-		ros::Subscriber sub_des_imp_proj_;
-		void desiredImpedanceProjectCallback(const panda_controllers::DesiredImpedance::ConstPtr& msg);
-
-		// external forces
-		ros::Subscriber sub_ext_forces;
-		void f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg);
+		ros::Subscriber sub_inputs_from_matlab;
+		void inputs_from_matlab_Callback(const panda_controllers::InputsFromMatlabConstPtr& msg);
 
 
 		//----------PUBLISHERS----------//
-		ros::Publisher pub_pos_error;
-		ros::Publisher pub_cmd_force;
-		ros::Publisher pub_endeffector_pose_;
-		ros::Publisher pub_ee_pose_;
-		ros::Publisher pub_robot_state_;
-		ros::Publisher pub_impedance_;
+
 		ros::Publisher pub_info_debug;
-		
+		ros::Publisher pub_outputs_to_matlab;
 
 		//----------MESSAGES----------//
-		geometry_msgs::TwistStamped   pos_error_msg;
-		geometry_msgs::WrenchStamped  force_cmd_msg;  
-		panda_controllers::RobotState robot_state_msg;
-		panda_controllers::EEpose ee_pos_msg;
-		panda_controllers::InfoDebug info_debug_msg;	
+
+		panda_controllers::InfoDebug info_debug_msg;
+		panda_controllers::OutputsToMatlab outputs_to_matlab_msg;	
 };
 
 }  // namespace franka_softbots

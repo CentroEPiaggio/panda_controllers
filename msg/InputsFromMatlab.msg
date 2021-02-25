@@ -1,0 +1,14 @@
+float64[6] F_ext
+float64[36] K
+float64[36] D
+float64[6] pose_des
+float64[6] dpose_des
+float64[6] ddpose_des
+float64[7] q
+float64[7] dq 
+float64[49] mass_mat
+float64[49] coriolis_mat
+float64[7] gravity_mat
+float64[7] tau_fric_mat
+float64[9] R
+float64[3] pos

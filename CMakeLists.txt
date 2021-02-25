@@ -34,6 +34,8 @@ add_message_files(FILES
   DesiredProjectTrajectory.msg
   EEpose.msg
   InfoDebug.msg
+  InputsFromMatlab.msg
+  OutputsToMatlab.msg
 )
 
 ##
@@ -98,6 +100,7 @@ add_executable(planner src/planner.cpp)
 #add_executable(test_jac src/test_jac.cpp)
 add_executable(commands src/commands.cpp)
 add_executable(proj_trajectory src/proj_trajectory.cpp)
+add_executable(matlab_controller src/project_controller_matlab.cpp)
 
 ##
 
@@ -116,6 +119,7 @@ target_link_libraries(planner ${PROJECT_NAME})
 #target_link_libraries(test_jac ${PROJECT_NAME})
 target_link_libraries(commands ${PROJECT_NAME})
 target_link_libraries(proj_trajectory ${PROJECT_NAME})
+target_link_libraries(matlab_controller ${PROJECT_NAME})
 
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
