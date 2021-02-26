@@ -21,8 +21,10 @@ struct traj_struct{
     Eigen::Vector3d pos_des;
     Eigen::Vector3d vel_des;
     Eigen::Vector3d acc_des;
+    Eigen::Vector3d or_des;
+    Eigen::Vector3d dor_des;
+    Eigen::Vector3d ddor_des;
 } traj;
-
 
 Eigen::Vector3d pos;
 Eigen::Vector3d orient;
@@ -41,7 +43,7 @@ void poseCallback(
   orient << msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z;
 }
 
-void interpolator(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
+void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
                             double tf, double t, 
                             Eigen::Vector3d vel){
 
@@ -71,8 +73,15 @@ void interpolator(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
         traj.vel_des << 0, 0, 0;
         traj.pos_des << pos_f;
     }
+}
 
-
+void demo_inf_XY(Eigen::Vector3d pos_i, double t){
+    Eigen::Vector3d tmp;
+    tmp << sin(4*t)/8, sin(2*t)/4, 0;
+    traj.pos_des << pos_i + tmp;
+    traj.vel_des << cos(4*t)/2, cos(2*t)/2, 0;
+    traj.acc_des << -sin(4*t)*2, -sin(2*t), 0;
+    
 }
 
 
@@ -93,48 +102,76 @@ int main(int argc, char **argv)
    
 
   Eigen::Vector3d pos_f;
+  Eigen::Vector3d or_f;
   double tf;
   Eigen::Vector3d vel;
   Eigen::Vector3d pos_init;
+  Eigen::Vector3d or_init;
   int inter_x, inter_y, inter_z, comp_x, comp_y, comp_z;
-
 
   signal(SIGINT, signal_callback_handler);
 
   ros::Time t_init;
   double t = 0;
+  int choice;
+  int demo = -1;
 
   while (ros::ok()){
 
-
-    cout<<"time_f "<<endl;
-    cin>>tf;
-    cout<<"final_position "<<endl;
-    cin>> pos_f.x();
-    cin>> pos_f.y();
-    cin>> pos_f.z();
-    cout<<"interaction: "<<endl;
-    cin>>inter_x;
-    cin>>inter_y;
-    cin>>inter_z;
-    cout<<"compensation: "<<endl;
-    cin>>comp_x;
-    cin>>comp_y;
-    cin>>comp_z;
-
+    demo = -1;
+    cout<<"choice:   (1:position , 2:orientation , 3:int-comp, 4:demos) "<<endl;
+    cin>>choice;
+    if (choice == 1){
+      cout<<"time_f "<<endl;
+      cin>>tf;
+      cout<<"final_position "<<endl;
+      cin>> pos_f.x();
+      cin>> pos_f.y();
+      cin>> pos_f.z();
+    }else if (choice == 2){
+      cout<<"time_f "<<endl;
+      cin>>tf;
+      cout<<"final_orientation "<<endl;
+      cin>> or_f.x();
+      cin>> or_f.y();
+      cin>> or_f.z();
+      cout<<"sorry, not implemented yet"<<endl;
+    }else if (choice == 3){
+      tf = -1;
+      cout<<"interaction: "<<endl;
+      cin>>inter_x;
+      cin>>inter_y;
+      cin>>inter_z;
+      cout<<"compensation: "<<endl;
+      cin>>comp_x;
+      cin>>comp_y;
+      cin>>comp_z;
+      cout << "done!"<<endl;
+    }else if (choice == 4){
+      cout<<"select demo:   (1: infinite XY , ...-soon other demos-"<<endl;
+      cin>>demo;
+    }
 
     ros::spinOnce();
 
     t_init = ros::Time::now();
     pos_init = pos;
+    or_init = orient;
     vel << (pos_f.x() - pos_init.x())/((1-alpha)*tf), (pos_f.y() - pos_init.y())/((1-alpha)*tf), (pos_f.z() - pos_init.z())/((1-alpha)*tf);
 
     t = (ros::Time::now() - t_init).toSec();
 
     while (t <= tf)
     {
-
-      interpolator(pos_init, pos_f, tf, t, vel);
+      if (choice == 1){
+        interpolator_pos(pos_init, pos_f, tf, t, vel);
+      } else if (choice == 2){
+        //interpolator_or(or_init, or_f, tf, t, vel_or)
+      } else if (choice == 4){
+        if (demo == 1){
+          demo_inf_XY(pos_init, t);
+        }
+      }
 
       traj_msg.header.stamp = ros::Time::now();
 
