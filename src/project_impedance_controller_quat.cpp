@@ -1,4 +1,4 @@
-#include <panda_controllers/project_impedance_controller_pos.h>
+#include <panda_controllers/project_impedance_controller_quat.h>
 #include "utils/Jacobians_ee.h"
 #include "utils/FrictionTorque.h"
 #include <cmath>
@@ -18,7 +18,7 @@
 #define 	K_INIT_OR		500
 #define 	PD_K_OR			50
 #define 	PD_D_OR			2.0*sqrt(PD_K_OR)
-#define 	PD_K_OR_QUAT	50
+#define 	PD_K_OR_QUAT	30
 #define 	PD_D_OR_QUAT	2.0*sqrt(PD_K_OR)
 #define 	COLL_LIMIT		25
 #define 	NULL_STIFF		10
@@ -37,7 +37,7 @@ extern std::string name_space;
 //------------------------------------------------------------------------------//
 //                          		INIT										//
 //------------------------------------------------------------------------------//
-bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw, 
+bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_hw, 
                                         ros::NodeHandle& node_handle) {
 	// Name space extraction for add a prefix to the topic name
 	int n = 0;
@@ -49,15 +49,15 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 	//--------------- INITIALIZE SUBSCRIBERS AND PUBLISHERS -----------------//
 
 	sub_des_traj_proj_ =  node_handle.subscribe(  "/project_impedance_controller/desired_project_trajectory", 1, 
-													&ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback, this,
+													&ProjectImpedanceControllerQuat::desiredProjectTrajectoryCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
 	sub_des_imp_proj_ =   node_handle.subscribe(  "/project_impedance_controller/desired_impedance_project", 1, 
-													&ProjectImpedanceControllerPos::desiredImpedanceProjectCallback, this,
+													&ProjectImpedanceControllerQuat::desiredImpedanceProjectCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
 	sub_ext_forces =      node_handle.subscribe(  "/franka_state_controller/F_ext", 1, 
-													&ProjectImpedanceControllerPos::f_ext_Callback, this,
+													&ProjectImpedanceControllerQuat::f_ext_Callback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>("/project_impedance_controller/pos_error", 1);
@@ -81,24 +81,24 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 
 	std::string arm_id;
 	if (!node_handle.getParam("arm_id", arm_id)) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Could not read parameter arm_id");
+		ROS_ERROR_STREAM("ProjectImpedanceControllerQuat: Could not read parameter arm_id");
 		return false;
 	}
 	std::vector<std::string> joint_names;
 	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
 		ROS_ERROR(
-				"ProjectImpedanceControllerPos: Invalid or no joint_names parameters provided, "
+				"ProjectImpedanceControllerQuat: Invalid or no joint_names parameters provided, "
 				"aborting controller init!");
 		return false;
 	}
 	if (!node_handle.getParam("var_damp", var_damp)) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Could not read parameter var_damp");
+		ROS_ERROR_STREAM("ProjectImpedanceControllerQuat: Could not read parameter var_damp");
 		return false;
 	}
 
 	franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
 	if (model_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting model interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceControllerQuat: Error getting model interface from hardware");
 		return false;
 	}
 	try {
@@ -106,14 +106,14 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 				new franka_hw::FrankaModelHandle(model_interface->getHandle(arm_id + "_model")));
 	} catch (hardware_interface::HardwareInterfaceException& ex) {
 		ROS_ERROR_STREAM(
-				"ProjectImpedanceControllerPos: Exception getting model handle from interface: "
+				"ProjectImpedanceControllerQuat: Exception getting model handle from interface: "
 				<< ex.what());
 		return false;
 	}
 
 	franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
 	if (state_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting state interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceControllerQuat: Error getting state interface from hardware");
 		return false;
 	}
 	try {
@@ -121,14 +121,14 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 				new franka_hw::FrankaStateHandle(state_interface->getHandle(arm_id + "_robot")));
 	} catch (hardware_interface::HardwareInterfaceException& ex) {
 		ROS_ERROR_STREAM(
-				"ProjectImpedanceControllerPos: Exception getting state handle from interface: "
+				"ProjectImpedanceControllerQuat: Exception getting state handle from interface: "
 				<< ex.what());
 		return false;
 	}
 
 	hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
 	if (effort_joint_interface == nullptr) {
-		ROS_ERROR_STREAM("ProjectImpedanceControllerPos: Error getting effort joint interface from hardware");
+		ROS_ERROR_STREAM("ProjectImpedanceControllerQuat: Error getting effort joint interface from hardware");
 		return false;
 	}
 	for (size_t i = 0; i < 7; ++i) {
@@ -136,7 +136,7 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 			joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
 		} catch (const hardware_interface::HardwareInterfaceException& ex) {
 			ROS_ERROR_STREAM(
-					"ProjectImpedanceControllerPos: Exception getting joint handles: " << ex.what());
+					"ProjectImpedanceControllerQuat: Exception getting joint handles: " << ex.what());
 		return false;
 		}
 	}
@@ -183,7 +183,7 @@ bool ProjectImpedanceControllerPos::init(  hardware_interface::RobotHW* robot_hw
 //                          	  STARTING										//
 //------------------------------------------------------------------------------//
 
-void ProjectImpedanceControllerPos::starting(const ros::Time& /*time*/) {
+void ProjectImpedanceControllerQuat::starting(const ros::Time& /*time*/) {
   
 	franka::RobotState initial_state = state_handle_->getRobotState();
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > q_initial(initial_state.q.data());
@@ -224,7 +224,7 @@ void ProjectImpedanceControllerPos::starting(const ros::Time& /*time*/) {
 //                          	    UPDATE										//
 //------------------------------------------------------------------------------//
 
-void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
+void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
                                           const ros::Duration& /*period*/) {
 
 	//----------- VARIABLES DECLARATIONS and DEFINITIONS -------------//
@@ -354,7 +354,8 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	Eigen::Matrix <double, 7, 1> tau_nullspace;	// tau for nullspace task
 	Eigen::Matrix <double, 7, 1> tau_d;			// final desired torque
 	Eigen::Matrix <double, 3, 7> ja_t_inv;		// jacobian traspose pseudoiverse (mass weighted)
-	Eigen::Matrix <double, 7, 7> N;				// null projector
+	Eigen::Matrix <double, 7, 7> N;
+    Eigen::Matrix <double, 7, 7> N_tot;				// null projector
 	Eigen::Matrix <double, 3, 3> task_mass;		// mass in task space
 
 	Eigen::Matrix <double, 3, 7> ja_pos;
@@ -368,12 +369,14 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	Eigen::Matrix <double, 3, 1> error_pos;
 	Eigen::Matrix <double, 3, 1> error_or;
 	Eigen::Matrix <double, 3, 7> ja_pos_t_inv;
+	Eigen::Matrix <double, 6, 7> jacobian_t_inv;
 	Eigen::Matrix <double, 7, 1> tau_or;
 	Eigen::Matrix <double, 3, 3> I3;
 	Eigen::Matrix <double, 7, 3> ja_or_pinv;
 	
 	
-	ja_pos << ja.topLeftCorner(3,7);
+	// ja_pos << ja.topLeftCorner(3,7);
+	ja_pos << jacobian.topLeftCorner(3,7);
 	ja_dot_pos << ja_dot.topLeftCorner(3,7);
 	cartesian_damping_pos << cartesian_damping_.topLeftCorner(3,3);
 	cartesian_stiffness_pos << cartesian_stiffness_.topLeftCorner(3,3);
@@ -414,9 +417,12 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 	//---------------- ORIENTATION CONTROL COMPUTATION -----------------//
 
 	//null projection
-	ja_pos_t_inv << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse()*ja_pos*mass.inverse();
+	ja_pos_t_inv << (ja_pos*ja_pos.transpose()).inverse()*ja_pos;
+	// ja_pos_t_inv << (ja_pos*mass.inverse()*ja_pos.transpose()).inverse()*ja_pos*mass.inverse();
+	jacobian_t_inv << (jacobian*mass.inverse()*jacobian.transpose()).inverse()*jacobian*mass.inverse();
 	ja_or_pinv << (ja_or.transpose()*ja_or).inverse()*ja_or.transpose();
 	N << Eigen::MatrixXd::Identity(7, 7) - ja_pos.transpose()*ja_pos_t_inv;
+	N_tot << Eigen::MatrixXd::Identity(7, 7) - jacobian.transpose()*jacobian_t_inv;
 
 	//-----Quaternion orientation-----//
 	Eigen::Matrix<double, 6, 1> dposition;
@@ -449,21 +455,21 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
                  		- PD_D_OR_QUAT * I3 * derror_quat );               // derivative term
 
 	// PROVE
-	// tau_or << N * ( jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or );
+	tau_or << N * ( jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or );
 	// tau_or = N * ja_or.transpose() * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );
 	// tau_or = N * ja_or_pinv * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );
 	// tau_or = ja_or.transpose() * ( -I3*error_or*PD_K_OR - I3*derror_or*PD_D_OR );	// ? NaN coommand action ?
 
 	// FUNZIONANTE
-	tau_or << jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or; 	// PD_K_OR_QUAT 50
+	// tau_or << jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or; 	// PD_K_OR_QUAT 30
 
 	//---------------- NULLSPACE CONTROL COMPUTATION -----------------//
 
-	// tau_nullspace <<  N * ( NULL_STIFF * (q_d_nullspace_ - q)       // proportional term
-	// 						- (2.0 * sqrt(NULL_STIFF)) * dq);       // derivative term
+	 tau_nullspace <<  N_tot * ( NULL_STIFF * (q_d_nullspace_ - q)       // proportional term
+						- (2.0 * sqrt(NULL_STIFF)) * dq);       // derivative term
 
 	// Desired torque
-	tau_d << tau_task + tau_or;
+	tau_d << tau_task + tau_or + tau_nullspace;
 	// tau_d << tau_task;
 
 	//=================================| END CONTROL |==================================//
@@ -540,7 +546,7 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 
 
 	//----------- DEBUG INFO -------------//
-
+	info_debug_msg.header.stamp = ros::Time::now();
 	info_debug_msg.pose_error.position.y = error[1];
 	info_debug_msg.pose_error.position.x = error[0];
 	info_debug_msg.pose_error.position.z = error[2];
@@ -552,6 +558,8 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 		info_debug_msg.tau_or[i] = Mo(i);
 		info_debug_msg.tau_internal[i] = tau_J_d(i);
 		info_debug_msg.tau_fric[i] = tau_fric(i);
+	    info_debug_msg.tau_null[i] = tau_nullspace(i);
+
 	}
 	for (int i = 0; i <3; i++){
 		for (int j = 0; j<3; j++){
@@ -573,7 +581,7 @@ void ProjectImpedanceControllerPos::update(  const ros::Time& /*time*/,
 //---------------------------------------------------------------//
 //                    	TORQUE SATURATION                    	 //
 //---------------------------------------------------------------//
-Eigen::Matrix<double, 7, 1> ProjectImpedanceControllerPos::saturateTorqueRate(
+Eigen::Matrix<double, 7, 1> ProjectImpedanceControllerQuat::saturateTorqueRate(
     	const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
     	const Eigen::Matrix<double, 7, 1>& tau_J_d) {  // NOLINT (readability-identifier-naming)
 	Eigen::Matrix<double, 7, 1> tau_d_saturated;
@@ -590,7 +598,7 @@ Eigen::Matrix<double, 7, 1> ProjectImpedanceControllerPos::saturateTorqueRate(
 //---------------------------------------------------------------//
 
 //----------- DESIRED IMPEDANCE -------------//
-void ProjectImpedanceControllerPos::desiredImpedanceProjectCallback(
+void ProjectImpedanceControllerQuat::desiredImpedanceProjectCallback(
   		const panda_controllers::DesiredImpedance::ConstPtr& msg){
 
 	for (int i=0; i<6; i++){
@@ -603,7 +611,7 @@ void ProjectImpedanceControllerPos::desiredImpedanceProjectCallback(
 
 
 //----------- DESIRED TRAJECTORY -------------//
-void ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback(
+void ProjectImpedanceControllerQuat::desiredProjectTrajectoryCallback(
     	const panda_controllers::DesiredProjectTrajectoryConstPtr& msg) {
   
 	position_d_ 	<< msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
@@ -615,12 +623,12 @@ void ProjectImpedanceControllerPos::desiredProjectTrajectoryCallback(
 }
 
 //----------- EXTERNAL FORCES -------------//
-void ProjectImpedanceControllerPos::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
+void ProjectImpedanceControllerQuat::f_ext_Callback(const geometry_msgs::WrenchStampedConstPtr& msg){
   	F_ext << msg->wrench.force.x, msg->wrench.force.y, msg->wrench.force.z, 0, 0, 0;
 }
 
 }  // end namespace franka_softbots
 
 
-PLUGINLIB_EXPORT_CLASS(panda_controllers::ProjectImpedanceControllerPos,
+PLUGINLIB_EXPORT_CLASS(panda_controllers::ProjectImpedanceControllerQuat,
                        controller_interface::ControllerBase)

@@ -20,8 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   realtime_tools
   roscpp
   rospy
-)
-
+) 
+ 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
 
@@ -75,7 +75,7 @@ add_library(${PROJECT_NAME}
   # src/backstepping.cpp #Backstepping controller
   src/variable_impedance_controller.cpp #Backstepping controller
   src/project_impedance_controller.cpp #Project variable impedance controller
-  src/project_impedance_controller_pos.cpp #controller impedance pos, PD or
+  src/project_impedance_controller_quat.cpp #controller impedance pos, PD or
   src/planner.cpp #Planner
   src/Jacobians_ee.cpp #end-effector Jacobians
   src/FrictionTorque.cpp #friction torque vector

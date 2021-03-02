@@ -10,9 +10,9 @@
 
 #include "panda_controllers/planner.h"
 
-#define     F_MAX       5.0         // [N]          disturbance threshold
+#define     F_MAX       4.0         // [N]          disturbance threshold
 #define     E_MAX       0.05        // [m]          maximum tollerated error 
-#define     F_INT_MAX   10.0         // [N]          maximum tollerated force in interaction
+#define     F_INT_MAX   7.0         // [N]          maximum tollerated force in interaction
 #define     K_MIN       20.0        // [N/m]        minimum value for stiffness
 #define     K_MAX       1000.0      // [N/m]        maximum value for stiffness
 #define     MASS        1.0         // [kg]         virtual mass (inertia shaping)
@@ -21,14 +21,14 @@
 #define     CSI         1.0         // []           critically damped system
 #define     K_OR        500         // [Nm/rad]     orientation stiffness
 #define     D_OR        2*sqrt(500) // [Nm*sec/rad] orientation damping
-
+#define     K_INIT      200         // [Nm]         default value
 
 //==========================================================================================//
 //                                      CLASS PLANNER                                       //
 //==========================================================================================//
 planner_class::planner_class(){
-    ki = F_MAX/E_MAX;
-    kc = F_MAX/E_MAX;
+    ki = K_INIT;
+    kc = K_INIT;
     F_comp = 0;
     z_int = 1000;
     z_int_dir = 0;
@@ -119,12 +119,12 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // reset to default values when comp or int shifts to zero
     if (comp==0 && comp_prec==1){
-        kc = F_max/e_max;
+        kc = K_INIT;
         F_comp = 0;
         set_F_comp = 0;
     }
     if (inter==0 && int_prec==1){
-        ki = F_max/e_max;
+        ki = K_INIT;
     }
 
     // from int to comp and vice versa
@@ -149,7 +149,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // Selection of Final Values of D-K
     // default values
-    double k = std::abs(F_max)/e_max;
+    double k = K_INIT;
 
     // compensation
     if (comp == 1){
@@ -183,7 +183,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }else{
         //    std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
-                k = F_max/e_max;            // restore to default
+                k = K_INIT;            // restore to default
                 // std::cout <<"z_int > 999 " << std::endl;
             }else{
         //        std::cout <<"ok2 "<<std::endl;
@@ -191,13 +191,13 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     // std::cout <<"z_int_dir == 1 " << std::endl;
                     if (z_des < z_int){
                         // std::cout <<"z_des < z_int " << std::endl;
-                        k = F_max/e_max;    // restore because "going away"
+                        k = K_INIT;    // restore because "going away"
                     }
                 }else{
                     // std::cout<<" z_int_dir != 1 "<<std::endl;
                     if (z_des > z_int){
                         // std::cout<<"z_des > z_int "<<std::endl;
-                        k = F_max/e_max;    // restore because "going away"
+                        k = K_INIT;    // restore because "going away"
                     }
                 }
             }
@@ -218,9 +218,12 @@ planner_node::planner_node(){
         D[i] = 0;
     }
     time_prec = ros::Time::now();
-    kx = F_MAX/E_MAX;
-    ky = F_MAX/E_MAX;
-    kz = F_MAX/E_MAX;
+    kx = K_INIT;
+    ky = K_INIT;
+    kz = K_INIT;
+    // kx = F_MAX/E_MAX;
+    // ky = F_MAX/E_MAX;
+    // kz = F_MAX/E_MAX;
 }
 
 
@@ -279,6 +282,7 @@ void planner_node::update() {
     // std::cout << "kz_f: " << kz_f << std::endl;
 
     interpolator(kx_f,ky_f,kz_f);
+    
 
 //------------------------------------------------------------------------------------------------REMOVE THIS!
     //std::cout << "x_real: " << ee_pos(0) << "  x_des: " << pos_d(0) << std::endl;
@@ -294,7 +298,7 @@ void planner_node::update() {
         desired_impedance_msg.stiffness_matrix[i] = K[i];
         desired_impedance_msg.damping_matrix[i] = D[i];
     }
-
+    // std::cout << "K[0]" << K[0] << ", Kmsg" << desired_impedance_msg.stiffness_matrix[0] << std::endl;
     pub_impedance.publish(desired_impedance_msg);
 }
 

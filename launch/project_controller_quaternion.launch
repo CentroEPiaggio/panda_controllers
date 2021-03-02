@@ -6,14 +6,15 @@
 
     <!-- Controller name -->
     <!-- <arg name="controller" default="project_impedance_controller"/> -->
-    <arg name="controller" default="project_impedance_controller"/>
+    <arg name="controller" default="project_impedance_controller_quat"/>
     
     <!-- Franka control node -->
-    <include file="$(find panda_controllers)/launch/panda_controller_pos.launch" >
+    <include file="$(find panda_controllers)/launch/panda_controller.launch" >
         <arg name="robot_ip" value="$(arg robot_ip)" />
         <arg name="load_gripper" value="$(arg load_gripper)" />
         <arg name="controller_name" value="$(arg controller)" />
     </include>
+
 
     <!-- Load Gripper -->
     <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >

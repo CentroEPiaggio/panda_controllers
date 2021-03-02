@@ -36,7 +36,7 @@
    </description>
   </class>
 
-  <class name="panda_controllers/ProjectImpedanceControllerPos" type="panda_controllers::ProjectImpedanceControllerPos" base_class_type="controller_interface::ControllerBase">
+  <class name="panda_controllers/ProjectImpedanceControllerQuat" type="panda_controllers::ProjectImpedanceControllerQuat" base_class_type="controller_interface::ControllerBase">
    <description>
       Project impedance controller, PD orientation.
    </description>

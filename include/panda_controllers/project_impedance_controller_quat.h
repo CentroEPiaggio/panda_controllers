@@ -40,7 +40,7 @@ namespace panda_controllers {
 //==========================================================================================//
 //                                    CLASS CONTROLLER                                      //
 //==========================================================================================//
-class ProjectImpedanceControllerPos : public controller_interface::MultiInterfaceController
+class ProjectImpedanceControllerQuat : public controller_interface::MultiInterfaceController
 												<franka_hw::FrankaModelInterface,
                                                 hardware_interface::EffortJointInterface,
                                                 franka_hw::FrankaStateInterface> {

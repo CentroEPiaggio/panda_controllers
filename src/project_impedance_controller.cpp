@@ -479,6 +479,8 @@ void ProjectImpedanceController::update(  const ros::Time& /*time*/,
 		info_debug_msg.tau_or[i] = Mo(i);
 		info_debug_msg.tau_internal[i] = tau_J_d(i);
 		info_debug_msg.tau_fric[i] = tau_fric(i);
+		info_debug_msg.tau_null[i] = tau_nullspace(i);
+
 	}
 	for (int i = 0; i <6; i++){
 		for (int j = 0; j<6; j++){

@@ -77,13 +77,21 @@ void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
 
 void demo_inf_XY(Eigen::Vector3d pos_i, double t){
     Eigen::Vector3d tmp;
-    tmp << sin(4*t)/8, sin(2*t)/4, 0;
+    tmp << sin(t)/8, sin(t/2)/4, 0;
     traj.pos_des << pos_i + tmp;
-    traj.vel_des << cos(4*t)/2, cos(2*t)/2, 0;
-    traj.acc_des << -sin(4*t)*2, -sin(2*t), 0;
+    traj.vel_des << cos(t)/8, cos(t/2)/8, 0;
+    traj.acc_des << -sin(t)/8, -sin(t/2)/16, 0;
     
 }
 
+void demo_inf_XYZ(Eigen::Vector3d pos_i, double t,double zf,double tf){
+    Eigen::Vector3d tmp;
+    tmp << sin(t)/8, sin(t/2)/4, pos_i(2) + ((zf-pos_i(2))/tf)*t;
+    traj.pos_des << pos_i + tmp;
+    traj.vel_des << cos(t)/8, cos(t/2)/8, (zf-pos_i(2))/tf;
+    traj.acc_des << -sin(t)/8, -sin(t/2)/16, 0;
+    
+}
 
 int main(int argc, char **argv)
 {
@@ -104,6 +112,7 @@ int main(int argc, char **argv)
   Eigen::Vector3d pos_f;
   Eigen::Vector3d or_f;
   double tf;
+  double zf;
   Eigen::Vector3d vel;
   Eigen::Vector3d pos_init;
   Eigen::Vector3d or_init;
@@ -148,8 +157,14 @@ int main(int argc, char **argv)
       cin>>comp_z;
       cout << "done!"<<endl;
     }else if (choice == 4){
-      cout<<"select demo:   (1: infinite XY , ...-soon other demos-"<<endl;
+      cout<<"select demo:   (1: infinite XY , 2: infinite XYZ , ...-soon other demos-"<<endl;
       cin>>demo;
+      cout<<"insert time_f: "<<endl;
+      cin>>tf;
+      if (demo==2){
+        cout<<"insert zf: "<<endl;
+        cin>>zf;
+      }
     }
 
     ros::spinOnce();
@@ -170,6 +185,8 @@ int main(int argc, char **argv)
       } else if (choice == 4){
         if (demo == 1){
           demo_inf_XY(pos_init, t);
+        }else if(demo==2){
+          demo_inf_XYZ(pos_init,t,zf,tf);
         }
       }
 
