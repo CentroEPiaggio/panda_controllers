@@ -470,7 +470,7 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 
 	// Desired torque
 	tau_d << tau_task + tau_or + tau_nullspace;
-	// tau_d << tau_task;
+	// tau_d << tau_or;
 
 	//=================================| END CONTROL |==================================//
 	

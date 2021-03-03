@@ -9,10 +9,20 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
-
+#include "utils/parsing_utilities.h"
 #include "ros/ros.h"
 
 #include <sstream>
+#include <eigen_conversions/eigen_msg.h>
+
+// ROS Service and Message Includes
+#include "std_msgs/Float64.h"
+#include "std_msgs/Bool.h"
+#include "std_srvs/SetBool.h"
+#include "geometry_msgs/Pose.h"
+
+
+
 using namespace std;
 
 #define alpha 0.1
@@ -117,6 +127,12 @@ int main(int argc, char **argv)
   Eigen::Vector3d pos_init;
   Eigen::Vector3d or_init;
   int inter_x, inter_y, inter_z, comp_x, comp_y, comp_z;
+  XmlRpc::XmlRpcValue traj_par;
+  // std::map<std::string, std::vector<double>>  traj_par; 
+
+  int N_ACTION;
+  Eigen::MatrixXd ACTIONS;
+  Eigen::MatrixXi TYPE;
 
   signal(SIGINT, signal_callback_handler);
 
@@ -124,12 +140,20 @@ int main(int argc, char **argv)
   double t = 0;
   int choice;
   int demo = -1;
+  int yaml = 0;
+  int n_act = 0;
+
 
   while (ros::ok()){
 
     demo = -1;
-    cout<<"choice:   (1:position , 2:orientation , 3:int-comp, 4:demos) "<<endl;
-    cin>>choice;
+    if (yaml==1){
+      choice = 5;
+    }else{
+      cout<<"choice:   (1:position , 2:orientation , 3:int-comp, 4:demos, 5:yaml) "<<endl;
+      cin>>choice;
+    }
+    
     if (choice == 1){
       cout<<"time_f "<<endl;
       cin>>tf;
@@ -165,6 +189,41 @@ int main(int argc, char **argv)
         cout<<"insert zf: "<<endl;
         cin>>zf;
       }
+    }else if (choice == 5){
+      if (yaml==0){
+        yaml = 1;
+        if(!node_handle.getParam("/traj_par", traj_par)){
+          ROS_ERROR("Could not get the XmlRpc value.");
+        }
+
+        if(!parseParameter(traj_par, N_ACTION, "N_ACTION")){
+          ROS_ERROR("Could not parse traj_par.");
+        }
+        if(!parseParameter(traj_par, ACTIONS, "ACTIONS")){
+          ROS_ERROR("Could not parse traj_par.");
+        }
+        if(!parseParameter(traj_par, TYPE, "TYPE")){
+          ROS_ERROR("Could not parse traj_par."); 
+        }
+      }else{
+        if(n_act == N_ACTION){
+          yaml = 0;
+        }else{
+          tf = ACTIONS(n_act,0);
+          pos_f(0) = ACTIONS(n_act,1);
+          pos_f(1) = ACTIONS(n_act,2);
+          pos_f(2) = ACTIONS(n_act,3);
+          inter_x = TYPE(n_act,0);
+          inter_y = TYPE(n_act,1);
+          inter_z = TYPE(n_act,2);
+          comp_x = TYPE(n_act,3);
+          comp_y = TYPE(n_act,4);
+          comp_z = TYPE(n_act,5);
+          choice = 1;
+          n_act++;
+        }
+      }
+
     }
 
     ros::spinOnce();

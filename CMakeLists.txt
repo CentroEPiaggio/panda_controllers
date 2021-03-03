@@ -79,6 +79,7 @@ add_library(${PROJECT_NAME}
   src/planner.cpp #Planner
   src/Jacobians_ee.cpp #end-effector Jacobians
   src/FrictionTorque.cpp #friction torque vector
+  src/parsing_utilities.cpp #util for yaml parameters
 ) 
 
 add_dependencies(${PROJECT_NAME}
