@@ -108,14 +108,15 @@ project_impedance_controller_quat:
 
 traj_par: 
     N_ACTION : 3
+    CUBE_RS : 2000
     ACTIONS :
-        [10, 0.5 0 0.4]    # time, pos
-        [10, 0.9 1 0.8]
-        [10, 0.4 0.2 0.6] 
+        - [5, 0.57, -0.1, 0.3]    # time, pos
+        - [5, 0.47, -0.1, 0.2]
+        - [5, 0.47, 0, 0.4] 
     TYPE :                          
-        [0 0 0, 0 0 0]     # int, comp, gripper(da aggiunger)
-        [1 1 1, 0 0 0]
-        [0 0 0, 1 1 1]
+        - [0, 0, 0, 0, 0, 0,1000]     # int, comp, gripper(da aggiunger)
+        - [0, 0, 0, 0, 0, 0,1000]
+        - [0, 0, 0, 0, 0, 0,1000]
 
         
 

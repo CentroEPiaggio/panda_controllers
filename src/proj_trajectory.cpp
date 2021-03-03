@@ -23,6 +23,7 @@
 
 
 
+
 using namespace std;
 
 #define alpha 0.1
@@ -110,6 +111,8 @@ int main(int argc, char **argv)
   ros::NodeHandle node_handle;
 
   ros::Publisher pub_cmd = node_handle.advertise<panda_controllers::DesiredProjectTrajectory>("/project_impedance_controller/desired_project_trajectory", 1000);
+  
+  // ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeEq_Preset>("/qb_class/cube_ref",1000);
 
   ros::Subscriber sub_cmd =  node_handle.subscribe("/project_impedance_controller/franka_ee_pose", 1, 
                                                 &poseCallback);
