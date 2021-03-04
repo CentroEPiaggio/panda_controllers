@@ -9,7 +9,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
-#include <panda_controllers/cubeEq_Preset.h>
+#include <panda_controllers/cubeRef.h>
 #include "utils/parsing_utilities.h"
 #include "ros/ros.h"
 
@@ -98,7 +98,7 @@ void demo_inf_XY(Eigen::Vector3d pos_i, double t){
 
 void demo_inf_XYZ(Eigen::Vector3d pos_i, double t,double zf,double tf){
     Eigen::Vector3d tmp;
-    tmp << sin(t)/8, sin(t/2)/4, pos_i(2) + ((zf-pos_i(2))/tf)*t;
+    tmp << sin(t)/8, sin(t/2)/4, ((zf-pos_i(2))/tf)*t;
     traj.pos_des << pos_i + tmp;
     traj.vel_des << cos(t)/8, cos(t/2)/8, (zf-pos_i(2))/tf;
     traj.acc_des << -sin(t)/8, -sin(t/2)/16, 0;
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 
   ros::Publisher pub_cmd = node_handle.advertise<panda_controllers::DesiredProjectTrajectory>("/project_impedance_controller/desired_project_trajectory", 1000);
   
-  ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeEq_Preset>("/qb_class/cube_ref",1000);
+  ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeRef>("/qb_class/cube_ref",1000);
 
   ros::Subscriber sub_cmd =  node_handle.subscribe("/project_impedance_controller/franka_ee_pose", 1, 
                                                 &poseCallback);
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(100);
 
   panda_controllers::DesiredProjectTrajectory traj_msg;
-  panda_controllers::cubeEq_Preset cube_msg;
+  panda_controllers::cubeRef cube_msg;
    
 
   Eigen::Vector3d pos_f;
@@ -147,10 +147,11 @@ int main(int argc, char **argv)
   int demo = -1;
   int yaml = 0;
   int n_act = 0;
-  std::vector<float> cube_eq;
-  std::vector<float> CUBE_RS;
-  // float cube_eq;    
-  // float CUBE_RS;
+  std::vector<float> cube_theta1 = {0.0};
+  std::vector<float> cube_theta2 = {0.0};
+  float cube_eq;    
+  float CUBE_RS;
+ 
 
 
   while (ros::ok()){
@@ -216,30 +217,30 @@ int main(int argc, char **argv)
         // if(!parseParameter(traj_par, CUBE_RS, "CUBE_RS")){
         //   ROS_ERROR("Could not parse traj_par."); 
         // }
-        if(!node_handle.getParam("/traj_par/CUBE_RS", CUBE_RS[0])){
+        if(!node_handle.getParam("/traj_par/CUBE_RS", CUBE_RS)){
           ROS_ERROR("Could not get the XmlRpc value.");
         }
-        
-      }else{
-        if(n_act == N_ACTION){
-          yaml = 0;
-        }else{
-          tf = ACTIONS(n_act,0);
-          pos_f(0) = ACTIONS(n_act,1);
-          pos_f(1) = ACTIONS(n_act,2);
-          pos_f(2) = ACTIONS(n_act,3);
-          inter_x = TYPE(n_act,0);
-          inter_y = TYPE(n_act,1);
-          inter_z = TYPE(n_act,2);
-          comp_x = TYPE(n_act,3);
-          comp_y = TYPE(n_act,4);
-          comp_z = TYPE(n_act,5);
-          cube_eq[0] = ACTIONS(n_act,4);
-          choice = 1;
-          n_act++;
-        }
       }
-
+      if(n_act == N_ACTION){
+        yaml = 0;
+        n_act = 0;
+      }else{
+        tf = ACTIONS(n_act,0);
+        pos_f(0) = ACTIONS(n_act,1);
+        pos_f(1) = ACTIONS(n_act,2);
+        pos_f(2) = ACTIONS(n_act,3);
+        inter_x = TYPE(n_act,0);
+        inter_y = TYPE(n_act,1);
+        inter_z = TYPE(n_act,2);
+        comp_x = TYPE(n_act,3);
+        comp_y = TYPE(n_act,4);
+        comp_z = TYPE(n_act,5);
+        cube_eq = ACTIONS(n_act,4);
+        cube_theta1[0] = CUBE_RS + cube_eq;
+        cube_theta2[0] = cube_eq - CUBE_RS;
+        choice = 1;
+        n_act++;
+      }
     }
 
     ros::spinOnce();
@@ -297,8 +298,8 @@ int main(int argc, char **argv)
 
       pub_cmd.publish(traj_msg);
 
-      cube_msg.eq = cube_eq;
-      cube_msg.preset = CUBE_RS;
+      cube_msg.p_1 = cube_theta1;
+      cube_msg.p_2 = cube_theta2;
       pub_cube.publish(cube_msg);
 
       loop_rate.sleep();

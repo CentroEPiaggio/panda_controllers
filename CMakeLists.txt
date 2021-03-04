@@ -36,7 +36,7 @@ add_message_files(FILES
   InfoDebug.msg
   InputsFromMatlab.msg
   OutputsToMatlab.msg
-  cubeEq_Preset.msg
+  cubeRef.msg
 )
 
 ##
@@ -51,7 +51,7 @@ generate_dynamic_reconfigure_options(
   cfg/compliance_param.cfg
   cfg/desired_mass_param.cfg
 )
-
+ 
 ##
 catkin_package(
   LIBRARIES ${PROJECT_NAME}

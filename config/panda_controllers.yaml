@@ -108,7 +108,7 @@ project_impedance_controller_quat:
 
 traj_par: 
     N_ACTION : 4
-    CUBE_RS : 1000.0
+    CUBE_RS : 2000.0
     ACTIONS :
         - [3.0, 0.57, -0.1, 0.3, 1000.0]    # time, pos
         - [3.0, 0.47, -0.1, 0.2, 0.0]
