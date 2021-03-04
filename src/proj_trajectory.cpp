@@ -9,6 +9,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <panda_controllers/DesiredProjectTrajectory.h>
+#include <panda_controllers/cubeEq_Preset.h>
 #include "utils/parsing_utilities.h"
 #include "ros/ros.h"
 
@@ -112,7 +113,7 @@ int main(int argc, char **argv)
 
   ros::Publisher pub_cmd = node_handle.advertise<panda_controllers::DesiredProjectTrajectory>("/project_impedance_controller/desired_project_trajectory", 1000);
   
-  // ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeEq_Preset>("/qb_class/cube_ref",1000);
+  ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeEq_Preset>("/qb_class/cube_ref",1000);
 
   ros::Subscriber sub_cmd =  node_handle.subscribe("/project_impedance_controller/franka_ee_pose", 1, 
                                                 &poseCallback);
@@ -120,6 +121,7 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(100);
 
   panda_controllers::DesiredProjectTrajectory traj_msg;
+  panda_controllers::cubeEq_Preset cube_msg;
    
 
   Eigen::Vector3d pos_f;
@@ -145,6 +147,10 @@ int main(int argc, char **argv)
   int demo = -1;
   int yaml = 0;
   int n_act = 0;
+  std::vector<float> cube_eq;
+  std::vector<float> CUBE_RS;
+  // float cube_eq;    
+  // float CUBE_RS;
 
 
   while (ros::ok()){
@@ -198,7 +204,6 @@ int main(int argc, char **argv)
         if(!node_handle.getParam("/traj_par", traj_par)){
           ROS_ERROR("Could not get the XmlRpc value.");
         }
-
         if(!parseParameter(traj_par, N_ACTION, "N_ACTION")){
           ROS_ERROR("Could not parse traj_par.");
         }
@@ -208,6 +213,13 @@ int main(int argc, char **argv)
         if(!parseParameter(traj_par, TYPE, "TYPE")){
           ROS_ERROR("Could not parse traj_par."); 
         }
+        // if(!parseParameter(traj_par, CUBE_RS, "CUBE_RS")){
+        //   ROS_ERROR("Could not parse traj_par."); 
+        // }
+        if(!node_handle.getParam("/traj_par/CUBE_RS", CUBE_RS[0])){
+          ROS_ERROR("Could not get the XmlRpc value.");
+        }
+        
       }else{
         if(n_act == N_ACTION){
           yaml = 0;
@@ -222,6 +234,7 @@ int main(int argc, char **argv)
           comp_x = TYPE(n_act,3);
           comp_y = TYPE(n_act,4);
           comp_z = TYPE(n_act,5);
+          cube_eq[0] = ACTIONS(n_act,4);
           choice = 1;
           n_act++;
         }
@@ -283,6 +296,10 @@ int main(int argc, char **argv)
       traj_msg.compensation[2] = comp_z;
 
       pub_cmd.publish(traj_msg);
+
+      cube_msg.eq = cube_eq;
+      cube_msg.preset = CUBE_RS;
+      pub_cube.publish(cube_msg);
 
       loop_rate.sleep();
 

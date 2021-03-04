@@ -36,6 +36,7 @@ add_message_files(FILES
   InfoDebug.msg
   InputsFromMatlab.msg
   OutputsToMatlab.msg
+  cubeEq_Preset.msg
 )
 
 ##
