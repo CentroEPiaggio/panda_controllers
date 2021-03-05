@@ -243,7 +243,7 @@ bool planner_node::init(ros::NodeHandle& node_handle){
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_ext_forces = node_handle.subscribe(
-      "/franka_state_controller/F_ext", 1, &planner_node::f_ext_Callback, this,
+      "/project_impedance_controller/ext_forces", 1, &planner_node::f_ext_Callback, this,
       ros::TransportHints().reliable().tcpNoDelay());
   
 
@@ -280,6 +280,10 @@ void planner_node::update() {
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2) , ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
 
     // std::cout << "kz_f: " << kz_f << std::endl;
+
+    std::cout << "Fx " << F_ext(0) << std::endl;
+    std::cout << "Fy " << F_ext(1) << std::endl;
+    std::cout << "Fz " << F_ext(2) << std::endl;
 
     interpolator(kx_f,ky_f,kz_f);
     
@@ -329,7 +333,9 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
     K[28] = K_OR;
     K[35] = K_OR;
 
-    // std::cout << "kz: " << kz << std::endl;
+    std::cout << "kx: " << kx << std::endl;
+    std::cout << "ky: " << ky << std::endl;
+    std::cout << "kz: " << kz << std::endl;
 
     D[0] = dx;
     D[7] = dy;

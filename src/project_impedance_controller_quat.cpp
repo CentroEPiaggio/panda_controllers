@@ -13,13 +13,17 @@
 
 #define   	EE_X  			0
 #define   	EE_Y  			0
-#define   	EE_Z  			0
+#define   	EE_Z  			0.18		// m
 #define 	K_INIT_POS		200
 #define 	K_INIT_OR		500
 #define 	PD_K_OR			50
 #define 	PD_D_OR			2.0*sqrt(PD_K_OR)
-#define 	PD_K_OR_QUAT	30
-#define 	PD_D_OR_QUAT	2.0*sqrt(PD_K_OR)
+#define 	PD_K_OR_QUAT_X	30
+#define 	PD_K_OR_QUAT_Y	30
+#define 	PD_K_OR_QUAT_Z	10
+#define 	PD_D_OR_QUAT_X	2.0*sqrt(PD_K_OR_QUAT_X)
+#define 	PD_D_OR_QUAT_Y	2.0*sqrt(PD_K_OR_QUAT_Y)
+#define 	PD_D_OR_QUAT_Z	2.0*sqrt(PD_K_OR_QUAT_Z)
 #define 	COLL_LIMIT		25
 #define 	NULL_STIFF		10
 #define 	JOINT_STIFF		{3000, 3000, 3000, 3000, 3000, 2000, 100}
@@ -27,7 +31,7 @@
 
 /* 
 da fare:
-  
+  //aggiungere matrice di Rotazione 
 */
 
 namespace panda_controllers {
@@ -56,12 +60,18 @@ bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_h
 													&ProjectImpedanceControllerQuat::desiredImpedanceProjectCallback, this,
 													ros::TransportHints().reliable().tcpNoDelay());
 
-	sub_ext_forces =      node_handle.subscribe(  "/franka_state_controller/F_ext", 1, 
-													&ProjectImpedanceControllerQuat::f_ext_Callback, this,
-													ros::TransportHints().reliable().tcpNoDelay());
+	// sub_ext_forces =      node_handle.subscribe(  "/franka_state_controller/F_ext", 1, 
+	// 												&ProjectImpedanceControllerQuat::f_ext_Callback, this,
+	// 												ros::TransportHints().reliable().tcpNoDelay());
+
+
+	sub_ext_forces =      node_handle.subscribe(  "/my_sensor_right/ft_sensor_hw/my_sensor_right", 1, 
+	 												&ProjectImpedanceControllerQuat::f_ext_Callback, this,
+	 												ros::TransportHints().reliable().tcpNoDelay());
 
 	pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>("/project_impedance_controller/pos_error", 1);
 	pub_cmd_force =         node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/cmd_force", 1);
+	pub_ext_forces =        node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/ext_forces", 1);
 	pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>("/project_impedance_controller/franka_ee_pose", 1);
 	pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>("/project_impedance_controller/robot_state", 1);
 	pub_impedance_ =        node_handle.advertise<std_msgs::Float64>("/project_impedance_controller/current_impedance", 1);
@@ -155,6 +165,7 @@ bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_h
 	orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;           // desired orientation
 
 	cartesian_stiffness_.topLeftCorner(3, 3) 		<< 	K_INIT_POS*Eigen::Matrix3d::Identity();
+	cartesian_stiffness_(2,2) 						=   200;
 	cartesian_stiffness_.bottomRightCorner(3, 3) 	<< 	K_INIT_OR*Eigen::Matrix3d::Identity();
 	cartesian_damping_.topLeftCorner(3, 3) 			<< 	2.0 * sqrt(K_INIT_POS)*Eigen::Matrix3d::Identity();
 	cartesian_damping_.bottomRightCorner(3, 3) 		<< 	2.0 * sqrt(K_INIT_OR)*Eigen::Matrix3d::Identity();
@@ -312,7 +323,7 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	//----------- COMPUTE ORIENTATION -------------//
 
 	Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
-
+	F_ext.head(3) << R*F_ext.head(3); 				// F_ext in cartesian space
 	// GABICCINI (ZYX)
 	double phi = atan2(R(1,0),R(0,0));                          
 	double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
@@ -343,7 +354,7 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	//======================| IMPEDANCE POSITION, PD ORIENTATION |======================//
 	
 	// SETTING Fext to ZERO!!!   ---------------------------------------------------------------------------   REMOVE THIS!
-	F_ext.setZero();
+	// F_ext.setZero();
 
 	//----------- VARIABLES -------------//
 
@@ -451,8 +462,20 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 
 	derror_quat << dposition.tail(3);
 
-	wrench_task_or << ( - PD_K_OR_QUAT * I3 * error_quat               // proportional term tested
-                 		- PD_D_OR_QUAT * I3 * derror_quat );               // derivative term
+	Eigen::Matrix<double, 3, 3> K_orient;
+	K_orient.setZero();
+	K_orient(0,0) = PD_K_OR_QUAT_X;
+	K_orient(1,1) = PD_K_OR_QUAT_Y;
+	K_orient(2,2) = PD_K_OR_QUAT_Z;
+
+	Eigen::Matrix<double, 3, 3> D_orient;
+	D_orient.setZero();
+	D_orient(0,0) = PD_D_OR_QUAT_X;
+	D_orient(1,1) = PD_D_OR_QUAT_Y;
+	D_orient(2,2) = PD_D_OR_QUAT_Z;
+
+	wrench_task_or << ( - K_orient * error_quat               	  // proportional term tested
+                 		- D_orient * derror_quat );               // derivative term
 
 	// PROVE
 	tau_or << N * ( jacobian.bottomLeftCorner(3,7).transpose() * wrench_task_or );
@@ -567,7 +590,15 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 		}
 	}
 	pub_info_debug.publish(info_debug_msg);
+    
+	//----------- F_ext -------------//
 
+	geometry_msgs::WrenchStamped wrench_msg;
+	wrench_msg.header.stamp = ros::Time::now();
+	wrench_msg.wrench.force.x = F_ext(0);
+	wrench_msg.wrench.force.y = F_ext(1);
+	wrench_msg.wrench.force.z = F_ext(2);
+	pub_ext_forces.publish(wrench_msg);
 
 	//----------- CURRENT IMPEDANCE -------------//
 

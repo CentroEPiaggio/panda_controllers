@@ -102,6 +102,7 @@ class ProjectImpedanceControllerQuat : public controller_interface::MultiInterfa
 		ros::Publisher pub_robot_state_;
 		ros::Publisher pub_impedance_;
 		ros::Publisher pub_info_debug;
+		ros::Publisher pub_ext_forces;
 		
 
 		//----------MESSAGES----------//

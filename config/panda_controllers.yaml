@@ -104,6 +104,7 @@ project_impedance_controller_quat:
         - panda_joint6
         - panda_joint7
     var_damp: true 
+    
 
 
 traj_par: 
