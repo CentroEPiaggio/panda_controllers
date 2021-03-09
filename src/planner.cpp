@@ -13,7 +13,7 @@
 #define     F_MAX       4.0         // [N]          disturbance threshold
 #define     E_MAX       0.05        // [m]          maximum tollerated error 
 #define     F_INT_MAX   7.0         // [N]          maximum tollerated force in interaction
-#define     K_MIN       20.0        // [N/m]        minimum value for stiffness
+#define     K_MIN       10.0        // [N/m]        minimum value for stiffness
 #define     K_MAX       1000.0      // [N/m]        maximum value for stiffness
 #define     MASS        1.0         // [kg]         virtual mass (inertia shaping)
 #define     BETA        0.98        // []           <1 due to stability
@@ -94,7 +94,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     F_comp = F_ext;
                 }
             }
-        }else{
+        }else{ //maybe not needed anymore, because z_int acknowledges the "still in contact" condition
             if (z_int_dir == 1){                // obstacle in above
                 if (z < z_int){
                     if (std::abs(F_ext)/kc > e_max){ 
@@ -169,13 +169,14 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                 if (z_int_dir == 1){
                     if (z_des < z_int){
                         if (sign(dz_des*z_int_dir) == -1){
-                            k = kc;               // obstacle reached but "going away"
+                            k = kc;             // obstacle reached but "going away"
+
                         }
                     }
                 }else{
                     if (z_des > z_int){
                         if (sign(dz_des*z_int_dir) == -1){
-                            k = kc;               // obstacle reached but "going away"
+                            k = kc;            // obstacle reached but "going away"
                         }
                     }
                 }
@@ -191,13 +192,13 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     // std::cout <<"z_int_dir == 1 " << std::endl;
                     if (z_des < z_int){
                         // std::cout <<"z_des < z_int " << std::endl;
-                        k = K_INIT;    // restore because "going away"
+                        k = K_INIT;  // restore because "going away"
                     }
                 }else{
                     // std::cout<<" z_int_dir != 1 "<<std::endl;
                     if (z_des > z_int){
                         // std::cout<<"z_des > z_int "<<std::endl;
-                        k = K_INIT;    // restore because "going away"
+                        k = K_INIT;  // restore because "going away"
                     }
                 }
             }
@@ -281,9 +282,9 @@ void planner_node::update() {
 
     // std::cout << "kz_f: " << kz_f << std::endl;
 
-    std::cout << "Fx " << F_ext(0) << std::endl;
-    std::cout << "Fy " << F_ext(1) << std::endl;
-    std::cout << "Fz " << F_ext(2) << std::endl;
+    // std::cout << "Fx " << F_ext(0) << std::endl;
+    // std::cout << "Fy " << F_ext(1) << std::endl;
+    // std::cout << "Fz " << F_ext(2) << std::endl;
 
     interpolator(kx_f,ky_f,kz_f);
     
@@ -333,9 +334,9 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
     K[28] = K_OR;
     K[35] = K_OR;
 
-    std::cout << "kx: " << kx << std::endl;
-    std::cout << "ky: " << ky << std::endl;
-    std::cout << "kz: " << kz << std::endl;
+    // std::cout << "kx: " << kx << std::endl;
+    // std::cout << "ky: " << ky << std::endl;
+    // std::cout << "kz: " << kz << std::endl;
 
     D[0] = dx;
     D[7] = dy;

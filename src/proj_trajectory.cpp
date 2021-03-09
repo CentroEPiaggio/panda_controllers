@@ -77,6 +77,7 @@ void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
     else if ((t >= (tf- ta)) && (t < tf)){
         
         traj.acc_des << -vel/ta;
+        // traj.acc_des << 0, 0, 0;
         traj.vel_des << vel + traj.acc_des*(t - (tf-ta));
         traj.pos_des << pos_i + xa + vel*(tf-2*ta) + vel*(t-(tf-ta)) + (1/2)*traj.acc_des*pow((t-(tf-ta)),2);
     }

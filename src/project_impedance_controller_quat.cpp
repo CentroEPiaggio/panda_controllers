@@ -13,7 +13,7 @@
 
 #define   	EE_X  			0
 #define   	EE_Y  			0
-#define   	EE_Z  			0.18		// m
+#define   	EE_Z  			0.045		// m
 #define 	K_INIT_POS		200
 #define 	K_INIT_OR		500
 #define 	PD_K_OR			50
@@ -323,7 +323,10 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	//----------- COMPUTE ORIENTATION -------------//
 
 	Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
-	F_ext.head(3) << R*F_ext.head(3); 				// F_ext in cartesian space
+	Eigen::Matrix<double, 3, 1> F_global;
+	// std::cout << "F_local " << F_ext.head(3) << std::endl;
+	F_global << R*F_ext.head(3); 				// F_ext in cartesian space
+	// std::cout << "F_global " << F_global<< std::endl;
 	// GABICCINI (ZYX)
 	double phi = atan2(R(1,0),R(0,0));                          
 	double theta = atan2(-R(2,0),sqrt(pow(R(2,1),2) + pow(R(2,2),2)));
@@ -408,6 +411,13 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 		}
 	}
 
+	// // To remove
+	// cartesian_stiffness_pos(0,0) = 200;
+	// cartesian_stiffness_pos(1,1) = 200;
+	// cartesian_stiffness_pos(2,2) = 20;
+	// cartesian_damping_pos(0,0) = 2*sqrt(4*200);
+	// cartesian_damping_pos(1,1) = 2*sqrt(4*200);
+	// cartesian_damping_pos(2,2) = 2*sqrt(4*20);
 
 	//---------------- POSITION CONTROL COMPUTATION -----------------//
 
@@ -415,7 +425,7 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	// from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
 	wrench_task <<  task_mass*ddpose_d_.head(3)
 					- (task_mass*cartesian_mass_pos.inverse())*(cartesian_damping_pos*derror_pos + cartesian_stiffness_pos*error_pos)
-					+ (task_mass*cartesian_mass_pos.inverse() - I3) * F_ext.head(3)
+					+ (task_mass*cartesian_mass_pos.inverse() - I3) * F_global*0;
 					- task_mass*ja_dot_pos*dq;
 
 
@@ -595,9 +605,9 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 
 	geometry_msgs::WrenchStamped wrench_msg;
 	wrench_msg.header.stamp = ros::Time::now();
-	wrench_msg.wrench.force.x = F_ext(0);
-	wrench_msg.wrench.force.y = F_ext(1);
-	wrench_msg.wrench.force.z = F_ext(2);
+	wrench_msg.wrench.force.x = F_global(0);
+	wrench_msg.wrench.force.y = F_global(1);
+	wrench_msg.wrench.force.z = F_global(2);
 	pub_ext_forces.publish(wrench_msg);
 
 	//----------- CURRENT IMPEDANCE -------------//
