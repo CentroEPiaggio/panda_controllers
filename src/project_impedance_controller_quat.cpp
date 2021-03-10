@@ -412,12 +412,12 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	}
 
 	// // To remove
-	// cartesian_stiffness_pos(0,0) = 200;
-	// cartesian_stiffness_pos(1,1) = 200;
-	// cartesian_stiffness_pos(2,2) = 20;
-	// cartesian_damping_pos(0,0) = 2*sqrt(4*200);
-	// cartesian_damping_pos(1,1) = 2*sqrt(4*200);
-	// cartesian_damping_pos(2,2) = 2*sqrt(4*20);
+	// cartesian_stiffness_pos(0,0) = 0;
+	// cartesian_stiffness_pos(1,1) = 0;
+	// cartesian_stiffness_pos(2,2) = 0;
+	// cartesian_damping_pos(0,0) = 2*sqrt(4);
+	// cartesian_damping_pos(1,1) = 2*sqrt(4);
+	// cartesian_damping_pos(2,2) = 2*sqrt(4);
 
 	//---------------- POSITION CONTROL COMPUTATION -----------------//
 

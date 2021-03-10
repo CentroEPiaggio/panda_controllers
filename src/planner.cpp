@@ -77,7 +77,11 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     ki = ktemp;
                 }
             }else{
-                ki = 0.995*ki;              // designed for planning 100Hz
+                if (ki > K_MIN){
+                    ki = 0.995*ki;              // designed for planning 100Hz
+                }else{
+                    ki = K_MIN;
+                }
             }
         }
     }
@@ -185,25 +189,27 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         //    std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
                 k = K_INIT;            // restore to default
-                // std::cout <<"z_int > 999 " << std::endl;
+                // std::cout <<"not ok1 " << std::endl;
             }else{
         //        std::cout <<"ok2 "<<std::endl;
                 if (z_int_dir == 1){
-                    // std::cout <<"z_int_dir == 1 " << std::endl;
+                    // std::cout <<"not ok" << std::endl;
                     if (z_des < z_int){
-                        // std::cout <<"z_des < z_int " << std::endl;
+                        // std::cout <<"not ok2 " << std::endl;
                         k = K_INIT;  // restore because "going away"
                     }
                 }else{
                     // std::cout<<" z_int_dir != 1 "<<std::endl;
                     if (z_des > z_int){
-                        // std::cout<<"z_des > z_int "<<std::endl;
+                        // std::cout<<"not ok3 "<<std::endl;
                         k = K_INIT;  // restore because "going away"
                     }
                 }
             }
         }
     }
+    // std::cout<<"z_int "<< z_int << std::endl;
+    // std::cout<<"k "<< k << std::endl;
     return k;
 }
 
@@ -286,6 +292,8 @@ void planner_node::update() {
     // std::cout << "Fy " << F_ext(1) << std::endl;
     // std::cout << "Fz " << F_ext(2) << std::endl;
 
+    // double kx_f = 200;
+    // double ky_f = 200;
     interpolator(kx_f,ky_f,kz_f);
     
 
@@ -408,7 +416,7 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "planner");
     ros::NodeHandle node_planner;
 
-    ros::Rate loop_rate(100); //planner's frequency Hz
+    ros::Rate loop_rate(200); //planner's frequency Hz
     
     planner_node planner;
     planner.init(node_planner);
