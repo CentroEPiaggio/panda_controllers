@@ -55,38 +55,48 @@ void poseCallback(
   orient << msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z;
 }
 
-void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
-                            double tf, double t, 
-                            Eigen::Vector3d vel){
+// void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
+//                             double tf, double t, 
+//                             Eigen::Vector3d vel){
 
-    double ta = alpha*tf;                       // time interval of acceleration
-    Eigen::Vector3d xa;
-    xa << (1/2)*vel*ta;          // space done during the acceleration
+//     double ta = alpha*tf;                       // time interval of acceleration
+//     Eigen::Vector3d xa;
+//     xa << (1/2)*vel*ta;          // space done during the acceleration
     
-    if ((t >= 0) && (t < ta)){
+//     if ((t >= 0) && (t < ta)){
         
-        traj.acc_des << vel/ta;
-        traj.vel_des << traj.acc_des*t;
-        traj.pos_des << pos_i + (1/2)*traj.acc_des*pow(t,2);
-    }
-    else if ((t >= ta) && (t < (tf-ta))){
-        traj.acc_des << 0, 0, 0; 
-        traj.vel_des << vel; 
-        traj.pos_des << pos_i + xa + traj.vel_des*(t-ta);
-    }
-    else if ((t >= (tf- ta)) && (t < tf)){
+//         traj.acc_des << vel/ta;
+//         traj.vel_des << traj.acc_des*t;
+//         traj.pos_des << pos_i + (1/2)*traj.acc_des*pow(t,2);
+//     }
+//     else if ((t >= ta) && (t < (tf-ta))){
+//         traj.acc_des << 0, 0, 0; 
+//         traj.vel_des << vel; 
+//         traj.pos_des << pos_i + xa + traj.vel_des*(t-ta);
+//     }
+//     else if ((t >= (tf- ta)) && (t < tf)){
         
-        traj.acc_des << -vel/ta;
-        // traj.acc_des << 0, 0, 0;
-        traj.vel_des << vel + traj.acc_des*(t - (tf-ta));
-        traj.pos_des << pos_i + xa + vel*(tf-2*ta) + vel*(t-(tf-ta)) + (1/2)*traj.acc_des*pow((t-(tf-ta)),2);
-    }
-    else {
-        traj.acc_des << 0, 0, 0;
-        traj.vel_des << 0, 0, 0;
-        traj.pos_des << pos_f;
-    }
+//         traj.acc_des << -vel/ta;
+//         // traj.acc_des << 0, 0, 0;
+//         traj.vel_des << vel + traj.acc_des*(t - (tf-ta));
+//         traj.pos_des << pos_i + xa + vel*(tf-2*ta) + vel*(t-(tf-ta)) + (1/2)*traj.acc_des*pow((t-(tf-ta)),2);
+//     }
+//     else {
+//         traj.acc_des << 0, 0, 0;
+//         traj.vel_des << 0, 0, 0;
+//         traj.pos_des << pos_f;
+//     }
+// }
+
+void interpolator_pos(   Eigen::Vector3d pos_i, Eigen::Vector3d pos_f,
+                            double tf, double t){
+
+      traj.pos_des << pos_i + (pos_i - pos_f)*(15*pow((t/tf),4) - 6*pow((t/tf),5) -10*pow((t/tf),3));
+      traj.vel_des << (pos_i - pos_f)*(60*(pow(t,3)/pow(tf,4)) - 30*(pow(t,4)/pow(tf,5)) -30*(pow(t,2)/pow(tf,3)));
+      traj.acc_des << (pos_i - pos_f)*(180*(pow(t,2)/pow(tf,4)) - 120*(pow(t,3)/pow(tf,5)) -60*(t/pow(tf,3)));
+
 }
+
 
 void demo_inf_XY(Eigen::Vector3d pos_i, double t){
     Eigen::Vector3d tmp;
@@ -247,16 +257,29 @@ int main(int argc, char **argv)
     ros::spinOnce();
 
     t_init = ros::Time::now();
-    pos_init = pos;
+    //pos_init = pos;
+    if(yaml==0){
+      pos_init = pos;
+    }else{
+      if (n_act==1){
+        pos_init = pos;
+      }
+      else{
+        pos_init(0) = ACTIONS(n_act-2,1);
+        pos_init(1) = ACTIONS(n_act-2,2);
+        pos_init(2) = ACTIONS(n_act-2,3);
+      }
+    }
     or_init = orient;
-    vel << (pos_f.x() - pos_init.x())/((1-alpha)*tf), (pos_f.y() - pos_init.y())/((1-alpha)*tf), (pos_f.z() - pos_init.z())/((1-alpha)*tf);
+    // vel << (pos_f.x() - pos_init.x())/((1-alpha)*tf), (pos_f.y() - pos_init.y())/((1-alpha)*tf), (pos_f.z() - pos_init.z())/((1-alpha)*tf);
 
     t = (ros::Time::now() - t_init).toSec();
 
     while (t <= tf)
     {
       if (choice == 1){
-        interpolator_pos(pos_init, pos_f, tf, t, vel);
+        // interpolator_pos(pos_init, pos_f, tf, t, vel);
+        interpolator_pos(pos_init, pos_f, tf, t);
       } else if (choice == 2){
         //interpolator_or(or_init, or_f, tf, t, vel_or)
       } else if (choice == 4){

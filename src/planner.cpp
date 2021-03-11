@@ -22,19 +22,26 @@
 #define     K_OR        500         // [Nm/rad]     orientation stiffness
 #define     D_OR        2*sqrt(500) // [Nm*sec/rad] orientation damping
 #define     K_INIT      200         // [Nm]         default value
+#define     K_INIT_X      500         // [Nm]         default value x
+#define     K_INIT_Y      500         // [Nm]         default value y
+#define     K_INIT_Z      100         // [Nm]         default value z
 
 //==========================================================================================//
 //                                      CLASS PLANNER                                       //
 //==========================================================================================//
 planner_class::planner_class(){
-    ki = K_INIT;
-    kc = K_INIT;
     F_comp = 0;
     z_int = 1000;
     z_int_dir = 0;
     int_prec = 0;
     comp_prec = 0;
     set_F_comp = 1;
+}
+
+void planner_class::set_k_init(double k){
+    ki = k;
+    kc = k;
+    k_init = k;
 }
 
 int planner_class::sign(double x){
@@ -123,12 +130,12 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // reset to default values when comp or int shifts to zero
     if (comp==0 && comp_prec==1){
-        kc = K_INIT;
+        kc = k_init;
         F_comp = 0;
         set_F_comp = 0;
     }
     if (inter==0 && int_prec==1){
-        ki = K_INIT;
+        ki = k_init;
     }
 
     // from int to comp and vice versa
@@ -153,7 +160,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
 
     // Selection of Final Values of D-K
     // default values
-    double k = K_INIT;
+    double k = k_init;
 
     // compensation
     if (comp == 1){
@@ -188,7 +195,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }else{
         //    std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
-                k = K_INIT;            // restore to default
+                k = k_init;            // restore to default
                 // std::cout <<"not ok1 " << std::endl;
             }else{
         //        std::cout <<"ok2 "<<std::endl;
@@ -196,13 +203,13 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     // std::cout <<"not ok" << std::endl;
                     if (z_des < z_int){
                         // std::cout <<"not ok2 " << std::endl;
-                        k = K_INIT;  // restore because "going away"
+                        k = k_init;  // restore because "going away"
                     }
                 }else{
                     // std::cout<<" z_int_dir != 1 "<<std::endl;
                     if (z_des > z_int){
                         // std::cout<<"not ok3 "<<std::endl;
-                        k = K_INIT;  // restore because "going away"
+                        k = k_init;  // restore because "going away"
                     }
                 }
             }
@@ -225,9 +232,12 @@ planner_node::planner_node(){
         D[i] = 0;
     }
     time_prec = ros::Time::now();
-    kx = K_INIT;
-    ky = K_INIT;
-    kz = K_INIT;
+    kx = K_INIT_X;
+    ky = K_INIT_Y;
+    kz = K_INIT_Z;
+    planner_x.set_k_init(kx);
+    planner_y.set_k_init(ky);
+    planner_z.set_k_init(kz);
     // kx = F_MAX/E_MAX;
     // ky = F_MAX/E_MAX;
     // kz = F_MAX/E_MAX;

@@ -13,7 +13,7 @@
 
 #define   	EE_X  			0
 #define   	EE_Y  			0
-#define   	EE_Z  			0.045		// m
+#define   	EE_Z  			0.18		// m
 #define 	K_INIT_POS		200
 #define 	K_INIT_OR		500
 #define 	PD_K_OR			50

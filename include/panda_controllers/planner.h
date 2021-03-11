@@ -33,10 +33,12 @@
 class planner_class{
     private:
         double ki, kc, F_comp, z_int;
+        double k_init;
         int set_F_comp, int_prec, comp_prec, z_int_dir;
         int sign(double x);
     public:
         planner_class();
+        void set_k_init(double k);
         double planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp);
 };
 
