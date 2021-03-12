@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 
   ros::Publisher pub_cmd = node_handle.advertise<panda_controllers::DesiredProjectTrajectory>("/project_impedance_controller/desired_project_trajectory", 1000);
   
-  ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeRef>("/qb_class/cube_ref",1000);
+  ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeRef>("/qb_class/cube_ref",1);
 
   ros::Subscriber sub_cmd =  node_handle.subscribe("/project_impedance_controller/franka_ee_pose", 1, 
                                                 &poseCallback);
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
     ros::spinOnce();
 
     t_init = ros::Time::now();
-    //pos_init = pos;
+    // pos_init = pos;
     if(yaml==0){
       pos_init = pos;
     }else{

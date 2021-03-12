@@ -107,7 +107,7 @@ project_impedance_controller_quat:
 
 
 
-# # PROVA 2: K_default=200, SCENDE;PRENDE OGGETTO; RISALE; RISCENDE; LASCIA OGGETTO; RISALE
+# PROVA 2: K_default=200, SCENDE;PRENDE OGGETTO; RISALE; RISCENDE; LASCIA OGGETTO; RISALE
 # traj_par: 
 #     N_ACTION : 5
 #     CUBE_RS : 2000.0
@@ -130,11 +130,11 @@ project_impedance_controller_quat:
 #     CUBE_RS : 2000.0
 #     ACTIONS :
 #         - [5.0, 0.4, 0.0, 0.3, 0.0]    # time, pos
-#         - [15.0, 0.4, 0.0, 0.10, 3500.0]
-#         - [10.0, 0.4, 0.0, 0.3, 400.0]
-#         - [5.0, 0.4, 0.0, 0.3, 400.0]   #pause
-#         - [10.0, 0.4, 0.0, 0.10, 400.0]
-#         - [10.0, 0.4, 0.0, 0.3, 3000.0]
+#         - [15.0, 0.4, 0.0, 0.10, 2500.0]
+#         - [10.0, 0.4, 0.0, 0.3, 300.0]
+#         - [5.0, 0.4, 0.0, 0.3, 300.0]   #pause
+#         - [10.0, 0.4, 0.0, 0.10, 300.0]
+#         - [10.0, 0.4, 0.0, 0.3, 2000.0]
 #     TYPE :                          
 #         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
 #         - [0, 0, 1, 0, 0, 0]
@@ -156,6 +156,24 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 0]
 
+
+# PROVE OGGI CHE SEMBRA 
+# # PROVA 5: grasping object: scendo giù, prendo oggetto, salgo su; K = 100
+# traj_par: 
+#     N_ACTION : 3
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [5.0, 0.4, 0.0, 0.3, 0.0]    # time, pos
+#         - [15.0, 0.4, 0.0, 0.07, 2500.0]
+#         - [10.0, 0.4, 0.0, 0.3, 300.0]
+
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
+#         - [0, 0, 1, 0, 0, 0]
+#         - [0, 0, 1, 0, 0, 1]
+
+
+# PROVA 6: 
 traj_par: 
     N_ACTION : 6
     CUBE_RS : 2000.0
@@ -163,19 +181,16 @@ traj_par:
         - [5.0, 0.4, 0.0, 0.3, 0.0]    # time, pos
         - [15.0, 0.4, 0.0, 0.10, 2500.0]
         - [10.0, 0.4, 0.0, 0.3, 300.0]
-        - [5.0, 0.65, 0.0, 0.3, 300.0]   #pause
-        - [10.0, 0.65, 0.0, 0.22, 300.0]
-        - [10.0, 0.65, 0.0, 0.3, 2000.0]
+        - [5.0, 0.4, 0.0, 0.3, 300.0]   #pause
+        - [10.0, 0.4, 0.0, 0.10, 300.0]
+        - [10.0, 0.4, 0.0, 0.3, 2000.0]
     TYPE :                          
         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
         - [0, 0, 1, 0, 0, 0]
-        - [0, 0, 1, 0, 0, 1]
+        - [0, 0, 1, 0, 0, 1] 
         - [0, 0, 0, 0, 0, 1]    #pause
         - [0, 0, 1, 0, 0, 1]
         - [0, 0, 1, 0, 0, 0]
-
-
-
 
 
 

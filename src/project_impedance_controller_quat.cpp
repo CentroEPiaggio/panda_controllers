@@ -425,14 +425,14 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	// from matalb: Bx*ddzdes - Bx*inv(Bm)*(Dm*e_dot + Km*e) + (Bx*inv(Bm) - I)*F_ext - Bx*Ja_dot*q_dot;
 	wrench_task <<  task_mass*ddpose_d_.head(3)
 					- (task_mass*cartesian_mass_pos.inverse())*(cartesian_damping_pos*derror_pos + cartesian_stiffness_pos*error_pos)
-					+ (task_mass*cartesian_mass_pos.inverse() - I3) * F_global*0;
+					+ (task_mass*cartesian_mass_pos.inverse() - I3) * F_global;
 					- task_mass*ja_dot_pos*dq;
 
 
 	// from matlab: tau = (Ja')*F_tau + S*q_dot + G + tau_fric;
 	// final tau in joint space for primary task
 	tau_task << ja_pos.transpose()*wrench_task 
-				+ coriolis + tau_fric;
+				+ coriolis;  // + tau_fric;
 
 
 	//---------------- ORIENTATION CONTROL COMPUTATION -----------------//
