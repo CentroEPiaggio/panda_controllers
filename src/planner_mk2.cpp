@@ -83,6 +83,170 @@ __$$$$$$$$$$””””___________””$$$$$$$$$$$”
 ___”$$$$$”______________________””$$$$””_
 */
 
+    function k = fcn(F_ext, z, z_des, dz_des, int, comp, e_max, F_max, F_int_max)
+    %% Description
+    % Set the K coefficient for a variable impedance controller based on a
+    % desired trajectory
+
+    %% Outputs
+    % k             stiffness
+
+    %% Inputs
+    % F_ext         measured external force
+    % z_des         desired trajectory
+    % z             current position
+    % int, comp     booleans for the interaction and compensation phase
+
+    %% Parameters
+    % F_int_max     desired interaction force
+    % F_max         nominal disturbance forces
+    % e_max         maximum steady-state error
+
+    %% persistent initialization
+    K_INIT = 200;
+    K_MIN = 10;
+    K_MAX = 1000;
+    persistent F_comp int_prec comp_prec z_int z_int_dir set_F_comp K
+    if isempty(F_comp)
+    F_comp = 0;              % weight to compensate
+    end
+    if isempty(z_int) 
+        z_int = 1000;       % obstacle(or interaction) position
+    end
+    if isempty(z_int_dir) 
+        z_int_dir = 0;          % prohibited direction due to the obstacle
+    end
+    if isempty(int_prec)
+        int_prec = 0;           % previous values of int
+    end
+    if isempty(comp_prec)
+        comp_prec = 0;          % previous values od comp
+    end
+    if isempty(set_F_comp)
+        set_F_comp = 1;
+    end
+    if isempty(K)
+        K = F_max/e_max;
+    end
+
+    %% Detection
+    % set k in order to match a desired interaction force with the
+    % envirorment, and store interaction's position when detected
+    % X axes
+    if int == 1
+        % detection of an interaction 
+        if abs(F_ext-F_comp) > F_max
+            if z_int == 1000                     % z_int has not been set yet
+                z_int = z;
+                z_int_dir = -sign(F_ext-F_comp);
+                set_F_comp = 0; 
+            end
+        end
+    end
+
+    %% Going away
+    if z_int < 999
+        if z_int_dir == 1
+            if z_des < z_int
+                z_int = 1000;       % going away
+                set_F_comp = 1;
+            end
+        else
+            if z_des > z_int
+                z_int = 1000;       % going away
+                set_F_comp = 1;
+            end
+        end
+    end
+        
+    %% Computation
+    if int == 0 
+        if comp == 0
+            K = K_INIT;
+        else
+            if abs(F_ext)/K > e_max         
+                K = abs(F_ext)/e_max;
+                if set_F_comp > 0.1
+                    F_comp = F_ext;
+                end
+            end
+        end
+    end
+
+    if int == 1
+        if comp == 0
+            if abs(F_ext) > F_int_max 
+                % if interaction force is higher than threshold
+                if K*abs(z-z_des) > F_int_max
+                    ktemp = F_int_max/abs(z-z_des);
+                    if ktemp < K                % K needs to be only decreased
+                        K = ktemp;
+                    end
+                    
+                else
+                    K = 0.995*K;
+                end
+                if K < K_MIN
+                    K = K_MIN;
+                end
+            end
+        else
+            if z_int > 999
+                if abs(F_ext)/K > e_max         
+                    K = abs(F_ext)/e_max;
+                    if set_F_comp > 0.1
+                        F_comp = F_ext;
+                    end
+                    if K > K_MAX
+                        K = K_MAX;
+                    end
+                end
+            else
+                if abs(F_ext-F_comp) > F_int_max 
+                    % if interaction force is higher than threshold
+                    if K*abs(z-z_des) > F_int_max
+                        ktemp = F_int_max/abs(z-z_des);
+                        if ktemp < K                % K needs to be only decreased
+                            K = ktemp;
+                        end
+                    else
+                        K = 0.995*K;
+                    end
+                    if K < K_MIN
+                        K = K_MIN;
+                    end
+                end
+            end
+        end
+    end
+
+    %% Reset to defaults
+    if comp==0 && comp_prec==1
+    %     kc = F_max/e_max;
+        F_comp = 0;
+        set_F_comp = 0;
+    end
+    if int==0 && int_prec==1
+    %     ki = F_max/e_max;
+    end
+
+    %% from int to comp and vice versa
+    if int==1 && int_prec==0
+        z_int=1000;
+        z_int_dir=0;
+    end
+    if comp == 1 && comp_prec==0
+        set_F_comp = 1;
+    end
+
+    % update to last booleans
+    int_prec = int;
+    comp_prec = comp;
+
+    k=K;
+
+    end
+
 
     return kf;
 }
