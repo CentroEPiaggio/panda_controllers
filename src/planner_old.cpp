@@ -5,9 +5,6 @@
         Giorgio Simonini
     Description: 
         ROS node containing the planner for a variable impedance controller
-        mk2 version
-    To Do:
-        rename to planner and substitute the other
 
 */
 
@@ -42,7 +39,8 @@ planner_class::planner_class(){
 }
 
 void planner_class::set_k_init(double k){
-    kf = k;
+    ki = k;
+    kc = k;
     k_init = k;
 }
 
@@ -56,199 +54,170 @@ int planner_class::sign(double x){
 
 double planner_class::planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp){
 
-    // insert planning code from matlab--------------------------------------------------------------------------  <=======
-    /*
-__________uu$$$$$$$$$$$$$$$$$uu__________
-_________u$$$$$$$$$$$$$$$$$$$$$u_________
-________u$$$$$$$$$$$$$$$$$$$$$$$u________
-_______u$$$$$$$$$$$$$$$$$$$$$$$$$u_______
-_______u$$$$$$$$$$$$$$$$$$$$$$$$$u_______
-_______u$$$$$$”___”$$$”___”$$$$$$u_______
-_______”$$$$”______u$u_______$$$$”_______
-________$$$———u$u_______u$$$__$$$________
-________$$$u______u$$$u______u$$$________
-_________”$$$$uu$$$___$$$uu$$$$”_________
-__________”$$$$$$$”___”$$$$$$$”__________
-____________u$$$$$$$u$$$$$$$u____________
-_____________u$”$”$”$”$”$”$u_____________
-__uuu________$$u$_$_$_$_$u$$_______uuu___
-_u$$$$________$$$$$u$u$u$$$_______u$$$$__
-__$$$$$uu______”$$$$$$$$$”_____uu$$$$$$__
-u$$$$$$$$$$$uu____”””””____uuuu$$$$$$$$$$
-$$$$”””$$$$$$$$$$uuu___uu$$$$$$$$$”””$$$”
-_”””______””$$$$$$$$$$$uu_””$”””_________
-___________uuuu_””$$$$$$$$$$uuu__________
-__u$$$uuu$$$$$$$$$uu_””$$$$$$$$$$$uuu$$$_
-__$$$$$$$$$$””””___________””$$$$$$$$$$$”
-___”$$$$$”______________________””$$$$””_
-*/
-
-    function k = fcn(F_ext, z, z_des, dz_des, int, comp, e_max, F_max, F_int_max)
-    %% Description
-    % Set the K coefficient for a variable impedance controller based on a
-    % desired trajectory
-
-    %% Outputs
-    % k             stiffness
-
-    %% Inputs
-    % F_ext         measured external force
-    % z_des         desired trajectory
-    % z             current position
-    % int, comp     booleans for the interaction and compensation phase
-
-    %% Parameters
-    % F_int_max     desired interaction force
-    % F_max         nominal disturbance forces
-    % e_max         maximum steady-state error
-
-    %% persistent initialization
-    K_INIT = 200;
-    K_MIN = 10;
-    K_MAX = 1000;
-    persistent F_comp int_prec comp_prec z_int z_int_dir set_F_comp K
-    if isempty(F_comp)
-    F_comp = 0;              % weight to compensate
-    end
-    if isempty(z_int) 
-        z_int = 1000;       % obstacle(or interaction) position
-    end
-    if isempty(z_int_dir) 
-        z_int_dir = 0;          % prohibited direction due to the obstacle
-    end
-    if isempty(int_prec)
-        int_prec = 0;           % previous values of int
-    end
-    if isempty(comp_prec)
-        comp_prec = 0;          % previous values od comp
-    end
-    if isempty(set_F_comp)
-        set_F_comp = 1;
-    end
-    if isempty(K)
-        K = F_max/e_max;
-    end
-
-    %% Detection
-    % set k in order to match a desired interaction force with the
-    % envirorment, and store interaction's position when detected
-    % X axes
-    if int == 1
-        % detection of an interaction 
-        if abs(F_ext-F_comp) > F_max
-            if z_int == 1000                     % z_int has not been set yet
+    // INTERACTION
+    // set ki in order to match a desired interaction force with the
+    // envirorment, and store interaction's position when detected
+    if (inter == 1){
+            // std::cout << " F_comp: " << F_comp << std::endl;
+            // std::cout << " F_ext: " << F_ext << std::endl;
+        // detection of an interaction 
+        if (std::abs(F_ext-F_comp) > F_MAX){
+            // std::cout << " F_ext > F_max" << std::endl;
+            if (z_int > 999 ){                     // z_int has not been set yet
                 z_int = z;
                 z_int_dir = -sign(F_ext-F_comp);
                 set_F_comp = 0; 
-            end
-        end
-    end
+            }
+        }
+        // std::cout << "z_int_dir is: " << z_int_dir << std::endl;
+        // std::cout << "z_int is: " << z_int << std::endl;
+        // setting of ki
+        if (std::abs(F_ext-F_comp) > F_int_max){
+            // std::cout << "F_ext > F_int_max" << std::endl;
+            // if interaction force is higher than threshold
+            if (ki*std::abs(z-z_des) > F_int_max){
+                double ktemp = F_int_max/std::abs(z_int-z_des);
+                // std::cout << "ktemp: " << ktemp << std::endl;
+                // std::cout << "z_des: " << z_des << std::endl;
+                // std::cout << "ki: " << ki << std::endl;
+                if (ktemp < ki){                // ki needs to be only decreased
+                    ki = ktemp;
+                }
+            }else{
+                if (ki > K_MIN){
+                    ki = 0.995*ki;              // designed for planning 100Hz
+                }else{
+                    ki = K_MIN;
+                }
+            }
+        }
+    }
 
-    %% Going away
-    if z_int < 999
-        if z_int_dir == 1
-            if z_des < z_int
-                z_int = 1000;       % going away
-                set_F_comp = 1;
-            end
-        else
-            if z_des > z_int
-                z_int = 1000;       % going away
-                set_F_comp = 1;
-            end
-        end
-    end
-        
-    %% Computation
-    if int == 0 
-        if comp == 0
-            K = K_INIT;
-        else
-            if abs(F_ext)/K > e_max         
-                K = abs(F_ext)/e_max;
-                if set_F_comp > 0.1
+    // COMPENSATION
+    // set kc in order to compensate the effect of the weight of the object,
+    // and store it
+    if (comp == 1){
+        // compensation detection
+        if (z_int > 999){                     // z_int not set before
+            if (std::abs(F_ext)/kc > e_max){         
+                kc = std::abs(F_ext)/e_max;
+                if (set_F_comp == 1){
                     F_comp = F_ext;
-                end
-            end
-        end
-    end
+                }
+            }
+        }else{ //maybe not needed anymore, because z_int acknowledges the "still in contact" condition
+            if (z_int_dir == 1){                // obstacle in above
+                if (z < z_int){
+                    if (std::abs(F_ext)/kc > e_max){ 
+                        kc = std::abs(F_ext)/e_max;
+                        if (set_F_comp == 1){
+                            F_comp = F_ext;
+                        }
+                    }
+                }
+            }else{                                // obstacle is below
+                if (z > z_int){
+                    if (std::abs(F_ext)/kc > e_max){
+                        kc = std::abs(F_ext)/e_max;
+                        if (set_F_comp == 1){
+                            F_comp = F_ext;
+                        }
+                    }
+                }
+            } 
+        }
+    }
 
-    if int == 1
-        if comp == 0
-            if abs(F_ext) > F_int_max 
-                % if interaction force is higher than threshold
-                if K*abs(z-z_des) > F_int_max
-                    ktemp = F_int_max/abs(z-z_des);
-                    if ktemp < K                % K needs to be only decreased
-                        K = ktemp;
-                    end
-                    
-                else
-                    K = 0.995*K;
-                end
-                if K < K_MIN
-                    K = K_MIN;
-                end
-            end
-        else
-            if z_int > 999
-                if abs(F_ext)/K > e_max         
-                    K = abs(F_ext)/e_max;
-                    if set_F_comp > 0.1
-                        F_comp = F_ext;
-                    end
-                    if K > K_MAX
-                        K = K_MAX;
-                    end
-                end
-            else
-                if abs(F_ext-F_comp) > F_int_max 
-                    % if interaction force is higher than threshold
-                    if K*abs(z-z_des) > F_int_max
-                        ktemp = F_int_max/abs(z-z_des);
-                        if ktemp < K                % K needs to be only decreased
-                            K = ktemp;
-                        end
-                    else
-                        K = 0.995*K;
-                    end
-                    if K < K_MIN
-                        K = K_MIN;
-                    end
-                end
-            end
-        end
-    end
-
-    %% Reset to defaults
-    if comp==0 && comp_prec==1
-    %     kc = F_max/e_max;
+    // reset to default values when comp or int shifts to zero
+    if (comp==0 && comp_prec==1){
+        kc = k_init;
         F_comp = 0;
         set_F_comp = 0;
-    end
-    if int==0 && int_prec==1
-    %     ki = F_max/e_max;
-    end
+    }
+    if (inter==0 && int_prec==1){
+        ki = k_init;
+    }
 
-    %% from int to comp and vice versa
-    if int==1 && int_prec==0
-        z_int=1000;
-        z_int_dir=0;
-    end
-    if comp == 1 && comp_prec==0
+    // from int to comp and vice versa
+    if (inter==1 && int_prec==0){
+        if (comp_prec == 1){
+            ki = kc;
+        }
+        z_int = 1000;
+        z_int_dir = 0;
+    }
+    if (comp==1 && comp_prec==0){
+        if (int_prec == 1){
+            kc = ki;
+        }
         set_F_comp = 1;
-    end
+    }
 
-    % update to last booleans
-    int_prec = int;
+    // update to last booleans
+    int_prec = inter;
     comp_prec = comp;
 
-    k=K;
 
-    end
+    // Selection of Final Values of D-K
+    // default values
+    double k = k_init;
 
+    // compensation
+    if (comp == 1){
+        k = kc;
+    }
 
-    return kf;
+    // both compensation and interaction are activated
+    // if "away" from obstacle set k = kc else ki
+    if (inter == 1){
+        k = ki;
+        // std::cout <<"ki_sel = " << ki << std::endl;
+        if (comp == 1){
+            if (z_int > 999){
+                k = kc;   
+                // std::cout<<" not ok 1 " << std::endl;                    // obstacle not reached
+            }else{
+                if (z_int_dir == 1){
+                    if (z_des < z_int){
+                        if (sign(dz_des*z_int_dir) == -1){
+                            k = kc;             // obstacle reached but "going away"
+
+                        }
+                    }
+                }else{
+                    if (z_des > z_int){
+                        if (sign(dz_des*z_int_dir) == -1){
+                            k = kc;            // obstacle reached but "going away"
+                        }
+                    }
+                }
+            }
+        }else{
+        //    std::cout <<"ok1 "<<std::endl;
+            if (z_int > 999){
+                k = k_init;            // restore to default
+                // std::cout <<"not ok1 " << std::endl;
+            }else{
+        //        std::cout <<"ok2 "<<std::endl;
+                if (z_int_dir == 1){
+                    // std::cout <<"not ok" << std::endl;
+                    if (z_des < z_int){
+                        // std::cout <<"not ok2 " << std::endl;
+                        k = k_init;  // restore because "going away"
+                    }
+                }else{
+                    // std::cout<<" z_int_dir != 1 "<<std::endl;
+                    if (z_des > z_int){
+                        // std::cout<<"not ok3 "<<std::endl;
+                        k = k_init;  // restore because "going away"
+                    }
+                }
+            }
+        }
+    }
+    // std::cout<<"z_int "<< z_int << std::endl;
+    // std::cout<<"k "<< k << std::endl;
+    return k;
 }
 
 
