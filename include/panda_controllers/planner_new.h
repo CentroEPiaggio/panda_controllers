@@ -32,7 +32,7 @@
 // It is the planner in one direction
 class planner_class{
     private:
-        double ki, kc, F_comp, z_int;
+        double kf, F_comp, z_int;
         double k_init;
         int set_F_comp, int_prec, comp_prec, z_int_dir;
         int sign(double x);

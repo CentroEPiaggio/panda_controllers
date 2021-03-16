@@ -165,7 +165,7 @@ bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_h
 	orientation_d_.coeffs() << 0.0, 0.0, 0.0, 1.0;           // desired orientation
 
 	cartesian_stiffness_.topLeftCorner(3, 3) 		<< 	K_INIT_POS*Eigen::Matrix3d::Identity();
-	cartesian_stiffness_(2,2) 						=   200;
+	// cartesian_stiffness_(2,2) 						=   200;
 	cartesian_stiffness_.bottomRightCorner(3, 3) 	<< 	K_INIT_OR*Eigen::Matrix3d::Identity();
 	cartesian_damping_.topLeftCorner(3, 3) 			<< 	2.0 * sqrt(K_INIT_POS)*Eigen::Matrix3d::Identity();
 	cartesian_damping_.bottomRightCorner(3, 3) 		<< 	2.0 * sqrt(K_INIT_OR)*Eigen::Matrix3d::Identity();

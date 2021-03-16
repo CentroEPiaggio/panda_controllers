@@ -32,7 +32,7 @@
 // It is the planner in one direction
 class planner_class{
     private:
-        double kf, F_comp, z_int;
+        double ki, kc, F_comp, z_int;
         double k_init;
         int set_F_comp, int_prec, comp_prec, z_int_dir;
         int sign(double x);
@@ -40,6 +40,7 @@ class planner_class{
         planner_class();
         void set_k_init(double k);
         double planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp);
+        void get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *ki_, double *kc_);
 };
 
 
@@ -88,6 +89,10 @@ class planner_node{
         //-----publishers-----//
         ros::Publisher pub_impedance;
         panda_controllers::DesiredImpedance desired_impedance_msg;
+
+        // info_planner //
+        ros::Publisher pub_info_planner;
+        panda_controllers::InfoPlanner info_planner_msg;
 };
 
 

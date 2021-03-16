@@ -1,15 +1,10 @@
-
 /*
     Authors: 
         Chiara Sammarco
         Rachele Nebbia Colomba
         Giorgio Simonini
     Description: 
-        NEW PLANNER
         ROS node containing the planner for a variable impedance controller
-        mk2 version
-    To Do:
-        rename to planner and substitute the other
 
 */
 
@@ -44,7 +39,8 @@ planner_class::planner_class(){
 }
 
 void planner_class::set_k_init(double k){
-    kf = k;
+    ki = k;
+    kc = k;
     k_init = k;
 }
 
@@ -56,144 +52,112 @@ int planner_class::sign(double x){
         return 1;
 }
 
+void planner_class::get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *ki_, double *kc_){
+    z_int_[axis] = z_int;
+    z_int_dir_[axis] = z_int_dir;
+    set_F_comp_[axis] = set_F_comp;
+    ki_[axis] = ki;
+    kc_[axis] = kc;
+}
+
 double planner_class::planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp){
 
-    // insert planning code from matlab--------------------------------------------------------------------------  <=======
-    /*
-__________uu$$$$$$$$$$$$$$$$$uu__________
-_________u$$$$$$$$$$$$$$$$$$$$$u_________
-________u$$$$$$$$$$$$$$$$$$$$$$$u________
-_______u$$$$$$$$$$$$$$$$$$$$$$$$$u_______
-_______u$$$$$$$$$$$$$$$$$$$$$$$$$u_______
-_______u$$$$$$”___”$$$”___”$$$$$$u_______
-_______”$$$$”______u$u_______$$$$”_______
-________$$$———u$u_______u$$$__$$$________
-________$$$u______u$$$u______u$$$________
-_________”$$$$uu$$$___$$$uu$$$$”_________
-__________”$$$$$$$”___”$$$$$$$”__________
-____________u$$$$$$$u$$$$$$$u____________
-_____________u$”$”$”$”$”$”$u_____________
-__uuu________$$u$_$_$_$_$u$$_______uuu___
-_u$$$$________$$$$$u$u$u$$$_______u$$$$__
-__$$$$$uu______”$$$$$$$$$”_____uu$$$$$$__
-u$$$$$$$$$$$uu____”””””____uuuu$$$$$$$$$$
-$$$$”””$$$$$$$$$$uuu___uu$$$$$$$$$”””$$$”
-_”””______””$$$$$$$$$$$uu_””$”””_________
-___________uuuu_””$$$$$$$$$$uuu__________
-__u$$$uuu$$$$$$$$$uu_””$$$$$$$$$$$uuu$$$_
-__$$$$$$$$$$””””___________””$$$$$$$$$$$”
-___”$$$$$”______________________””$$$$””_
-*/
-
-    // Detection
-    //  set k in order to match a desired interaction force with the
-    //  envirorment, and store interaction's position when detected
-
+    // INTERACTION
+    // set ki in order to match a desired interaction force with the
+    // envirorment, and store interaction's position when detected
     if (inter == 1){
-        //  detection of an interaction 
-        if (std::abs(F_ext-F_comp) > F_max){
-            if (z_int > 999){                     // z_int has not been set yet
+            // std::cout << " F_comp: " << F_comp << std::endl;
+            // std::cout << " F_ext: " << F_ext << std::endl;
+        // detection of an interaction 
+        if (std::abs(F_ext-F_comp) > F_MAX){
+            // std::cout << " F_ext > F_max" << std::endl;
+            if (z_int > 999 ){                     // z_int has not been set yet
                 z_int = z;
                 z_int_dir = -sign(F_ext-F_comp);
                 set_F_comp = 0; 
             }
         }
-    }
-
-    // Going away
-    if (z_int < 999){
-        if (z_int_dir == 1){
-            if (z_des < z_int){
-                z_int = 1000;       // going away
-                set_F_comp = 1;
-            }
-        }else{
-            if (z_des > z_int){
-                z_int = 1000;       // going away
-                set_F_comp = 1;
+        // std::cout << "z_int_dir is: " << z_int_dir << std::endl;
+        // std::cout << "z_int is: " << z_int << std::endl;
+        // setting of ki
+        if (std::abs(F_ext-F_comp) > F_int_max){
+            // std::cout << "F_ext > F_int_max" << std::endl;
+            // if interaction force is higher than threshold
+            if (ki*std::abs(z-z_des) > F_int_max){
+                double ktemp = F_int_max/std::abs(z_int-z_des);
+                // std::cout << "ktemp: " << ktemp << std::endl;
+                // std::cout << "z_des: " << z_des << std::endl;
+                // std::cout << "ki: " << ki << std::endl;
+                if (ktemp < ki){                // ki needs to be only decreased
+                    ki = ktemp;
+                }
+            }else{
+                if (ki > K_MIN){
+                    ki = 0.995*ki;              // designed for planning 100Hz
+                }else{
+                    ki = K_MIN;
+                }
             }
         }
     }
-        
-    // Computation
-    if (inter == 0){
-        if (comp == 0){
-            kf = k_init;    
-        }else{
-            if (std::abs(F_ext)/kf > e_max){
-                kf = std::abs(F_ext)/e_max;
+
+    // COMPENSATION
+    // set kc in order to compensate the effect of the weight of the object,
+    // and store it
+    if (comp == 1){
+        // compensation detection
+        if (z_int > 999){                     // z_int not set before
+            if (std::abs(F_ext)/kc > e_max){         
+                kc = std::abs(F_ext)/e_max;
                 if (set_F_comp == 1){
                     F_comp = F_ext;
                 }
-                if (kf > K_MAX){
-                    kf = K_MAX;
-                }
             }
-        }
-    }
-
-    if (inter == 1){
-        if (comp == 0){
-            if (std::abs(F_ext) > F_int_max){
-                // if interaction force is higher than threshold
-                if (kf*std::abs(z-z_des) > F_int_max){
-                    double ktemp = F_int_max/std::abs(z-z_des);
-                    if (ktemp < kf){// K needs to be only decreased
-                        kf = ktemp;
-                    }
-                }else{
-                    kf = 0.995*kf;
-                }
-                if (kf < K_MIN){
-                    kf = K_MIN;
-                }
-            }
-        }else{
-            if (z_int > 999){
-                if (std::abs(F_ext)/kf > e_max){        
-                    kf = std::abs(F_ext)/e_max;
-                    if (set_F_comp == 1){
-                        F_comp = F_ext;
-                    }
-                    if (kf > K_MAX){
-                        kf = K_MAX;
-                    }
-                }
-            }else{
-                if (std::abs(F_ext-F_comp) > F_int_max ){
-                    // if interaction force is higher than threshold
-                    if (kf*std::abs(z-z_des) > F_int_max){
-                        double ktemp = F_int_max/std::abs(z-z_des);
-                        if (ktemp < kf){                // K needs to be only decreased
-                            kf = ktemp;
+        }else{ //maybe not needed anymore, because z_int acknowledges the "still in contact" condition
+            if (z_int_dir == 1){                // obstacle in above
+                if (z < z_int){
+                    if (std::abs(F_ext)/kc > e_max){ 
+                        kc = std::abs(F_ext)/e_max;
+                        if (set_F_comp == 1){
+                            F_comp = F_ext;
                         }
-                    }else{
-                        kf = 0.995*kf;
-                    }
-                    if (kf < K_MIN){
-                        kf = K_MIN;
                     }
                 }
-            }
+            }else{                                // obstacle is below
+                if (z > z_int){
+                    if (std::abs(F_ext)/kc > e_max){
+                        kc = std::abs(F_ext)/e_max;
+                        if (set_F_comp == 1){
+                            F_comp = F_ext;
+                        }
+                    }
+                }
+            } 
         }
     }
 
-    // Reset to defaults
+    // reset to default values when comp or int shifts to zero
     if (comp==0 && comp_prec==1){
-    //     kf = K_INIT;
+        kc = k_init;
         F_comp = 0;
         set_F_comp = 0;
     }
-    // if (inter==0 && int_prec==1){
-    //      kf = K_INIT;
-    // }
+    if (inter==0 && int_prec==1){
+        ki = k_init;
+    }
 
     // from int to comp and vice versa
-    // if (inter==1 && int_prec==0){
-    //     z_int=1000;
-    //     z_int_dir=0;
-    // }
-    if (comp == 1 && comp_prec==0){
+    if (inter==1 && int_prec==0){
+        if (comp_prec == 1){
+            ki = kc;
+        }
+        z_int = 1000;
+        z_int_dir = 0;
+    }
+    if (comp==1 && comp_prec==0){
+        if (int_prec == 1){
+            kc = ki;
+        }
         set_F_comp = 1;
     }
 
@@ -201,7 +165,67 @@ ___”$$$$$”______________________””$$$$””_
     int_prec = inter;
     comp_prec = comp;
 
-    return kf;
+
+    // Selection of Final Values of D-K
+    // default values
+    double k = k_init;
+
+    // compensation
+    if (comp == 1){
+        k = kc;
+    }
+
+    // both compensation and interaction are activated
+    // if "away" from obstacle set k = kc else ki
+    if (inter == 1){
+        k = ki;
+        // std::cout <<"ki_sel = " << ki << std::endl;
+        if (comp == 1){
+            if (z_int > 999){
+                k = kc;   
+                // std::cout<<" not ok 1 " << std::endl;                    // obstacle not reached
+            }else{
+                if (z_int_dir == 1){
+                    if (z_des < z_int){
+                        if (sign(dz_des*z_int_dir) == -1){
+                            k = kc;             // obstacle reached but "going away"
+
+                        }
+                    }
+                }else{
+                    if (z_des > z_int){
+                        if (sign(dz_des*z_int_dir) == -1){
+                            k = kc;            // obstacle reached but "going away"
+                        }
+                    }
+                }
+            }
+        }else{
+        //    std::cout <<"ok1 "<<std::endl;
+            if (z_int > 999){
+                k = k_init;            // restore to default
+                // std::cout <<"not ok1 " << std::endl;
+            }else{
+        //        std::cout <<"ok2 "<<std::endl;
+                if (z_int_dir == 1){
+                    // std::cout <<"not ok" << std::endl;
+                    if (z_des < z_int){
+                        // std::cout <<"not ok2 " << std::endl;
+                        k = k_init;  // restore because "going away"
+                    }
+                }else{
+                    // std::cout<<" z_int_dir != 1 "<<std::endl;
+                    if (z_des > z_int){
+                        // std::cout<<"not ok3 "<<std::endl;
+                        k = k_init;  // restore because "going away"
+                    }
+                }
+            }
+        }
+    }
+    // std::cout<<"z_int "<< z_int << std::endl;
+    // std::cout<<"k "<< k << std::endl;
+    return k;
 }
 
 
@@ -280,6 +304,15 @@ void planner_node::update() {
     double ky_f = planner_y.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(1), ee_pos(1), pos_d(1), dpos_d(1), interaction(1), compensation(1));
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2) , ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
 
+    double z_int_[3];
+    int z_int_dir[3];
+    int set_F_comp_[3];
+    double ki_[3];
+    double kc_[3];
+    planner_x.get_info(0, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
+    planner_y.get_info(1, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
+    planner_z.get_info(2, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
+
     // std::cout << "kz_f: " << kz_f << std::endl;
 
     // std::cout << "Fx " << F_ext(0) << std::endl;
@@ -307,8 +340,21 @@ void planner_node::update() {
     }
     // std::cout << "K[0]" << K[0] << ", Kmsg" << desired_impedance_msg.stiffness_matrix[0] << std::endl;
     pub_impedance.publish(desired_impedance_msg);
-}
 
+
+    info_planner_msg.header.stamp = ros::Time::now();
+    for (int i = 0; i<3; i++){
+        info_planner_msg.z_int[i] = z_int_[i];
+        info_planner_msg.z_int_dir[i] = z_int_dir_[i];
+        info_planner_msg.F_comp[i] = F_comp_[i];
+        info_planner_msg.set_F_comp[i] = set_F_comp_[i];
+        info_planner_msg.ki[i] = ki_[i];
+        info_planner_msg.kc[i] = kc_[i];
+    }
+    pub_info_planner.publish(info_planner_msg)
+
+}
+// mettere topic
 
 //------------------------------------------------------------------//
 //                          INTERPOLATOR                            //
