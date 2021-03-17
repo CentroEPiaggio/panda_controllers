@@ -15,6 +15,11 @@
         <arg name="controller_name" value="$(arg controller)" />
     </include>
     <!-- <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find panda_controllers)/config/visual_rviz.rviz"/> -->
+    
+    <!-- Launch planner node -->
+    <node pkg="panda_controllers" name="planner" type="planner"/>
+    
+
 
     <!-- Load Gripper -->
     <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >

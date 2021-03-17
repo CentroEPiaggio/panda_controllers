@@ -14,6 +14,8 @@
         <arg name="load_gripper" value="$(arg load_gripper)" />
         <arg name="controller_name" value="$(arg controller)" />
     </include>
+    
+    
 
     <!-- Load Gripper -->
     <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >

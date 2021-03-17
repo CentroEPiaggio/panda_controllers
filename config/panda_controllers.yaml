@@ -149,8 +149,8 @@ project_impedance_controller_quat:
 #     CUBE_RS : 2000.0
 #     ACTIONS :
 #         - [5.0, 0.4, 0.0, 0.4, 0.0]    # time, pos
-#         - [15.0, 0.4, 0.0, 0.22, 0.0]
-#         - [10.0, 0.4, 0.0, 0.4, 0.0]
+#         - [8.0, 0.4, 0.0, 0.15, 0.0]
+#         - [5.0, 0.4, 0.0, 0.4, 0.0]
 #     TYPE :                          
 #         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
 #         - [0, 0, 1, 0, 0, 0]
@@ -173,7 +173,7 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 1]
 
 
-# # PROVA 6: K_x=K_y=500, K_z = 100, prendo peso piccolo, lo alzo, lo ripoggio, mi rialzo
+# PROVA 6: K_x=K_y=500, K_z = 100, prendo peso piccolo, lo alzo, lo ripoggio, mi rialzo
 # traj_par: 
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
@@ -212,17 +212,76 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 0]
 
 # PROVA 8: INTERACTION WITH BOX: scende, prende oggetto leggero, sale, lo poggia sulla scatola e torna su 
+# traj_par: 
+#     N_ACTION : 7
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [5.0, 0.4, 0.0, 0.4, 0.0]    # time, pos
+#         - [15.0, 0.4, 0.0, 0.10, 2500.0]
+#         - [10.0, 0.4, 0.0, 0.4, 250.0]
+#         - [5.0, 0.4, 0.0, 0.4, 250.0]   #pause
+#         - [15.0, 0.65, 0.0, 0.4, 250]
+#         - [10.0, 0.65, 0.0, 0.22, 250.0]
+#         - [10.0, 0.65, 0.0, 0.4, 2500.0]
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
+#         - [0, 0, 1, 0, 0, 0]
+#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 0, 0, 0, 1]    #pause
+#         - [0, 0, 0, 0, 0, 1]
+#         - [0, 0, 1, 0, 0, 1]
+#         - [0, 0, 1, 0, 0, 0]
+
+# PROVA 9: traj più veloce, peso piccolo, scende,  prende oggetto leggero, sale, riscende, poggia oggetto e torna su 
+# traj_par: 
+#     N_ACTION : 6
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [3.0, 0.4, 0.0, 0.3, 0.0]    # time, pos
+#         - [6.0, 0.4, 0.0, 0.10, 2500.0]
+#         - [6.0, 0.4, 0.0, 0.3, 250.0]
+#         - [1.0, 0.4, 0.0, 0.3, 250.0]   #pause
+#         - [6.0, 0.4, 0.0, 0.10, 250.0]
+#         - [6.0, 0.4, 0.0, 0.3, 2000.0]
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
+#         - [0, 0, 1, 0, 0, 0]
+#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 0, 0, 0, 1]    #pause
+#         - [0, 0, 1, 0, 0, 1]
+#         - [0, 0, 1, 0, 0, 0]
+
+# PROVA 10: traj più veloce, peso grande, scende,  prende oggetto leggero, sale, riscende, poggia oggetto e torna su 
+# traj_par: 
+#     N_ACTION : 6
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [3.0, 0.4, 0.0, 0.3, 0.0]    # time, pos
+#         - [7.0, 0.4, 0.0, 0.10, 3500.0]
+#         - [7.0, 0.4, 0.0, 0.3, 400.0]
+#         - [1.0, 0.4, 0.0, 0.3, 400.0]   #pause
+#         - [7.0, 0.4, 0.0, 0.10, 400.0]
+#         - [7.0, 0.4, 0.0, 0.3, 3000.0]
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
+#         - [0, 0, 1, 0, 0, 0]
+#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 0, 0, 0, 1]    #pause
+#         - [0, 0, 1, 0, 0, 1]
+#         - [0, 0, 1, 0, 0, 0]        
+
+# PROVA 11: traj più veloce, peso grande, scende,  prende oggetto , sale, vado avanti, poggia oggetto su scatola e torna su 
 traj_par: 
     N_ACTION : 7
     CUBE_RS : 2000.0
     ACTIONS :
-        - [5.0, 0.4, 0.0, 0.4, 0.0]    # time, pos
-        - [15.0, 0.4, 0.0, 0.10, 2500.0]
-        - [10.0, 0.4, 0.0, 0.4, 300.0]
-        - [5.0, 0.4, 0.0, 0.4, 300.0]   #pause
-        - [15.0, 0.65, 0.0, 0.4, 300]
-        - [10.0, 0.65, 0.0, 0.22, 300.0]
-        - [10.0, 0.65, 0.0, 0.4, 2500.0]
+        - [3.0, 0.4, 0.0, 0.4, 0.0]    # time, pos
+        - [7.0, 0.4, 0.0, 0.10, 3500.0]
+        - [7.0, 0.4, 0.0, 0.4, 400.0]
+        - [1.0, 0.4, 0.0, 0.4, 400.0]   #pause
+        - [7.0, 0.65, 0.0, 0.4, 400]
+        - [7.0, 0.65, 0.0, 0.22, 400.0]
+        - [5.0, 0.65, 0.0, 0.4, 3000.0]
     TYPE :                          
         - [0, 0, 0, 0, 0, 0]     # int, comp, gripper(da aggiunger)
         - [0, 0, 1, 0, 0, 0]
@@ -231,7 +290,3 @@ traj_par:
         - [0, 0, 0, 0, 0, 1]
         - [0, 0, 1, 0, 0, 1]
         - [0, 0, 1, 0, 0, 0]
-
-
-
-        

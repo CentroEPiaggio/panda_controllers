@@ -24,7 +24,7 @@
 #define     K_INIT      200         // [Nm]         default value
 #define     K_INIT_X      500         // [Nm]         default value x
 #define     K_INIT_Y      500         // [Nm]         default value y
-#define     K_INIT_Z      100         // [Nm]         default value z
+#define     K_INIT_Z      200         // [Nm]         default value z
 
 //==========================================================================================//
 //                                      CLASS PLANNER                                       //
@@ -110,28 +110,37 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         if (z_int > 999){                     // z_int not set before
             if (std::abs(F_ext)/kc > e_max){         
                 kc = std::abs(F_ext)/e_max;
-                if (set_F_comp == 1){
-                    F_comp = F_ext;
-                }
+                set_F_comp = 1;
+                // if (set_F_comp == 1){
+                //     F_comp = F_ext;
+                // }
             }
         }else{ //maybe not needed anymore, because z_int acknowledges the "still in contact" condition
-            if (z_int_dir == 1){                // obstacle in above
-                if (z < z_int){
+            if (z_int_dir == 1){                // obstacle is above
+                if (std::max(z,z_des) < z_int){
+                //if (z_des < z_int){
                     if (std::abs(F_ext)/kc > e_max){ 
                         kc = std::abs(F_ext)/e_max;
-                        if (set_F_comp == 1){
-                            F_comp = F_ext;
-                        }
                     }
+                    // if(z_des < z_int){
+                        set_F_comp = 1;
+                        // if (set_F_comp == 1){
+                        //     F_comp = F_ext;
+                        // }
+                    // }
                 }
             }else{                                // obstacle is below
-                if (z > z_int){
+                if (std::min(z,z_des) > z_int){
+                //if (z_des > z_int){
                     if (std::abs(F_ext)/kc > e_max){
                         kc = std::abs(F_ext)/e_max;
-                        if (set_F_comp == 1){
-                            F_comp = F_ext;
-                        }
                     }
+                    // if(z_des > z_int){
+                        set_F_comp = 1;
+                        // if (set_F_comp == 1){
+                        //     F_comp = F_ext;
+                        // }
+                    // }
                 }
             } 
         }
@@ -154,12 +163,13 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         }
         z_int = 1000;
         z_int_dir = 0;
+        set_F_comp = 0;
     }
     if (comp==1 && comp_prec==0){
         if (int_prec == 1){
             kc = ki;
         }
-        set_F_comp = 1;
+        // set_F_comp = 1;
     }
 
     // update to last booleans
@@ -174,6 +184,9 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     // compensation
     if (comp == 1){
         k = kc;
+        if(set_F_comp == 1){
+            F_comp = F_ext;
+        }
     }
 
     // both compensation and interaction are activated
@@ -184,19 +197,29 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         if (comp == 1){
             if (z_int > 999){
                 k = kc;   
+                if(set_F_comp == 1){
+                    F_comp = F_ext;
+                }
                 // std::cout<<" not ok 1 " << std::endl;                    // obstacle not reached
             }else{
                 if (z_int_dir == 1){
-                    if (z_des < z_int){
+                    // if (z_des < z_int){
+                    if (std::max(z,z_des) < z_int){    
                         if (sign(dz_des*z_int_dir) == -1){
                             k = kc;             // obstacle reached but "going away"
-
+                            if(set_F_comp == 1){
+                                F_comp = F_ext;
+                            }
                         }
                     }
                 }else{
-                    if (z_des > z_int){
+                    // if (z_des > z_int){
+                    if (std::min(z,z_des) > z_int){    
                         if (sign(dz_des*z_int_dir) == -1){
                             k = kc;            // obstacle reached but "going away"
+                            if(set_F_comp == 1){
+                                F_comp = F_ext;
+                            }
                         }
                     }
                 }
