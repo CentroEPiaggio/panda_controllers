@@ -52,10 +52,11 @@ int planner_class::sign(double x){
         return 1;
 }
 
-void planner_class::get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *ki_, double *kc_){
+void planner_class::get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *F_comp_, double *ki_, double *kc_){
     z_int_[axis] = z_int;
     z_int_dir_[axis] = z_int_dir;
     set_F_comp_[axis] = set_F_comp;
+    F_comp_[axis] = F_comp;
     ki_[axis] = ki;
     kc_[axis] = kc;
 }
@@ -273,6 +274,8 @@ bool planner_node::init(ros::NodeHandle& node_handle){
   
 
   pub_impedance = node_handle.advertise<panda_controllers::DesiredImpedance>("/project_impedance_controller/desired_impedance_project", 1);
+
+  pub_info_planner = node_handle.advertise<panda_controllers::InfoPlanner>("/project_impedance_controller/info_planner", 1);
   
 
   //---------------INITIALIZE VARIABLES---------------//
@@ -305,13 +308,14 @@ void planner_node::update() {
     double kz_f = planner_z.planning(F_MAX, E_MAX, F_INT_MAX, F_ext(2) , ee_pos(2), pos_d(2), dpos_d(2), interaction(2), compensation(2));
 
     double z_int_[3];
-    int z_int_dir[3];
+    int z_int_dir_[3];
     int set_F_comp_[3];
+    double F_comp_[3];
     double ki_[3];
     double kc_[3];
-    planner_x.get_info(0, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
-    planner_y.get_info(1, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
-    planner_z.get_info(2, z_int_, z_int_dir_, set_F_comp_, ki_, kc_);
+    planner_x.get_info(0, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
+    planner_y.get_info(1, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
+    planner_z.get_info(2, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
 
     // std::cout << "kz_f: " << kz_f << std::endl;
 
@@ -351,7 +355,7 @@ void planner_node::update() {
         info_planner_msg.ki[i] = ki_[i];
         info_planner_msg.kc[i] = kc_[i];
     }
-    pub_info_planner.publish(info_planner_msg)
+    pub_info_planner.publish(info_planner_msg);
 
 }
 // mettere topic

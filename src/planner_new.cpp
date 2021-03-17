@@ -5,9 +5,8 @@
         Rachele Nebbia Colomba
         Giorgio Simonini
     Description: 
-        NEW PLANNER
+        NEW PLANNER, not working for now, mk2 version
         ROS node containing the planner for a variable impedance controller
-        mk2 version
     To Do:
         rename to planner and substitute the other
 
