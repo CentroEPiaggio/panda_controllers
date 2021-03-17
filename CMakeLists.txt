@@ -37,6 +37,7 @@ add_message_files(FILES
   InputsFromMatlab.msg
   OutputsToMatlab.msg
   cubeRef.msg
+  InfoPlanner.msg
 )
 
 ##
@@ -111,7 +112,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${catkin_LIBRARIES}
 )
 ##
-
+ 
 target_link_libraries(command_publisher ${PROJECT_NAME})
 
 # target_link_libraries(trajectory ${PROJECT_NAME}) #In case of not object oriented method
