@@ -10,9 +10,9 @@
 
 #include "panda_controllers/planner.h"
 
-#define     F_MAX       4.0         // [N]          disturbance threshold
+#define     F_MAX       3.0         // [N]          disturbance threshold
 #define     E_MAX       0.05        // [m]          maximum tollerated error 
-#define     F_INT_MAX   7.0         // [N]          maximum tollerated force in interaction
+#define     F_INT_MAX   5.0         // [N]          maximum tollerated force in interaction
 #define     K_MIN       10.0        // [N/m]        minimum value for stiffness
 #define     K_MAX       1000.0      // [N/m]        maximum value for stiffness
 #define     MASS        1.0         // [kg]         virtual mass (inertia shaping)
