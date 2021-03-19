@@ -116,6 +116,14 @@ void demo_inf_XYZ(Eigen::Vector3d pos_i, double t,double zf,double tf){
     
 }
 
+void demo_circle_xy(Eigen::Vector3d pos_i, double t,double zf,double tf){
+  Eigen::Vector3d tmp;
+  tmp << 0.1*cos(t), 0.1*sin(t), ((zf-pos_i(2))/tf)*t;
+  traj.pos_des << pos_i + tmp;
+  traj.vel_des << -0.1*sin(t), 0.1*cos(t), (zf-pos_i(2))/tf;
+  traj.acc_des << -0.1*cos(t), -0.1*sin(t), 0;
+}
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "proj_trajectory");
@@ -142,7 +150,12 @@ int main(int argc, char **argv)
   Eigen::Vector3d vel;
   Eigen::Vector3d pos_init;
   Eigen::Vector3d or_init;
-  int inter_x, inter_y, inter_z, comp_x, comp_y, comp_z;
+  int inter_x = 0;
+  int inter_y = 0;
+  int inter_z = 0;
+  int comp_x = 0;
+  int comp_y = 0;
+  int comp_z = 0;
   XmlRpc::XmlRpcValue traj_par;
   // std::map<std::string, std::vector<double>>  traj_par; 
 
@@ -202,11 +215,11 @@ int main(int argc, char **argv)
       cin>>comp_z;
       cout << "done!"<<endl;
     }else if (choice == 4){
-      cout<<"select demo:   (1: infinite XY , 2: infinite XYZ , ...-soon other demos-"<<endl;
+      cout<<"select demo:   (1: infinite XY , 2: infinite XYZ , 3: circle_xy , ...-soon other demos-"<<endl;
       cin>>demo;
       cout<<"insert time_f: "<<endl;
       cin>>tf;
-      if (demo==2){
+      if ((demo==2) || (demo==3)){
         cout<<"insert zf: "<<endl;
         cin>>zf;
       }
@@ -287,6 +300,10 @@ int main(int argc, char **argv)
           demo_inf_XY(pos_init, t);
         }else if(demo==2){
           demo_inf_XYZ(pos_init,t,zf,tf);
+        }else if (demo==3){
+          cube_theta1[0] = 2400;
+          cube_theta2[0] = -1600;
+          demo_circle_xy(pos_init,t,zf,tf);
         }
       }
 

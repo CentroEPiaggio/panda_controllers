@@ -11,7 +11,7 @@
 #include "panda_controllers/planner.h"
 
 #define     F_MAX       3.0         // [N]          disturbance threshold
-#define     E_MAX       0.05        // [m]          maximum tollerated error 
+#define     E_MAX       0.02        // [m]          maximum tollerated error 
 #define     F_INT_MAX   5.0         // [N]          maximum tollerated force in interaction
 #define     K_MIN       10.0        // [N/m]        minimum value for stiffness
 #define     K_MAX       1000.0      // [N/m]        maximum value for stiffness
@@ -22,9 +22,9 @@
 #define     K_OR        500         // [Nm/rad]     orientation stiffness
 #define     D_OR        2*sqrt(500) // [Nm*sec/rad] orientation damping
 #define     K_INIT      200         // [Nm]         default value
-#define     K_INIT_X      500         // [Nm]         default value x
-#define     K_INIT_Y      500         // [Nm]         default value y
-#define     K_INIT_Z      200         // [Nm]         default value z
+#define     K_INIT_X      300         // [Nm]         default value x
+#define     K_INIT_Y      300         // [Nm]         default value y
+#define     K_INIT_Z      300         // [Nm]         default value z
 
 //==========================================================================================//
 //                                      CLASS PLANNER                                       //

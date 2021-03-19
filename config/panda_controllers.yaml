@@ -309,39 +309,40 @@ project_impedance_controller_quat:
 #         - [0, 1, 0, 0, 0, 0]
 #         - [0, 1, 0, 0, 0, 0] 
 
-# PROVA 13: GRASPING BOTTIGLIA ACQUA: robot piegato, mi avvicino alla bottiglia, la prendo, mi sollevo su z, mi riavvicino, la ripoggio.
-#F_int_max = 5; F_max = 3
-traj_par: 
-    N_ACTION : 6
-    CUBE_RS : 2000.0
-    ACTIONS :
-        - [5.0, 0.5, 0.0, 0.2, 0.0]    # time, pos, gripper
-        - [10.0, 0.5, -0.2, 0.2, 5000.0]
-        - [10.0, 0.5, -0.2, 0.4, 2700.0]
-        - [3.0, 0.5, -0.2, 0.4, 2700.0]
-        - [10.0, 0.5, -0.2, 0.15,2700.0]
-        - [10.0, 0.5, 0.0, 0.2, 5000.0]
+# # PROVA 13: GRASPING BOTTIGLIA ACQUA: robot piegato, mi avvicino alla bottiglia, la prendo, mi sollevo su z, mi riavvicino, la ripoggio.
+# #F_int_max = 5; F_max = 3
+# traj_par: 
+#     N_ACTION : 6
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [5.0, 0.5, 0.0, 0.2, 0.0]    # time, pos, gripper
+#         - [10.0, 0.5, -0.2, 0.2, 5000.0]
+#         - [10.0, 0.5, -0.2, 0.4, 2700.0]
+#         - [3.0, 0.5, -0.2, 0.4, 2700.0]
+#         - [10.0, 0.5, -0.2, 0.15,2700.0]
+#         - [10.0, 0.5, 0.0, 0.2, 5000.0]
 
-    TYPE :                          
-        - [0, 0, 0, 0, 0, 0]     # int, comp
-        - [0, 1, 0, 0, 0, 0]
-        - [0, 1, 0, 0, 0, 1] 
-        - [0, 0, 0, 0, 0, 1]     #pause
-        - [0, 0, 1, 0, 0, 1]
-        - [0, 0, 0, 0, 0, 0]
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp
+#         - [0, 1, 0, 0, 0, 0]
+#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 0, 0, 0, 0, 1]     #pause
+#         - [0, 0, 1, 0, 0, 1]
+#         - [0, 0, 0, 0, 0, 0]
 
-# # PROVA 14 : GRASPING+PLACEMENT (CON TRAIETTORIA OBLIQUA) BOTTIGLIA ACQUA CON "MURO": robot piegato, mi avvicino, 
-# # sollevo la bottiglia, torno indietro (-y), mi riavvicino, la ripoggio, F_int_max = 5; F_max = 3;
+# PROVA 14 : GRASPING+PLACEMENT (CON TRAIETTORIA OBLIQUA) BOTTIGLIA ACQUA CON "MURO": robot piegato, mi avvicino, 
+# sollevo la bottiglia, torno indietro (-y), mi riavvicino, la ripoggio, F_int_max = 5; F_max = 3, e_max = 4, Kxy=500, Kz=200
+# (altra prova e_max=2 e Kxyz = 300, più bella);
 # traj_par: 
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
 #         - [5.0, 0.5, 0.0, 0.2, 0.0]    # time, pos, gripper
 #         - [10.0, 0.5, -0.23, 0.2, 5000.0]
-#         - [5.0, 0.5, -0.23, 0.3, 2700.0]
+#         - [5.0, 0.5, -0.23, 0.4, 2700.0]
 #         - [7.0, 0.5, 0.0, 0.3, 2700.0]
 #         - [10.0, 0.5, -0.2, 0.17,2700.0]
-#         - [7.0, 0.5, 0.0, 0.17, 5000.0]
+#         - [7.0, 0.5, 0.0, 0.3, 5000.0]
 
 #     TYPE :                          
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
@@ -351,3 +352,62 @@ traj_par:
 #         - [0, 1, 1, 0, 0, 1]
 #         - [0, 1, 0, 0, 0, 0]
 
+# # PROVA 15 : GRASPING+PLACEMENT INTERAZIONE LUNGO I TRE ASSI, BOTTIGLIA ACQUA CON "MURO AD ANGOLO": robot piegato, mi avvicino, 
+# # sollevo la bottiglia, torno indietro (-y), mi riavvicino XY, la ripoggio nell'angolo, F_int_max = 5; F_max = 3, e_max = 2, Kxyz=300;
+# traj_par: 
+#     N_ACTION : 6
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+#         - [5.0, 0.5, 0.0, 0.2, 0.0]    # time, pos, gripper
+#         - [10.0, 0.5, -0.25, 0.2, 5000.0]
+#         - [5.0, 0.5, -0.25, 0.4, 2700.0]
+#         - [7.0, 0.5, 0.0, 0.4, 2700.0]
+#         - [10.0, 0.38, -0.25, 0.17, 2700.0]
+#         - [7.0, 0.38, 0.0, 0.3, 5000.0]
+
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp
+#         - [0, 1, 0, 0, 0, 0]
+#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]     #pause
+#         - [1, 1, 1, 0, 0, 1]
+#         - [1, 1, 1, 0, 0, 0]
+
+
+# # PROVA 16: RIGIDEZZA TAVOLO: sotto 0.02 fa schifo, vibra, bene 0.01
+
+traj_par: 
+    N_ACTION : 5
+    CUBE_RS : 2000.0
+    ACTIONS :
+
+        - [5.0, 0.51, 0.089, 0.10, 0.0]
+        - [7.0, 0.51, 0.089, -0.02, 0.0]
+        - [5.0, 0.51, 0.089, 0.10, 0.0]
+        - [7.0, 0.51, 0.089, -0.03, 0.0]
+        - [5.0, 0.51, 0.089, 0.10, 0.0]
+
+    TYPE :                          
+        - [0, 0, 0, 0, 0, 0]     # int, comp
+        - [0, 0, 1, 0, 0, 0]
+        - [0, 0, 1, 0, 0, 0] 
+        - [0, 0, 1, 0, 0, 0]     #pause
+        - [0, 0, 1, 0, 0, 0]
+
+
+# # PROVA 17: POLISHING TASK: bring the spong 
+
+# traj_par: 
+#     N_ACTION : 3
+#     CUBE_RS : 2000.0
+#     ACTIONS :
+
+#         - [5.0, 0.51, 0.089, 0.15, 0.0]
+#         - [7.0, 0.51, 0.089, 0.04, 3500.0]
+#         - [2.0, 0.51, 0.089, 0.04, 400]
+
+
+#     TYPE :                          
+#         - [0, 0, 0, 0, 0, 0]     # int, comp
+#         - [0, 0, 1, 0, 0, 0]
+#         - [0, 0, 1, 0, 0, 0] 

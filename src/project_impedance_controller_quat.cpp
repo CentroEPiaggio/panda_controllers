@@ -13,14 +13,14 @@
 
 #define   	EE_X  			0
 #define   	EE_Y  			0
-#define   	EE_Z  			0.18		// m
+#define   	EE_Z  			0.18		// m  0.18
 #define 	K_INIT_POS		200
 #define 	K_INIT_OR		500
 #define 	PD_K_OR			50
 #define 	PD_D_OR			2.0*sqrt(PD_K_OR)
 #define 	PD_K_OR_QUAT_X	30
 #define 	PD_K_OR_QUAT_Y	30
-#define 	PD_K_OR_QUAT_Z	10
+#define 	PD_K_OR_QUAT_Z	30
 #define 	PD_D_OR_QUAT_X	2.0*sqrt(PD_K_OR_QUAT_X)
 #define 	PD_D_OR_QUAT_Y	2.0*sqrt(PD_K_OR_QUAT_Y)
 #define 	PD_D_OR_QUAT_Z	2.0*sqrt(PD_K_OR_QUAT_Z)
@@ -167,7 +167,7 @@ bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_h
 	cartesian_stiffness_.topLeftCorner(3, 3) 		<< 	K_INIT_POS*Eigen::Matrix3d::Identity();
 	// cartesian_stiffness_(2,2) 						=   200;
 	cartesian_stiffness_.bottomRightCorner(3, 3) 	<< 	K_INIT_OR*Eigen::Matrix3d::Identity();
-	cartesian_damping_.topLeftCorner(3, 3) 			<< 	2.0 * sqrt(K_INIT_POS)*Eigen::Matrix3d::Identity();
+	cartesian_damping_.topLeftCorner(3, 3) 			<< 	2.0 * sqrt(K_INIT_POS)*Eigen::Matrix3d::Identity();	// Eigen::Matrix3d::Identity(3,3)*200; 
 	cartesian_damping_.bottomRightCorner(3, 3) 		<< 	2.0 * sqrt(K_INIT_OR)*Eigen::Matrix3d::Identity();
 	
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;  //joint torques limit vector
