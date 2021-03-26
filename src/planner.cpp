@@ -36,6 +36,7 @@ planner_class::planner_class(){
     int_prec = 0;
     comp_prec = 0;
     set_F_comp = 1;
+    damp = 0;
 }
 
 void planner_class::set_k_init(double k){
@@ -52,13 +53,14 @@ int planner_class::sign(double x){
         return 1;
 }
 
-void planner_class::get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *F_comp_, double *ki_, double *kc_){
+void planner_class::get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *F_comp_, double *ki_, double *kc_, int *damp_){
     z_int_[axis] = z_int;
     z_int_dir_[axis] = z_int_dir;
     set_F_comp_[axis] = set_F_comp;
     F_comp_[axis] = F_comp;
     ki_[axis] = ki;
     kc_[axis] = kc;
+    damp_[axis] = damp;
 }
 
 double planner_class::planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp){
@@ -82,6 +84,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         // std::cout << "z_int is: " << z_int << std::endl;
         // setting of ki
         if (std::abs(F_ext-F_comp) > F_int_max){
+            damp = 1;
             // std::cout << "F_ext > F_int_max" << std::endl;
             // if interaction force is higher than threshold
             if (ki*std::abs(z-z_des) > F_int_max){
@@ -154,6 +157,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
     }
     if (inter==0 && int_prec==1){
         ki = k_init;
+        damp = 0;
     }
 
     // from int to comp and vice versa
@@ -196,7 +200,8 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         // std::cout <<"ki_sel = " << ki << std::endl;
         if (comp == 1){
             if (z_int > 999){
-                k = kc;   
+                k = kc;  
+                damp = 0; 
                 if(set_F_comp == 1){
                     F_comp = F_ext;
                 }
@@ -207,6 +212,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     if (std::max(z,z_des) < z_int){    
                         if (sign(dz_des*z_int_dir) == -1){
                             k = kc;             // obstacle reached but "going away"
+                            damp = 0;
                             if(set_F_comp == 1){
                                 F_comp = F_ext;
                             }
@@ -217,6 +223,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     if (std::min(z,z_des) > z_int){    
                         if (sign(dz_des*z_int_dir) == -1){
                             k = kc;            // obstacle reached but "going away"
+                            damp = 0;
                             if(set_F_comp == 1){
                                 F_comp = F_ext;
                             }
@@ -228,6 +235,7 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
         //    std::cout <<"ok1 "<<std::endl;
             if (z_int > 999){
                 k = k_init;            // restore to default
+                damp = 0;
                 // std::cout <<"not ok1 " << std::endl;
             }else{
         //        std::cout <<"ok2 "<<std::endl;
@@ -236,12 +244,14 @@ double planner_class::planning(double F_max, double e_max, double F_int_max, dou
                     if (z_des < z_int){
                         // std::cout <<"not ok2 " << std::endl;
                         k = k_init;  // restore because "going away"
+                        damp = 0;
                     }
                 }else{
                     // std::cout<<" z_int_dir != 1 "<<std::endl;
                     if (z_des > z_int){
                         // std::cout<<"not ok3 "<<std::endl;
                         k = k_init;  // restore because "going away"
+                        damp = 0;
                     }
                 }
             }
@@ -336,9 +346,10 @@ void planner_node::update() {
     double F_comp_[3];
     double ki_[3];
     double kc_[3];
-    planner_x.get_info(0, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
-    planner_y.get_info(1, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
-    planner_z.get_info(2, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_);
+    int damp_[3];
+    planner_x.get_info(0, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_, damp_);
+    planner_y.get_info(1, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_, damp_);
+    planner_z.get_info(2, z_int_, z_int_dir_, set_F_comp_, F_comp_, ki_, kc_, damp_);
 
     // std::cout << "kz_f: " << kz_f << std::endl;
 
@@ -377,6 +388,7 @@ void planner_node::update() {
         info_planner_msg.set_F_comp[i] = set_F_comp_[i];
         info_planner_msg.ki[i] = ki_[i];
         info_planner_msg.kc[i] = kc_[i];
+        info_planner_msg.damp[i] = damp_[i];
     }
     pub_info_planner.publish(info_planner_msg);
 
@@ -400,6 +412,9 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
     double dx = sqrt(4*kx*MASS);
     double dy = sqrt(4*ky*MASS);
     double dz = sqrt(4*kz*MASS);
+    // dx = (planner_x.damp) ? dx*4 : dx;
+    // dy = (planner_y.damp) ? dy*4 : dy;
+    // dz = (planner_z.damp) ? dz*4 : dz;
 
     // Final impedance matrices
     K[0] = kx;

@@ -377,10 +377,11 @@ project_impedance_controller_quat:
 # # PROVA 16: RIGIDEZZA TAVOLO: sotto 0.02 fa schifo, vibra, bene 0.01
 
 traj_par: 
-    N_ACTION : 5
+    N_ACTION : 7
     CUBE_RS : 2000.0
     ACTIONS :
-
+        - [5.0, 0.51, 0.089, 0.10, 0.0]
+        - [7.0, 0.51, 0.089, -0.01, 0.0]
         - [5.0, 0.51, 0.089, 0.10, 0.0]
         - [7.0, 0.51, 0.089, -0.02, 0.0]
         - [5.0, 0.51, 0.089, 0.10, 0.0]
@@ -389,6 +390,8 @@ traj_par:
 
     TYPE :                          
         - [0, 0, 0, 0, 0, 0]     # int, comp
+        - [0, 0, 1, 0, 0, 0]     #pause
+        - [0, 0, 1, 0, 0, 0]
         - [0, 0, 1, 0, 0, 0]
         - [0, 0, 1, 0, 0, 0] 
         - [0, 0, 1, 0, 0, 0]     #pause

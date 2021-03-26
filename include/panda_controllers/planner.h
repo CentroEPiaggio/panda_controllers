@@ -39,9 +39,10 @@ class planner_class{
         int sign(double x);
     public:
         planner_class();
+        int damp;
         void set_k_init(double k);
         double planning(double F_max, double e_max, double F_int_max, double F_ext, double z, double z_des, double dz_des, int inter, int comp);
-        void get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *F_comp_, double *ki_, double *kc_);
+        void get_info(int axis, double *z_int_, int *z_int_dir_, int *set_F_comp_, double *F_comp_, double *ki_, double *kc_, int *damp_);
 };
 
 

@@ -5,3 +5,4 @@ int32[3] z_int_dir
 int32[3] set_F_comp
 float64[3] ki
 float64[3] kc
+int32[3] damp
