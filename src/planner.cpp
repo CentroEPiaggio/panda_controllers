@@ -412,9 +412,9 @@ void planner_node::interpolator(double kx_f, double ky_f, double kz_f){
     double dx = sqrt(4*kx*MASS);
     double dy = sqrt(4*ky*MASS);
     double dz = sqrt(4*kz*MASS);
-    // dx = (planner_x.damp) ? dx*4 : dx;
-    // dy = (planner_y.damp) ? dy*4 : dy;
-    // dz = (planner_z.damp) ? dz*4 : dz;
+    dx = (planner_x.damp) ? dx*4 : dx;
+    dy = (planner_y.damp) ? dy*4 : dy;
+    dz = (planner_z.damp) ? dz*4 : dz;
 
     // Final impedance matrices
     K[0] = kx;

@@ -30,8 +30,8 @@
 //#define 	COLL_LIMIT		2000
 
 #define 	USE_FILTER		0
-#define 	BETA_FILTER		0.001
-#define 	ALPHA_FILTER	0.1
+#define 	BETA_FILTER		0.001*0.1
+#define 	ALPHA_FILTER	0.1*0.1
 
 /* 
 da fare:
@@ -348,7 +348,8 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	Eigen::Matrix<double, 3, 1> F_global_;
 	if (USE_FILTER){
 		// LOW PASS FILTER
-		F_bias << F_bias + BETA_FILTER*(F_new);
+		F_bias << F_bias + BETA_FILTER*(F_new - F_bias);
+		// F_bias.setZero();
 
 		// DISSIPATIVE FILTER
 		F_new_ << F_new - F_bias;
