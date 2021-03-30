@@ -163,7 +163,7 @@ bool ProjectImpedanceControllerQuat::init(  hardware_interface::RobotHW* robot_h
 	dpose_d_.setZero();                     // desired position velocity
 	ddpose_d_.setZero();                    // desired acceleration
 	F_ext.setZero();                        // measured external force
-	F_bias.setZero();						// force by low-pass filter
+	// F_bias.setZero();						// force by low-pass filter
 	F_global.setZero();						// force by force sensor
 	cartesian_stiffness_.setIdentity();		// stiffness matrix
 	cartesian_damping_.setIdentity();		// damping matrix
@@ -329,9 +329,9 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	//----------- COMPUTE ORIENTATION -------------//
 
 	Eigen::Matrix<double, 3, 3> R(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()).topLeftCorner(3,3));
-	Eigen::Matrix<double, 3, 1> F_new;
+	// Eigen::Matrix<double, 3, 1> F_new;
 	// std::cout << "F_local " << F_ext.head(3) << std::endl;
-	F_new << R*F_ext.head(3); 				// F_ext in cartesian space
+	F_global << R*F_ext.head(3); 				// F_ext in cartesian space
 	// std::cout << "F_global " << F_global<< std::endl;
 	// GABICCINI (ZYX)
 	double phi = atan2(R(1,0),R(0,0));                          
@@ -342,32 +342,32 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	or_proj << phi, theta, psi;
 
 
-	//----------- DISSIPATIVE FILTER -------------//
+	// //----------- DISSIPATIVE FILTER -------------//
 	
-	Eigen::Matrix<double, 3, 1> F_new_;
-	Eigen::Matrix<double, 3, 1> F_global_;
-	if (USE_FILTER){
-		// LOW PASS FILTER
-		F_bias << F_bias + BETA_FILTER*(F_new - F_bias);
-		// F_bias.setZero();
+	// Eigen::Matrix<double, 3, 1> F_new_;
+	// Eigen::Matrix<double, 3, 1> F_global_;
+	// if (USE_FILTER){
+	// 	// LOW PASS FILTER
+	// 	F_bias << F_bias + BETA_FILTER*(F_new - F_bias);
+	// 	// F_bias.setZero();
 
-		// DISSIPATIVE FILTER
-		F_new_ << F_new - F_bias;
-		F_global_ << F_global - F_bias;
-		for (int i=0; i<3; i++){
-			if (F_new_[i]*F_global_[i] > 0){
-				if (std::abs(F_new_[i]) > std::abs(F_global_[i])){
-					F_global[i] = F_global[i] + ALPHA_FILTER * (F_new[i] - F_global[i]);
-				}else{
-					F_global[i] = F_new[i];
-				}
-			}else{
-				F_global[i] = F_bias[i] + ALPHA_FILTER * (F_new_[i]);
-			}
-		}
-	}else{
-		F_global << F_new;
-	}
+	// 	// DISSIPATIVE FILTER
+	// 	F_new_ << F_new - F_bias;
+	// 	F_global_ << F_global - F_bias;
+	// 	for (int i=0; i<3; i++){
+	// 		if (F_new_[i]*F_global_[i] > 0){
+	// 			if (std::abs(F_new_[i]) > std::abs(F_global_[i])){
+	// 				F_global[i] = F_global[i] + ALPHA_FILTER * (F_new[i] - F_global[i]);
+	// 			}else{
+	// 				F_global[i] = F_new[i];
+	// 			}
+	// 		}else{
+	// 			F_global[i] = F_bias[i] + ALPHA_FILTER * (F_new_[i]);
+	// 		}
+	// 	}
+	// }else{
+	// 	F_global << F_new;
+	// }
 	
 
 	//----------- COMPUTE ERRORS -------------//
@@ -535,8 +535,12 @@ void ProjectImpedanceControllerQuat::update(  const ros::Time& /*time*/,
 	 tau_nullspace <<  N_tot * ( NULL_STIFF * (q_d_nullspace_ - q)       // proportional term
 						- (2.0 * sqrt(NULL_STIFF)) * dq);       // derivative term
 
+	// std::cout<< "N: " << N_tot << std::endl;
+	// std::cout << "dq: " << dq << std::endl;
+	// std::cout << "q: " << q << std::endl;
+
 	// Desired torque
-	tau_d << tau_task + tau_or + tau_nullspace;
+	tau_d << tau_task + tau_or; // + tau_nullspace;
 	// tau_d << tau_or;
 
 	//=================================| END CONTROL |==================================//

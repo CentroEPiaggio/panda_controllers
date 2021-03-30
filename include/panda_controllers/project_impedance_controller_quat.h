@@ -79,7 +79,7 @@ class ProjectImpedanceControllerQuat : public controller_interface::MultiInterfa
 		Eigen::Matrix<double, 6, 1> dpose_d_;                     // desired velocity
 		Eigen::Matrix<double, 6, 1> ddpose_d_;                    // desired acceleration
 		Eigen::Matrix<double, 6, 1> F_ext;                        // external Forces in x y z
-		Eigen::Matrix<double, 3, 1> F_bias;                       // external Forces in x y z
+		// Eigen::Matrix<double, 3, 1> F_bias;                       // external Forces in x y z
 		Eigen::Matrix<double, 3, 1> F_global;                     // external Forces in x y z
 		Eigen::Quaterniond orientation_d_;                        // desired orientation
 		
