@@ -21,7 +21,7 @@ def callback(data):
     control_msg.goal.epsilon.inner = 0.08
     control_msg.goal.epsilon.outer = 0.08
     control_msg.goal.speed = 0.1
-    control_msg.goal.force = 1.0
+    control_msg.goal.force = 2.0
     publisher.publish(control_msg)
 
 def gripper_control():
