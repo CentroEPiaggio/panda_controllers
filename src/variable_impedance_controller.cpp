@@ -278,11 +278,11 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   // tau_d << tau_task + tau_nullspace + coriolis;
   tau_d << tau_task + coriolis;
 
-  std::cout << "Commanded torque:" << std::endl;
-  std::cout << tau_d << std::endl;
+  // std::cout << "Commanded torque:" << std::endl;
+  // std::cout << tau_d << std::endl;
 
-  std::cout << "Internal torque:" << std::endl;
-  std::cout << tau_J_d << std::endl;
+  // std::cout << "Internal torque:" << std::endl;
+  // std::cout << tau_J_d << std::endl;
 
   // Saturate torque rate to avoid discontinuities
   tau_d << saturateTorqueRate(tau_d, tau_J_d);
@@ -293,8 +293,8 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
       tau_d = tau_d / ith_torque_rate;
   }
 
-  std::cout << "Commanded torque after sat:" << std::endl;
-  std::cout << tau_d << std::endl;
+  // std::cout << "Commanded torque after sat:" << std::endl;
+  // std::cout << tau_d << std::endl;
 
   //set arm command torques
   for (size_t i = 0; i < 7; ++i)
