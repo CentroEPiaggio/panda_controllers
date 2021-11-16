@@ -12,7 +12,7 @@ cartesian_velocity_controller:
       params:
         a: [1.0, -0.9971]
         b: [0.0014, 0.0014]
-        
+
 pd_controller:
     type: panda_controllers/PdController
     arm_id: panda
@@ -30,7 +30,7 @@ pd_controller:
     kv: 10.0
     dt: 5
 
-         
+
 computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: panda
@@ -77,10 +77,10 @@ variable_impedance_controller:
         - panda_joint5
         - panda_joint6
         - panda_joint7
-    var_damp: true 
+    var_damp: true
 
-project_impedance_controller:
-    type: panda_controllers/ProjectImpedanceController
+impedance_controller:
+    type: panda_controllers/ImpedanceController
     arm_id: panda
     joint_names:
         - panda_joint1
@@ -90,7 +90,7 @@ project_impedance_controller:
         - panda_joint5
         - panda_joint6
         - panda_joint7
-    var_damp: true 
+    var_damp: true
 
 project_impedance_controller_quat:
     type: panda_controllers/ProjectImpedanceControllerQuat
@@ -103,12 +103,12 @@ project_impedance_controller_quat:
         - panda_joint5
         - panda_joint6
         - panda_joint7
-    var_damp: true 
+    var_damp: true
 
 
 
 # PROVA 2: K_default=200, SCENDE;PRENDE OGGETTO; RISALE; RISCENDE; LASCIA OGGETTO; RISALE
-# traj_par: 
+# traj_par:
 #     N_ACTION : 5
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -117,7 +117,7 @@ project_impedance_controller_quat:
 #         - [10.0, 0.4,  0.0, 0.3, 400.0]
 #         - [10.0, 0.4, 0.0, 0.10, 400.0]
 #         - [10.0, 0.4, 0.0, 0.3, 3000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 0, 0, 0, 1]
@@ -125,7 +125,7 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 0]
 
 #PROVA 3: K_z_default=100,SCENDE;PRENDE OGGETTO; RISALE; RISCENDE; PAUSA 2 sec; LASCIA OGGETTO; RISALE
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -135,7 +135,7 @@ project_impedance_controller_quat:
 #         - [5.0, 0.4, 0.0, 0.3, 300.0]   #pause
 #         - [10.0, 0.4, 0.0, 0.10, 300.0]
 #         - [10.0, 0.4, 0.0, 0.3, 2000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 1]
@@ -144,22 +144,22 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 0]
 
 # #PROVA 4: BOX, interaction with box (scatola) without object
-# traj_par: 
+# traj_par:
 #     N_ACTION : 3
 #     CUBE_RS : 2000.0
 #     ACTIONS :
 #         - [5.0, 0.4, 0.0, 0.4, 0.0]    # time, pos, gripper
 #         - [8.0, 0.4, 0.0, 0.15, 0.0]
 #         - [5.0, 0.4, 0.0, 0.4, 0.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 0]
 
 
-# PROVE OGGI CHE SEMBRA 
+# PROVE OGGI CHE SEMBRA
 # # PROVA 5: grasping object: scendo giù, prendo oggetto, salgo su; K = 100
-# traj_par: 
+# traj_par:
 #     N_ACTION : 3
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -167,14 +167,14 @@ project_impedance_controller_quat:
 #         - [15.0, 0.4, 0.0, 0.07, 2500.0]
 #         - [10.0, 0.4, 0.0, 0.3, 300.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 1]
 
 
 # PROVA 6: K_x=K_y=500, K_z = 100, prendo peso piccolo, lo alzo, lo ripoggio, mi rialzo
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -184,16 +184,16 @@ project_impedance_controller_quat:
 #         - [5.0, 0.4, 0.0, 0.3, 300.0]   #pause
 #         - [10.0, 0.4, 0.0, 0.10, 300.0]
 #         - [10.0, 0.4, 0.0, 0.3, 2000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 0]
 
 # PROVA 7: K_x e K_y = 200; k_z = 100, prendo peso grosso, salgo, scendo, lo poggio, risalgo
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -203,16 +203,16 @@ project_impedance_controller_quat:
 #         - [5.0, 0.4, 0.0, 0.3, 400.0]   #pause
 #         - [10.0, 0.4, 0.0, 0.10, 400.0]
 #         - [10.0, 0.4, 0.0, 0.3, 3000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 0]
 
-# PROVA 8: INTERACTION WITH BOX: scende, prende oggetto leggero, sale, lo poggia sulla scatola e torna su 
-# traj_par: 
+# PROVA 8: INTERACTION WITH BOX: scende, prende oggetto leggero, sale, lo poggia sulla scatola e torna su
+# traj_par:
 #     N_ACTION : 7
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -223,17 +223,17 @@ project_impedance_controller_quat:
 #         - [15.0, 0.65, 0.0, 0.4, 250]
 #         - [10.0, 0.65, 0.0, 0.22, 250.0]
 #         - [10.0, 0.65, 0.0, 0.4, 2500.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 0, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 0]
 
-# PROVA 9: traj più veloce, peso piccolo, scende,  prende oggetto leggero, sale, riscende, poggia oggetto e torna su 
-# traj_par: 
+# PROVA 9: traj più veloce, peso piccolo, scende,  prende oggetto leggero, sale, riscende, poggia oggetto e torna su
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -243,16 +243,16 @@ project_impedance_controller_quat:
 #         - [1.0, 0.4, 0.0, 0.3, 250.0]   #pause
 #         - [6.0, 0.4, 0.0, 0.10, 250.0]
 #         - [6.0, 0.4, 0.0, 0.3, 2000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 0]
 
-# PROVA 10: traj più veloce, peso grande, scende,  prende oggetto, sale, riscende, poggia oggetto e torna su 
-# traj_par: 
+# PROVA 10: traj più veloce, peso grande, scende,  prende oggetto, sale, riscende, poggia oggetto e torna su
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -262,17 +262,17 @@ project_impedance_controller_quat:
 #         - [1.0, 0.4, 0.0, 0.3, 400.0]   #pause
 #         - [7.0, 0.4, 0.0, 0.10, 400.0]
 #         - [7.0, 0.4, 0.0, 0.3, 3000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 1, 0, 0, 1]
-#         - [0, 0, 1, 0, 0, 0]        
+#         - [0, 0, 1, 0, 0, 0]
 
-# PROVA 11: traj più veloce, peso grande, scende,  prende oggetto , sale, vado avanti, poggia oggetto su scatola e torna su 
+# PROVA 11: traj più veloce, peso grande, scende,  prende oggetto , sale, vado avanti, poggia oggetto su scatola e torna su
 # F_int_max = 7; F_max = 5; funziona anche con F_int_max =5; F_max = 3;
-# traj_par: 
+# traj_par:
 #     N_ACTION : 8
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -284,10 +284,10 @@ project_impedance_controller_quat:
 #         - [7.0, 0.65, 0.0, 0.17, 400.0]
 #         - [5.0, 0.65, 0.0, 0.4, 3000.0]
 #         - [5.0, 0.4, 0.0, 0.4, 3000.0]
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 1] 
+#         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]    #pause
 #         - [0, 0, 0, 0, 0, 1]
 #         - [0, 0, 1, 0, 0, 1]
@@ -296,22 +296,22 @@ project_impedance_controller_quat:
 
 
 # PROVA 12: INTERACTION ON Y: scende giù, va verso sx in +y secondo il frame e-e (NO GRASPING OBJECT), F_int_max = 5; F_max = 3;
-# traj_par: 
+# traj_par:
 #     N_ACTION : 3
 #     CUBE_RS : 2000.0
 #     ACTIONS :
 #         - [3.0, 0.4, +0.2, 0.4, 0.0]    # time, pos, gripper
 #         - [7.0, 0.4, +0.2, 0.1, 0.0]
 #         - [7.0, 0.4, -0.1, 0.1, 0.0]
-        
-#     TYPE :                          
+
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 0] 
+#         - [0, 1, 0, 0, 0, 0]
 
 # # PROVA 13: GRASPING BOTTIGLIA ACQUA: robot piegato, mi avvicino alla bottiglia, la prendo, mi sollevo su z, mi riavvicino, la ripoggio.
 # #F_int_max = 5; F_max = 3
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -322,18 +322,18 @@ project_impedance_controller_quat:
 #         - [10.0, 0.5, -0.2, 0.15,2700.0]
 #         - [10.0, 0.5, 0.0, 0.2, 5000.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]     #pause
 #         - [0, 0, 1, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 0]
 
-# PROVA 14 : GRASPING+PLACEMENT (CON TRAIETTORIA OBLIQUA) BOTTIGLIA ACQUA CON "MURO": robot piegato, mi avvicino, 
+# PROVA 14 : GRASPING+PLACEMENT (CON TRAIETTORIA OBLIQUA) BOTTIGLIA ACQUA CON "MURO": robot piegato, mi avvicino,
 # sollevo la bottiglia, torno indietro (-y), mi riavvicino, la ripoggio, F_int_max = 5; F_max = 3, e_max = 4, Kxy=500, Kz=200
 # (altra prova e_max=2 e Kxyz = 300, più bella);
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -344,17 +344,17 @@ project_impedance_controller_quat:
 #         - [10.0, 0.5, -0.2, 0.17,2700.0]
 #         - [7.0, 0.5, 0.0, 0.3, 5000.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]     #pause
 #         - [0, 1, 1, 0, 0, 1]
 #         - [0, 1, 0, 0, 0, 0]
 
-# # PROVA 15 : GRASPING+PLACEMENT INTERAZIONE LUNGO I TRE ASSI, BOTTIGLIA ACQUA CON "MURO AD ANGOLO": robot piegato, mi avvicino, 
+# # PROVA 15 : GRASPING+PLACEMENT INTERAZIONE LUNGO I TRE ASSI, BOTTIGLIA ACQUA CON "MURO AD ANGOLO": robot piegato, mi avvicino,
 # # sollevo la bottiglia, torno indietro (-y), mi riavvicino XY, la ripoggio nell'angolo, F_int_max = 5; F_max = 3, e_max = 2, Kxyz=300;
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -365,10 +365,10 @@ project_impedance_controller_quat:
 #         - [10.0, 0.38, -0.25, 0.17, 2700.0]
 #         - [7.0, 0.38, 0.0, 0.3, 5000.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]
 #         - [0, 1, 0, 0, 0, 1]     #pause
 #         - [1, 1, 1, 0, 0, 1]
 #         - [1, 1, 1, 0, 0, 0]
@@ -376,7 +376,7 @@ project_impedance_controller_quat:
 
 # # PROVA 16: RIGIDEZZA TAVOLO: sotto 0.02 fa schifo, vibra, bene 0.01
 
-# traj_par: 
+# traj_par:
 #     N_ACTION : 11
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -392,12 +392,12 @@ project_impedance_controller_quat:
 #         - [7.0, 0.51, 0.089, -0.05, 0.0]        # 5 cm
 #         - [5.0, 0.51, 0.089, 0.10, 0.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]     #pause
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 0] 
+#         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 0]     #pause
 #         - [0, 0, 1, 0, 0, 0]
 #         - [0, 0, 1, 0, 0, 0]     #pause
@@ -405,9 +405,9 @@ project_impedance_controller_quat:
 #         - [0, 0, 1, 0, 0, 0]     #pause
 #         - [0, 0, 1, 0, 0, 0]
 
-# # PROVA 17: POLISHING TASK: bring the spong 
+# # PROVA 17: POLISHING TASK: bring the spong
 
-# traj_par: 
+# traj_par:
 #     N_ACTION : 3
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -417,14 +417,14 @@ project_impedance_controller_quat:
 #         - [2.0, 0.51, 0.089, 0.04, 400]
 
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 0, 1, 0, 0, 0]
-#         - [0, 0, 1, 0, 0, 0] 
+#         - [0, 0, 1, 0, 0, 0]
 
 # # # PROVA 18: SHELF TASK, grasping bottle and placing it back
 
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -436,17 +436,17 @@ project_impedance_controller_quat:
 #         - [10.0, 0.49, 0.10, 0.15, 2700.0]      #SCENDE E LASCIA BOTT
 #         - [10.0, 0.49, 0.10, 0.65, 5000.0]
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]     #PAUSE
-#         - [0, 0, 1, 0, 0, 1] 
-#         - [0, 0, 1, 0, 0, 0] 
+#         - [0, 0, 1, 0, 0, 1]
+#         - [0, 0, 1, 0, 0, 0]
 
 # # # PROVA 19: SHELF TASK, grasping bottle and placing on the shelf
 
-# traj_par: 
+# traj_par:
 #     N_ACTION : 6
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -458,16 +458,16 @@ project_impedance_controller_quat:
 #         - [10.0, 0.73, -0.06, 0.55, 2700.0]     #Poggio su mensola
 #         - [10.0, 0.46, 0.16, 0.55, 5000.0]      #Lascio e mi allontano
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [0, 1, 0, 0, 0, 0]
-#         - [0, 1, 0, 0, 0, 1] 
+#         - [0, 1, 0, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]     #PAUSE
-#         - [0, 1, 1, 0, 0, 1] 
-#         - [0, 1, 0, 0, 0, 0] 
+#         - [0, 1, 1, 0, 0, 1]
+#         - [0, 1, 0, 0, 0, 0]
 
 ## PROVA 20: di nuovo tocco sul tavolo
-# traj_par: 
+# traj_par:
 #     N_ACTION : 7
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -483,12 +483,12 @@ project_impedance_controller_quat:
         # - [7.0, 0.44, 0.2, -0.05, 0.0]        # 5 cm
         # - [5.0, 0.44, 0.2, 0.10, 0.0]
 
-    # TYPE :                          
+    # TYPE :
     #     - [0, 0, 0, 0, 0, 0]     # int, comp
     #     - [0, 0, 1, 0, 0, 0]     #pause
     #     - [0, 0, 1, 0, 0, 0]
     #     - [0, 0, 1, 0, 0, 0]
-    #     - [0, 0, 1, 0, 0, 0] 
+    #     - [0, 0, 1, 0, 0, 0]
     #     - [0, 0, 1, 0, 0, 0]     #pause
     #     - [0, 0, 1, 0, 0, 0]
         # - [0, 0, 1, 0, 0, 0]     #pause
@@ -499,7 +499,7 @@ project_impedance_controller_quat:
 
 # # PROVA 21: PLACEMENT TASK SU LIBRERIA
 
-# traj_par: 
+# traj_par:
 #     N_ACTION : 7
 #     CUBE_RS : 2000.0
 #     ACTIONS :
@@ -512,19 +512,19 @@ project_impedance_controller_quat:
 #         - [5.0, 0.74, -0.04, 0.47, 2500.0]     #Poggio su mensola
 #         - [5.0, 0.46, 0.16, 0.55, 5000.0]      #Lascio e mi allontano
 
-#     TYPE :                          
+#     TYPE :
 #         - [0, 0, 0, 0, 0, 0]     # int, comp
 #         - [1, 1, 0, 0, 0, 0]
-#         - [1, 1, 0, 0, 0, 1] 
+#         - [1, 1, 0, 0, 0, 1]
 #         - [0, 0, 0, 0, 0, 1]     # esce dal ripiano
-#         - [0, 0, 0, 0, 0, 1] 
+#         - [0, 0, 0, 0, 0, 1]
 #         - [1, 1, 1, 0, 0, 1]
-#         - [1, 1, 1, 0, 0, 0] 
+#         - [1, 1, 1, 0, 0, 0]
 
 
 # PROVA 22: Pesetto leggero nel bicchiere e riposizionamento
 
-traj_par: 
+traj_par:
     N_ACTION : 10
     CUBE_RS : 2000.0
     ACTIONS :
@@ -538,12 +538,12 @@ traj_par:
         - [5.0, 0.68, 0.11, 0.46, 5000.0]      # 7. mi avvicino al bicchiere
         - [5.0, 0.54, 0.26, 0.46, 2800.0]      # 8. prendo il bicchiere e mi allontano
         - [5.0, 0.68, 0.13, 0.10, 2800.0]      # 9. vado verso il ripiano di sotto
-        - [5.0, 0.56, 0.27, 0.29, 5000.0]      # 10. lo poggio e mi riallontano 
+        - [5.0, 0.56, 0.27, 0.29, 5000.0]      # 10. lo poggio e mi riallontano
 
 
-    TYPE :                          
+    TYPE :
         - [0, 0, 0, 0, 0, 0]     # 1.
-        - [0, 0, 0, 0, 0, 0]     # 2. 
+        - [0, 0, 0, 0, 0, 0]     # 2.
         - [0, 0, 1, 0, 0, 1]     # 3.
         - [0, 0, 0, 0, 0, 1]     # 4.
         - [0, 0, 0, 0, 0, 0]     # 5.
