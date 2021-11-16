@@ -69,7 +69,7 @@ bool ImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
 	// 												ros::TransportHints().reliable().tcpNoDelay());
 
 
-	sub_ext_forces =      node_handle.subscribe(  "/my_sensor_right/ft_sensor_hw/my_sensor_right", 1,
+	sub_ext_forces =      node_handle.subscribe(  "/my_sensor_right/ft_sensor_hw/my_sensor_right_filtered", 1,
 	 												&ImpedanceController::f_ext_Callback, this,
 	 												ros::TransportHints().reliable().tcpNoDelay());
 
