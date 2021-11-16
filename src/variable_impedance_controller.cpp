@@ -18,7 +18,7 @@ namespace panda_controllers {
 
 bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
                                                ros::NodeHandle& node_handle) {
-  
+
   // Name space extraction for add a prefix to the topic name
   int n = 0;
   // std::string name_space;
@@ -129,11 +129,11 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
 
   //STIFFNESS AND DAMPING MATRICES
-  cartesian_stiffness_.setIdentity();                                                         
+  cartesian_stiffness_.setIdentity();
   cartesian_stiffness_target_.setIdentity();
   cartesian_damping_.setIdentity();
   cartesian_damping_target_.setIdentity();
-  
+
   cartesian_stiffness_.topLeftCorner(3, 3) << 200*Eigen::Matrix3d::Identity();
   cartesian_stiffness_.bottomRightCorner(3, 3) << 20*Eigen::Matrix3d::Identity();
   cartesian_stiffness_target_ = cartesian_stiffness_;
@@ -141,7 +141,7 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
   cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(200)*Eigen::Matrix3d::Identity();
   cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(20)*Eigen::Matrix3d::Identity();
   cartesian_damping_target_ = cartesian_damping_;
-  
+
   tau_limit << 87, 87, 87, 87, 12, 12, 12;  //joint torques limit vector
 
   // Collision behaviours limits
@@ -170,7 +170,7 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 }
 
 void VariableImpedanceController::starting(const ros::Time& /*time*/) {
-  
+
   franka::RobotState initial_state = state_handle_->getRobotState();
   Eigen::Map<Eigen::Matrix<double, 7, 1> > q_initial(initial_state.q.data());
   Eigen::Affine3d initial_transform(Eigen::Matrix4d::Map(initial_state.O_T_EE.data()));
@@ -220,11 +220,11 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   Eigen::Quaterniond orientation(transform.linear());                               // ee-base orientation
 
   /*--------------------------------------------COMPUTE POSE ERROR */
-  
+
   Eigen::Matrix<double, 6, 1> error;  // pose error 6x1: position error (3x1) [m] - orientation error in axis-angle repr. (3x1) [rad]
   Eigen::Matrix<double, 6, 1> derror; // pose vel. error 6x1: vel. error (3x1) [m] - orientation vel. error NOT IMPLEMENTED!
 
-  
+
   // position error expressed in the base frame
   error.head(3) << position - position_d_;
   Eigen::Matrix<double, 6, 1> dposition = jacobian * dq;
@@ -233,20 +233,20 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   // orientation error expressed in the base frame
   if (orientation_d_.coeffs().dot(orientation.coeffs()) < 0.0)
     orientation.coeffs() << -orientation.coeffs();
-  
+
   // "difference" quaternion
   Eigen::Quaterniond error_quaternion(orientation * orientation_d_.inverse());
   // convert to axis angle
   Eigen::AngleAxisd error_quaternion_angle_axis(error_quaternion);
   // limit orientation error amplitude to avoid bad robot behaviour
-  while( abs(error_quaternion_angle_axis.angle()) > M_PI/2){  
+  while( abs(error_quaternion_angle_axis.angle()) > M_PI/2){
     if ( error_quaternion_angle_axis.angle() > M_PI/2 )
         error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() - M_PI/2;
     else if ( error_quaternion_angle_axis.angle() < -M_PI/2)
         error_quaternion_angle_axis.angle() = error_quaternion_angle_axis.angle() + M_PI/2;
   }
   error.tail(3) << error_quaternion_angle_axis.axis() * error_quaternion_angle_axis.angle();
-  
+
   // transposition of the linear and angular errors in the end-effector
   // error.head(3) = transform.linear().transpose()*error.head(3);
   // error.tail(3) = transform.linear().transpose()*error.tail(3);
@@ -293,7 +293,7 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
       tau_d = tau_d / ith_torque_rate;
   }
 
-  // std::cout << "Commanded torque after sat:" << std::endl;
+  // std::cout << "Commanded torque:" << std::endl;
   // std::cout << tau_d << std::endl;
 
   //set arm command torques
@@ -367,7 +367,7 @@ Eigen::Matrix<double, 7, 1> VariableImpedanceController::saturateTorqueRate(
 
 void VariableImpedanceController::desiredImpedance_Callback(
     const panda_controllers::DesiredImpedance::ConstPtr& msg){
-  
+
   for (int i=0; i<36; i++)
     cartesian_stiffness_target_(i) = msg->stiffness_matrix[i];
 
@@ -387,7 +387,7 @@ void VariableImpedanceController::desiredImpedance_Callback(
 
 void VariableImpedanceController::desiredTrajectoryCallback(
     const panda_controllers::DesiredTrajectoryConstPtr& msg) {
-  
+
   position_d_ << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
   dposition_d_ << msg->velocity.position.x, msg->velocity.position.y, msg->velocity.position.z;
 
