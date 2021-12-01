@@ -12,6 +12,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
+#include <sensor_msgs/JointState.h>
 
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/robot_hw.h>
@@ -83,14 +84,16 @@ class VariableImpedanceController : public controller_interface::MultiInterfaceC
 
   ros::Publisher pub_pos_error;
   ros::Publisher pub_cmd_force;
+  ros::Publisher pub_cmd_torque;
   ros::Publisher pub_endeffector_pose_;
   ros::Publisher pub_robot_state_;
   ros::Publisher pub_impedance_;
 
   geometry_msgs::TwistStamped   pos_error_msg;
-  geometry_msgs::WrenchStamped  force_cmd_msg;  
+  geometry_msgs::WrenchStamped  force_cmd_msg;
+  sensor_msgs::JointState       torque_cmd_msg;
   panda_controllers::RobotState robot_state_msg;
-  
+
 };
 
 }  // namespace franka_softbots

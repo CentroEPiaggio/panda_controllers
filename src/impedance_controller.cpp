@@ -75,7 +75,8 @@ bool ImpedanceController::init(  hardware_interface::RobotHW* robot_hw,
 
 	pub_pos_error =         node_handle.advertise<geometry_msgs::TwistStamped>("/project_impedance_controller/pos_error", 1);
 	pub_cmd_force =         node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/cmd_force", 1);
-	pub_ext_forces =        node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/ext_forces", 1);
+  pub_cmd_torque   = node_handle.advertise<sensor_msgs::JointState>("/project_impedance_controller/cmd_torque", 1);
+  pub_ext_forces =        node_handle.advertise<geometry_msgs::WrenchStamped>("/project_impedance_controller/ext_forces", 1);
 	pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>("/project_impedance_controller/franka_ee_pose", 1);
 	pub_robot_state_ =      node_handle.advertise<panda_controllers::RobotState>("/project_impedance_controller/robot_state", 1);
 	pub_impedance_ =        node_handle.advertise<std_msgs::Float64>("/project_impedance_controller/current_impedance", 1);
@@ -602,6 +603,13 @@ void ImpedanceController::update(  const ros::Time& /*time*/,
 	// force_cmd_msg.wrench.torque.z = wrench_task(5);
 
 	pub_cmd_force.publish(force_cmd_msg);
+
+  //----------- COMMANDED TORQUE -------------//
+  torque_cmd_msg.effort.clear();
+  for(int i = 0; i < tau_d.size(); i++){
+    torque_cmd_msg.effort.push_back(tau_d(i));
+  }
+  pub_cmd_torque.publish(torque_cmd_msg);
 
 
 	//----------- EE POSE -------------//

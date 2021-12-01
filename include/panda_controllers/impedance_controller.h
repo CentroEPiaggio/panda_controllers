@@ -12,6 +12,7 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/WrenchStamped.h>
+#include <sensor_msgs/JointState.h>
 
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/robot_hw.h>
@@ -99,6 +100,7 @@ class ImpedanceController : public controller_interface::MultiInterfaceControlle
 		//----------PUBLISHERS----------//
 		ros::Publisher pub_pos_error;
 		ros::Publisher pub_cmd_force;
+	  ros::Publisher pub_cmd_torque;
 		ros::Publisher pub_endeffector_pose_;
 		ros::Publisher pub_ee_pose_;
 		ros::Publisher pub_robot_state_;
@@ -109,7 +111,8 @@ class ImpedanceController : public controller_interface::MultiInterfaceControlle
 
 		//----------MESSAGES----------//
 		geometry_msgs::TwistStamped   pos_error_msg;
-		geometry_msgs::WrenchStamped  force_cmd_msg;
+		geometry_msgs::WrenchStamped  force_cmd_msg;		
+	  sensor_msgs::JointState       torque_cmd_msg;
 		panda_controllers::RobotState robot_state_msg;
 		panda_controllers::EEpose ee_pos_msg;
 		panda_controllers::InfoDebug info_debug_msg;

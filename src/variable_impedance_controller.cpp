@@ -39,6 +39,7 @@ bool VariableImpedanceController::init(hardware_interface::RobotHW* robot_hw,
 
   pub_pos_error    = node_handle.advertise<geometry_msgs::TwistStamped>(name_space+"/pos_error", 1);
   pub_cmd_force   = node_handle.advertise<geometry_msgs::WrenchStamped>(name_space+"/cmd_force", 1);
+  pub_cmd_torque   = node_handle.advertise<sensor_msgs::JointState>(name_space+"/cmd_torque", 1);
   pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
   pub_robot_state_ = node_handle.advertise<panda_controllers::RobotState>(name_space+"/robot_state", 1);
   pub_impedance_ = node_handle.advertise<std_msgs::Float64>(name_space+"/current_impedance", 1);
@@ -323,6 +324,13 @@ void VariableImpedanceController::update(const ros::Time& /*time*/,
   force_cmd_msg.wrench.torque.z = wrench_task(5);
 
   pub_cmd_force.publish(force_cmd_msg);
+
+  // commanded torque
+  torque_cmd_msg.effort.clear();
+  for(int i = 0; i < tau_d.size(); i++){
+    torque_cmd_msg.effort.push_back(tau_d(i));
+  }
+  pub_cmd_torque.publish(torque_cmd_msg);
 
   // End effector position
   geometry_msgs::PoseStamped postion_endeff;
