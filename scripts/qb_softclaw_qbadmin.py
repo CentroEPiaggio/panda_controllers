@@ -27,7 +27,7 @@ def callback(data):
         command = 0.0
 
     if command > 0.5 :
-        os.system('./qbadmin 1 -s 0')
+        os.system('./qbadmin 1 -s 2500,-2500')
     elif command < 0.5 :
         os.system('./qbadmin 1 -s 5000')
     else :
