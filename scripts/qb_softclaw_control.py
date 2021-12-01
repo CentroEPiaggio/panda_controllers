@@ -4,9 +4,9 @@ import rospy
 from std_msgs.msg import Float64
 from std_msgs.msg import Float64MultiArray
 
-open_equilibrium = 0.5
+open_equilibrium = 0.4
 close_equilibrium = 0.0
-high_preset = 0.7
+high_preset = 0.2
 low_preset = 0.0
 
 publisher_1 = rospy.Publisher('/soft_claw/reference_1', Float64MultiArray, queue_size=10)

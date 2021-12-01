@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- Load SoftClaw -->
+  <include file="$(find qbrun-ros)/launch/run_qb.launch" >
+  </include>
+
+  <!-- Load Gripper Close Node -->
+  <node pkg="panda_controllers" name="qb_softclaw_control" type="qb_softclaw_control.py" output="screen"/>
+</launch>

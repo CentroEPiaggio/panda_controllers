@@ -15,11 +15,11 @@
     </include>
 
     <!-- Load SoftClaw -->
-    <include file="$(find qbrun-ros)/launch/run_qb.launch" >
-    </include>
+    <!-- <include file="$(find qbrun-ros)/launch/run_qb.launch" >
+    </include> -->
 
     <!-- Load Gripper Close Node -->
-    <node pkg="panda_controllers" name="qb_softclaw_control" type="qb_softclaw_control.py" output="screen"/>
+    <!-- <node pkg="panda_controllers" name="qb_softclaw_control" type="qb_softclaw_control.py" output="screen"/> -->
 
     <!-- Load Gripper -->
     <!-- <include file="$(find franka_gripper)/launch/franka_gripper.launch" >
@@ -33,7 +33,8 @@
     <arg name="record_path" default="/home/george/Desktop/Impedance_Planning_Review/Experiments/Bags"/>
     <arg name="record_topics" default="/variable_impedance_controller/desired_impedance
         /variable_impedance_controller/pos_error /franka_state_controller/F_ext /impedance_planning/bounds
-        /variable_impedance_controller/robot_state"/>
+        /variable_impedance_controller/robot_state /variable_impedance_controller/cmd_force
+        /variable_impedance_controller/cmd_torque"/>
 
     <!-- Load Rosbag record server -->
     <include file="$(find record_ros)/launch/record_ros.launch" >
