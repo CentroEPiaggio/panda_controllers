@@ -34,7 +34,7 @@ bool CartesianImpedanceControllerSoftbots::init(hardware_interface::RobotHW* rob
       name_space+"/desired_stiffness", 1, &CartesianImpedanceControllerSoftbots::desiredStiffnessCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
-  pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>("/franka_ee_pose", 1);
+  pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
 
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) {
@@ -112,7 +112,7 @@ bool CartesianImpedanceControllerSoftbots::init(hardware_interface::RobotHW* rob
 
   
   cartesian_stiffness_.topLeftCorner(3, 3) << 200*Eigen::Matrix3d::Identity();
-  cartesian_stiffness_.bottomRightCorner(3, 3) << 20*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.bottomRightCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
   cartesian_stiffness_target_ = cartesian_stiffness_;
   // Damping ratio = 1
 

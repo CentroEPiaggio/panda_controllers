@@ -1,0 +1,5 @@
+<?xml version="1.0" ?>
+<launch>
+ <remap from="/franka/cartesian_impedance_controller_softbots/franka_ee_pose" to="/franka/franka_ee_pose"/>
+
+</launch>
