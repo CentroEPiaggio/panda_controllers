@@ -42,11 +42,45 @@ computed_torque_controller:
          - panda_joint5
          - panda_joint6
          - panda_joint7
-    kp1: 120.0
-    kp2: 70.0
-    kp3: 50.0
-    kv: 10.0
+    # --- Controller parameters --- #
+    kp1: 300.0   #default: 120.0
+    kp2: 150.0   #default: 70.0
+    kp3: 30.0    #default: 50.0
+    kv1: 30.0
+    kv2: 15.0
+    kv3: 3.0
     dt: 5
+    # --- Trajectory parameters --- #
+    tf_des_pos: 4
+    tf_throw: 1.56399999575681
+    # scale time
+    beta: 1
+    # initial-final positions
+    q1_i: 1.196295374146679
+    q2_i: 0.3309362928825512
+    q3_i: 1.0181944202493738
+    q4_i: -2.237836139124354
+    q5_i:  0.9067664417113876
+    q6_i:  1.4973367382619114
+    q7_i:  0.4914753532331023
+    q1_f: 0.372391243344839
+    q2_f: 0.350420101989572
+    q3_f: 0.580363306525908
+    q4_f: -1.32648149943063
+    q5_f: 0.00700183332522576
+    q6_f: 1.72878070864574
+    q7_f: 0.387397498148514
+    dq1_f: -1.09028870105154
+    dq2_f: 0.0240451051996952
+    dq3_f: -0.882095507518599
+    dq4_f: 1.24277821840965
+    dq5_f: -0.480283695136531
+    dq6_f: 1.20812935053933
+    dq7_f: -0.0760887558647817
+    # Braking parameters
+    gamma: 0.5
+    # Hand parameters
+    open_time_from_throw: 0.1
 
 back_stepping_controller:
     type: panda_controllers/BackStepping

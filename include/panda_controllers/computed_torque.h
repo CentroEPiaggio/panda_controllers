@@ -19,6 +19,7 @@
 #include <ros/time.h>
 
 #include <franka/robot_state.h>
+#include <franka_msgs/SetFullCollisionBehavior.h>
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
@@ -36,6 +37,8 @@ public:
     void starting(const ros::Time&);
     void stopping(const ros::Time&);
     void update(const ros::Time&, const ros::Duration& period);
+    ros::ServiceClient collBehaviourClient;
+    franka_msgs::SetFullCollisionBehavior collBehaviourSrvMsg;
 
 private:
   

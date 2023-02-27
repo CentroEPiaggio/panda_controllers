@@ -58,12 +58,17 @@ add_dependencies(${PROJECT_NAME}
   panda_controllers ${catkin_EXPORTED_TARGETS}
 )
 
+add_executable(min_jerk_to_des_position src/min_jerk_to_des_position.cpp) # in case of object oriented method
+add_executable(minJerkTrajAndBrake src/minJerkTrajAndBrake.cpp)
+add_executable(closeHand src/closeHand.cpp)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
 )
-
+target_link_libraries(min_jerk_to_des_position ${PROJECT_NAME})
+target_link_libraries(minJerkTrajAndBrake ${PROJECT_NAME})
+target_link_libraries(closeHand ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}
