@@ -1,5 +1,0 @@
-command_publisher:
-  controller: pd_controller
-  dt: 2
-  t_f: 10
-   

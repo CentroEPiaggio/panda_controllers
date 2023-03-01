@@ -2,19 +2,16 @@
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/computed_torque.h> //library of the computed torque 
 
-namespace panda_controllers
-
-{
-    extern std::string name_space;
+namespace panda_controllers{
 
 bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
 { 
-    // std::string name_space;
+    std::string name_space;
     name_space = node_handle.getNamespace();
     int n = name_space.find("/", 2);
     name_space = name_space.substr(0,n);
 
-    this->cvc_nh = node_handle;
+    // this->cvc_nh = node_handle;
     
 //    collBehaviourClient = node_handle.serviceClient<franka_msgs::SetFullCollisionBehavior>(name_space + "/franka_control/set_full_collision_behavior");
 
@@ -102,8 +99,8 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     /*Start command subscriber */
 
-    this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
-    this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
+    this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> (name_space + "command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
+    this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> (name_space + "tracking_error", 1);
 
     // set collision behaviour
     //collBehaviourSrvMsg.request.upper_torque_thresholds_acceleration= {20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0};  // [Nm]
@@ -297,7 +294,6 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
     
 
 }
-
 }
 
 PLUGINLIB_EXPORT_CLASS(panda_controllers::ComputedTorque, controller_interface::ControllerBase);

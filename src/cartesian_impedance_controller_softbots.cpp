@@ -13,7 +13,6 @@
 
 namespace panda_controllers {
 
-
 bool CartesianImpedanceControllerSoftbots::init(hardware_interface::RobotHW* robot_hw,
                                                ros::NodeHandle& node_handle) {
   std::vector<double> cartesian_stiffness_vector;

@@ -1,36 +1,4 @@
-cartesian_velocity_controller:
-    type: panda_controllers/CartesianVelocityController
-    arm_id: panda
-    command_timeout: 3.0
-    velocity_thresh:    # taken from documentation franka
-        translation: 1.700
-        rotation: 2.500
-        elbow: 2.175
-    low_pass_filter:
-    - name: first_low_pass
-      type: filters/TransferFunctionFilterDouble
-      params:
-        a: [1.0, -0.9971]
-        b: [0.0014, 0.0014]
-        
-pd_controller:
-    type: panda_controllers/PdController
-    arm_id: panda
-    joint_names:
-         - panda_joint1
-         - panda_joint2
-         - panda_joint3
-         - panda_joint4
-         - panda_joint5
-         - panda_joint6
-         - panda_joint7
-    kp1: 120.0
-    kp2: 70.0
-    kp3: 50.0
-    kv: 10.0
-    dt: 5
-
-         
+    
 computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: panda
@@ -81,50 +49,6 @@ computed_torque_controller:
     gamma: 0.5
     # Hand parameters
     open_time_from_throw: 0.1
-
-back_stepping_controller:
-    type: panda_controllers/BackStepping
-    arm_id: panda
-    joint_names:
-         - panda_joint1
-         - panda_joint2
-         - panda_joint3
-         - panda_joint4
-         - panda_joint5
-         - panda_joint6
-         - panda_joint7
-    kp1: 120.0
-    kp2: 70.0
-    kp3: 50.0
-    kd: 10.0
-    lambda: 1
-    dt: 5
-
-variable_impedance_controller:
-    type: panda_controllers/VariableImpedanceController
-    arm_id: panda
-    joint_names:
-        - panda_joint1
-        - panda_joint2
-        - panda_joint3
-        - panda_joint4
-        - panda_joint5
-        - panda_joint6
-        - panda_joint7
-    var_damp: true 
-
-joint_position_controller:
-    type: panda_controllers/JointPositionController
-    arm_id: panda
-    joint_names:
-        - panda_joint1
-        - panda_joint2
-        - panda_joint3
-        - panda_joint4
-        - panda_joint5
-        - panda_joint6
-        - panda_joint7
-
 
 
 cartesian_impedance_controller_softbots:

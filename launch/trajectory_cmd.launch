@@ -1,7 +1,0 @@
-<launch>
-
-     <node name="trajectory" pkg="panda_controllers" type="trajectory" output="screen"/>
-   
-     <rosparam command="load" file="$(find panda_controllers)/config/trajectory.yaml"/>   
-   
-</launch>

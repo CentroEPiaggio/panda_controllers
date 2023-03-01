@@ -28,7 +28,7 @@ find_package(Franka 0.5.0 REQUIRED)
 # )
 
 #generate_messages(
-# )
+#)
 
 
 catkin_package(
@@ -50,7 +50,6 @@ catkin_package(
 add_library(${PROJECT_NAME}   
   src/computed_torque.cpp #Computed Torque controller
   src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-
 ) 
 
 add_dependencies(${PROJECT_NAME}
