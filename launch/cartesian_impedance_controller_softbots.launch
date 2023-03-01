@@ -11,9 +11,11 @@
   </include>
 
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers.yaml" />
-  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/>
-
-<!--   <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz">
+  <!-- <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/> -->
+  
+  <node name="controller_laod" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="load computed_torque_controller"/>
+  <node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn  cartesian_impedance_controller_softbots"/>
+  <!--   <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz">
     <param name="link_name" value="panda_link0" />
   </node>
 
