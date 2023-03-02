@@ -1,25 +1,21 @@
 <?xml version="1.0" ?>
 <launch>
 
-  <group ns="franka" >
-  <arg name="robot_ip" default="172.16.0.3"/>
-  <arg name="load_gripper" default="false" />
+  <!-- Panda namespace -->
+  <group ns="pippo">
+    <arg name="robot_ip" default="172.16.0.3"/>
+    <arg name="load_gripper" default="false" />
   
-  <include file="$(find franka_control)/launch/franka_control.launch">
-    <arg name="robot_ip" value="$(arg robot_ip)" />
-    <arg name="load_gripper" value="$(arg load_gripper)"/>
-  </include>
+    <include file="$(find franka_control)/launch/franka_control.launch">
+      <arg name="robot_ip" value="$(arg robot_ip)" />
+      <arg name="load_gripper" value="$(arg load_gripper)"/>
+    </include>
 
-  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers.yaml" />
-  <!-- <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/> -->
+    <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers.yaml" />
+    <!-- <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/> -->
   
-  <node name="controller_load" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="load computed_torque_controller"/>
-  <node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn  cartesian_impedance_controller_softbots"/>
-  <!--   <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz">
-    <param name="link_name" value="panda_link0" />
-  </node>
-
- -->
-
-</group>
+    <node name="controller_load" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="load computed_torque_controller"/>
+    <node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn cartesian_impedance_controller_softbots"/>
+ 
+  </group>
 </launch>

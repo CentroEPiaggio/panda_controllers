@@ -17,23 +17,16 @@ bool CartesianImpedanceControllerSoftbots::init(hardware_interface::RobotHW* rob
                                                ros::NodeHandle& node_handle) {
   std::vector<double> cartesian_stiffness_vector;
   std::vector<double> cartesian_damping_vector;
-  
-  // Name space extraction for add a prefix to the topic name
-  int n = 0;
-  std::string name_space;
-  name_space = node_handle.getNamespace();
-  n = name_space.find("/", 2);
-  name_space = name_space.substr(0,n);
 
   sub_equilibrium_pose_ = node_handle.subscribe(
-      name_space+"/equilibrium_pose", 1, &CartesianImpedanceControllerSoftbots::equilibriumPoseCallback, this,
+      "equilibrium_pose", 1, &CartesianImpedanceControllerSoftbots::equilibriumPoseCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
   sub_desired_stiffness_ = node_handle.subscribe(
-      name_space+"/desired_stiffness", 1, &CartesianImpedanceControllerSoftbots::desiredStiffnessCallback, this,
+      "desired_stiffness", 1, &CartesianImpedanceControllerSoftbots::desiredStiffnessCallback, this,
       ros::TransportHints().reliable().tcpNoDelay());
 
-  pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>(name_space+"/franka_ee_pose", 1);
+  pub_endeffector_pose_ = node_handle.advertise<geometry_msgs::PoseStamped>("franka_ee_pose", 1);
 
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) {
