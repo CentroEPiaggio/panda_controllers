@@ -3,7 +3,7 @@
 
   <!-- Panda namespace -->
   <group ns="panda_arm">
-    <arg name="robot_ip" default="172.16.0.3"/>
+    <arg name="robot_ip" default="192.168.0.210"/>
     <arg name="load_gripper" default="false" />
   
     <include file="$(find franka_control)/launch/franka_control.launch">
