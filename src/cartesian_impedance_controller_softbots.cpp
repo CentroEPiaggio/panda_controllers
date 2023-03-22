@@ -104,11 +104,11 @@ bool CartesianImpedanceControllerSoftbots::init(hardware_interface::RobotHW* rob
 
   
   cartesian_stiffness_.topLeftCorner(3, 3) << 200*Eigen::Matrix3d::Identity();
-  cartesian_stiffness_.bottomRightCorner(3, 3) << 100*Eigen::Matrix3d::Identity();
+  cartesian_stiffness_.bottomRightCorner(3, 3) << 20*Eigen::Matrix3d::Identity();
   cartesian_stiffness_target_ = cartesian_stiffness_;
   // Damping ratio = 1
 
-  cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt(200)*Eigen::Matrix3d::Identity();
+  cartesian_damping_.topLeftCorner(3, 3) = 2.0 * sqrt (200)*Eigen::Matrix3d::Identity();
   cartesian_damping_.bottomRightCorner(3, 3) = 2.0 * sqrt(20)*Eigen::Matrix3d::Identity();
   cartesian_damping_target_ = cartesian_damping_;
 
@@ -249,7 +249,7 @@ void CartesianImpedanceControllerSoftbots::desiredStiffnessCallback(
   cartesian_stiffness_target_(1,1) = msg->vector.y;
   cartesian_stiffness_target_(2,2) = msg->vector.z;
   
-  cartesian_stiffness_target_.bottomRightCorner(3, 3) << cartesian_stiffness_target_.topLeftCorner(3, 3)/10;
+  cartesian_stiffness_target_.bottomRightCorner(3, 3) << cartesian_stiffness_target_.topLeftCorner(3, 3)/2;
   cartesian_damping_target_.setIdentity();
   // Damping ratio = 1
 
