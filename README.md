@@ -23,8 +23,6 @@ Steps for installation:
    ```
    cd ~/catkin_ws
    catkin_make
-   ```
-   **Note:** depending on your ROS installation, you may need some extra packages to properly compile the code.
-   
+   ```   
 ## Requirements 
 Since you are interested in using this controllers you need the following packages: [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git)
