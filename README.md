@@ -26,4 +26,4 @@ Steps for installation:
    catkin_make
    ```   
 ## Requirements 
-Since you are interested in using this controllers you need the following packages: [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git)
+Since you are interested in using this controllers you need the following package in your workspace: [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git)
