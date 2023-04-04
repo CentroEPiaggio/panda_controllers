@@ -6,7 +6,7 @@ Package of controllers (cartesian impedance and computed torque) implemented wit
 1. [Installation](#markdown-header-installation)
    1. [Installation from Source](#markdown-header-from-source)
 1. [Requirements](#markdown-header-requirements)
-1. [Run controllers](#markdown-header-overviews)
+1. [Running controllers](#markdown-header-overviews)
 
 ## Installation
 ### Installation from Source
@@ -27,3 +27,5 @@ Steps for installation:
    ```   
 ## Requirements 
 Since you are interested in using this controllers you need the following package in your workspace: [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git)
+
+## Running controllers
