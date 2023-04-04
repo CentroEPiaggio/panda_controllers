@@ -16,7 +16,7 @@ Steps for installation:
 1. Clone the `panda_controllers` package to your Catkin Workspace, e.g. `~/catkin_ws`:
    ```
    cd ~/catkin_ws/src
-   git clone https://github.com/CentroEPiaggio/panda_wrist_softhand.git 
+   git clone https://github.com/CentroEPiaggio/panda_controllers.git 
    ```
 
 1. Compile the package using `catkin`:
