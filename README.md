@@ -29,3 +29,5 @@ Steps for installation:
 Since you are interested in using this controllers you need the following package in your workspace: [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git)
 
 ## Running controllers
+
+In the `panda_controllers` package, there are two launch file related to the spawning of the cartesian and computed torque controller,`cartesian_impedance_controller_softbots.launch` and `computed_torque_controller.launch`.
