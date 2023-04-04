@@ -8,6 +8,9 @@ Package of controllers (cartesian impedance and computed torque) implemented wit
 1. [Requirements](#markdown-header-requirements)
 1. [Run controllers](#markdown-header-overviews)
 
+## Installation
+### Installation from Source
+
 Steps for installation:
 
 1. Clone the `panda_controllers` package to your Catkin Workspace, e.g. `~/catkin_ws`:
