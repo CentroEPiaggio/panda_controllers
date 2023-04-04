@@ -17,6 +17,7 @@ Steps for installation:
    ```
    cd ~/catkin_ws/src
    git clone https://github.com/CentroEPiaggio/panda_controllers.git 
+   git checkout stefano-darko
    ```
 
 1. Compile the package using `catkin`:
