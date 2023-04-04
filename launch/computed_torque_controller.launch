@@ -11,8 +11,8 @@
     <arg name="load_gripper" value="$(arg load_gripper)" />
   </include>
 
-  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers.yaml" />
-  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/>
+  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="computed_torque_controller"/>
 
 </group>
 </launch>

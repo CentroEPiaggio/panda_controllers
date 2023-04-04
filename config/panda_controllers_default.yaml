@@ -1,4 +1,3 @@
-    
 computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: panda
@@ -30,8 +29,3 @@ cartesian_impedance_controller_softbots:
         - panda_joint5
         - panda_joint6
         - panda_joint7
-
-
-
-
-
