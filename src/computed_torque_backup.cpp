@@ -2,14 +2,13 @@
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/computed_torque.h> //library of the computed torque 
 
-namespace panda_controllers
-
-{
+namespace panda_controllers{
 
 bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
 { 
-    this->cvc_nh = node_handle;
-    
+   
+//  collBehaviourClient = node_handle.serviceClient<franka_msgs::SetFullCollisionBehavior>(name_space + "/franka_control/set_full_collision_behavior");
+
     std::string arm_id; //checking up the arm id of the robot
     if (!node_handle.getParam("arm_id", arm_id)) {
         ROS_ERROR("Computed Torque: Could not get parameter arm_id!");
@@ -22,7 +21,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3) 
         || !node_handle.getParam("kv1", kv1) || !node_handle.getParam("kv2", kv2) || !node_handle.getParam("kv3", kv3)) {
-        ROS_ERROR("ComputedTorque: Could not get parameter kpi or kv!");
+        ROS_ERROR("PdController: Could not get parameter kpi or kv!");
         return false;
     }
 
@@ -96,6 +95,16 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
     this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
     this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
+
+    // set collision behaviour
+    //collBehaviourSrvMsg.request.upper_torque_thresholds_acceleration= {20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0};  // [Nm]
+    //collBehaviourSrvMsg.request.lower_torque_thresholds_nominal= {20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0};  // [Nm]
+    //collBehaviourSrvMsg.request.lower_torque_thresholds_acceleration= {20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0};  //[Nm]
+    //collBehaviourSrvMsg.request.upper_torque_thresholds_nominal= {20.0, 20.0, 18.0, 18.0, 16.0, 14.0, 12.0};  // [Nm]
+    //collBehaviourSrvMsg.request.lower_force_thresholds_acceleration= {20.0, 20.0, 20.0, 25.0, 25.0, 25.0};  // [N, N, N, Nm, Nm, Nm]
+    //collBehaviourSrvMsg.request.upper_force_thresholds_acceleration= {20.0, 20.0, 20.0, 25.0, 25.0, 25.0};  // [N, N, N, Nm, Nm, Nm]
+    //collBehaviourSrvMsg.request.lower_force_thresholds_nominal= {20.0, 20.0, 20.0, 25.0, 25.0, 25.0};  // [N, N, N, Nm, Nm, Nm]
+    //collBehaviourSrvMsg.request.upper_force_thresholds_nominal= {20.0, 20.0, 20.0, 25.0, 25.0, 25.0};  // [N, N, N, Nm, Nm, Nm]
     
     return true;
 }
@@ -129,11 +138,7 @@ void ComputedTorque::starting(const ros::Time& time)
 
     Kp_apix = Kp;
     Kv_apix = Kv;
-
-    /*Initialize command_dot_dot_q_d*/
-
-    command_dot_dot_q_d.setZero();
-
+    
 }
 
 void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
@@ -173,9 +178,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     /* Computed Torque control law */
 
     error = command_q_d - q_curr;
-    std::cout << "error is:" << error << std::endl;
     dot_error = command_dot_q_d - dot_q_curr;
-    std::cout << "error is:" << dot_error << std::endl;
 
     // Publish tracking errors as joint states
     sensor_msgs::JointState error_msg;
@@ -194,10 +197,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     Kp_apix = Kp;
     Kv_apix = Kv;
 
-
     tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
-    
-    std::cout << command_dot_dot_q_d << std::endl;
+
     /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 
     tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
@@ -215,46 +216,25 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     for (size_t i = 0; i < 7; i++) {
 
         joint_handles_[i].setCommand(tau_cmd[i]);
-
-        if (DEBUG){
-        std::cout <<" tau_cmd" << std::endl;
-        std::cout << tau_cmd[i] << std::endl;
-        std::cout << "--------------" << std::endl;
-
-        std::cout << "command_dot_dot_q_d" << std::endl;
-        std::cout << command_dot_dot_q_d << std::endl;
-        std::cout << "--------------" << std::endl;
-       
-        std::cout << "error" << std::endl;
-        std::cout << error << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "q_curr" << std::endl;
-        std::cout << q_curr << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "command_q_d" << std::endl;
-        std::cout << command_q_d << std::endl;
-
-
-
-        std::cout << "--------------" << std::endl;
-        
-        std::cout << "dot_error" << std::endl;
-         std::cout << dot_error << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "dot_q_curr" << std::endl;
-        std::cout << dot_q_curr << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "command_dot_q_d" << std::endl;
-        std::cout << command_dot_q_d << std::endl;
-        
-        }
-
     }
+    
+    /* Saving the last position of the desired position and velocity */
+    
+    // command_dot_q_d_old = command_dot_q_d;
+    // command_q_d_old = command_q_d;
+
 }
 
 void ComputedTorque::stopping(const ros::Time&)
 {
     //TO DO
+//     Eigen::Matrix<double, 7, 1> tau_stop;
+//     tau_stop.setZero();
+//
+//     /* Set null command for each joint (TODO: Is this necessary?)*/
+//     for (size_t i = 0; i < 7; ++i) {
+//         joint_handles_[i].setCommand(tau_stop(i));
+//     }
 }
 
 /* Check for the effort commanded */
@@ -295,8 +275,19 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
     command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
     command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
 
-}
+    // if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
 
+    //     ROS_DEBUG_STREAM("Desired velocity has a wrong dimension or is not given. Velocity of the joints will be estimated.");
+    //     flag = false;
+
+    // } else {
+
+    //     command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+    //     flag = true;
+    // }
+    
+
+}
 }
 
 PLUGINLIB_EXPORT_CLASS(panda_controllers::ComputedTorque, controller_interface::ControllerBase);
