@@ -213,10 +213,17 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     /* Set the command for each joint */
 
     for (size_t i = 0; i < 7; i++) {
-
+        
         joint_handles_[i].setCommand(tau_cmd[i]);
-
+        
         if (DEBUG){
+
+        for (size_t i = 0; i < 7; i++) {
+            std::cout <<" tau_cmd" << std::endl;
+            std::cout << tau_cmd[i] << i << "-th joint" << std::endl;
+            std::cout << "--------------" << std::endl;
+        }
+
         std::cout <<" tau_cmd" << std::endl;
         std::cout << tau_cmd[i] << std::endl;
         std::cout << "--------------" << std::endl;
