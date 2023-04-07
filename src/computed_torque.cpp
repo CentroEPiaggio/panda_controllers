@@ -133,7 +133,6 @@ void ComputedTorque::starting(const ros::Time& time)
     /*Initialize command_dot_dot_q_d*/
 
     command_dot_dot_q_d.setZero();
-
 }
 
 void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
@@ -155,13 +154,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
-    // if (!flag) { // if the flag is false, desired command velocity must be estimated
-
-    //     command_dot_q_d = (command_q_d - command_q_d_old) / dt;
-
-    // }            // Desired commmand acceleration must be estimated
-    
     /* Saturate desired velocity to avoid limits */
+
     for (int i = 0; i < 7; ++i){
       double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
       if( ith_des_vel > 1)
@@ -173,9 +167,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     /* Computed Torque control law */
 
     error = command_q_d - q_curr;
-    std::cout << "error is:" << error << std::endl;
     dot_error = command_dot_q_d - dot_q_curr;
-    std::cout << "error is:" << dot_error << std::endl;
 
     // Publish tracking errors as joint states
     sensor_msgs::JointState error_msg;
@@ -186,14 +178,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
     error_msg.velocity = dot_err_vec;
     this->pub_err_.publish(error_msg);
 
-    // std::cout << "The error is ";
-    // for(int i = 0; i < error.rows(); i++){
-    //   std::cout << error(i) << " " << std::endl; 
-    // }
-    
     Kp_apix = Kp;
     Kv_apix = Kv;
-
 
     tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
     
@@ -202,60 +188,10 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
     tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
     
-    /* Saturate torque to avoid torque limit */
-    
-    // for (int i = 0; i < 7; ++i){
-    //     double ith_torque_rate = abs(tau_cmd(i)/tau_limit(i));
-    //     if( ith_torque_rate > 1)
-    //         tau_cmd = tau_cmd / ith_torque_rate;
-    // }
-
     /* Set the command for each joint */
 
     for (size_t i = 0; i < 7; i++) {
-        
         joint_handles_[i].setCommand(tau_cmd[i]);
-        
-        if (DEBUG){
-
-        for (size_t i = 0; i < 7; i++) {
-            std::cout <<" tau_cmd" << std::endl;
-            std::cout << tau_cmd[i] << i << "-th joint" << std::endl;
-            std::cout << "--------------" << std::endl;
-        }
-
-        std::cout <<" tau_cmd" << std::endl;
-        std::cout << tau_cmd[i] << std::endl;
-        std::cout << "--------------" << std::endl;
-
-        std::cout << "command_dot_dot_q_d" << std::endl;
-        std::cout << command_dot_dot_q_d << std::endl;
-        std::cout << "--------------" << std::endl;
-       
-        std::cout << "error" << std::endl;
-        std::cout << error << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "q_curr" << std::endl;
-        std::cout << q_curr << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "command_q_d" << std::endl;
-        std::cout << command_q_d << std::endl;
-
-
-
-        std::cout << "--------------" << std::endl;
-        
-        std::cout << "dot_error" << std::endl;
-         std::cout << dot_error << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "dot_q_curr" << std::endl;
-        std::cout << dot_q_curr << std::endl;
-        std::cout << "--------------" << std::endl;
-        std::cout << "command_dot_q_d" << std::endl;
-        std::cout << command_dot_q_d << std::endl;
-        
-        }
-
     }
 }
 
