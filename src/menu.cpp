@@ -7,9 +7,6 @@
 
 #include <geometry_msgs/PoseStamped.h>
 
-// #include <panda_controllers/DesiredProjectTrajectory.h>
-// #include <panda_controllers/cubeRef.h>
-// #include "utils/parsing_utilities.h"
 #include "ros/ros.h"
 
 #include <sstream>
@@ -32,18 +29,6 @@ struct traj_struct{
 	Eigen::Matrix<double, 7, 1> vel_des;
 	Eigen::Matrix<double, 7, 1> acc_des;
 } traj;
-
-// struct traj_struct{
-//     Eigen::Vector3d pos_des;
-//     Eigen::Vector3d vel_des;
-//     Eigen::Vector3d acc_des;
-//     Eigen::Vector3d or_des;
-//     Eigen::Vector3d dor_des;
-//     Eigen::Vector3d ddor_des;
-// } traj;
-
-// Eigen::Vector3d pos;
-// Eigen::Vector3d orient;
 
 // define q0 as 7x1 matrix
 Eigen::Matrix<double, 7, 1> q0;
@@ -106,34 +91,19 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle node_handle;
 
-	// ros::Publisher pub_cube = node_handle.advertise<panda_controllers::cubeRef>("/qb_class/cube_ref",1);
-
 	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1000);
-	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1,  &jointsCallback);
+	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &jointsCallback);
 	// ros::Subscriber sub_pose =  node_handle.subscribe("/franka_state_controller/franka_ee_pose", 1, &poseCallback);
 
-	// CREATING THE MESSAGE
+	// creating trajectory message
 	sensor_msgs::JointState traj_msg;
-	// panda_controllers::DesiredTrajectory traj_msg;
-	// panda_controllers::cubeRef cube_msg;
 
-	// SET SLEEP TIME TO 1000 ms ---> 1 kHz
+	// SET SLEEP TIME 1000 ---> 1 kHz
 	ros::Rate loop_rate(200);
 
-	// Eigen::Vector3d pos_f;
-	// Eigen::Vector3d or_f;
 	double tf;
 	Eigen::Matrix<double, 7, 1> qf;
-	// double zf;
-	// Eigen::Vector3d vel;
-	// Eigen::Vector3d pos_init;
-	// Eigen::Vector3d or_init;
-	// XmlRpc::XmlRpcValue traj_par;
-	// std::map<std::string, std::vector<double>>  traj_par; 
-
-	// int N_ACTION;
-	// Eigen::MatrixXd ACTIONS;
-	// Eigen::MatrixXi TYPE;
+	XmlRpc::XmlRpcValue menu_par;
 
 	// Initialize Ctrl-C
 	signal(SIGINT, signal_callback_handler);
@@ -143,9 +113,6 @@ int main(int argc, char **argv)
 	int choice;
 	int demo = -1;
 	int yaml = 0;
-	// std::vector<float> cube_theta1 = {0.0};
-	// std::vector<float> cube_theta2 = {0.0};
-	// float cube_eq;
 
 	// float CUBE_RS;
 	while (ros::ok()){
@@ -153,7 +120,7 @@ int main(int argc, char **argv)
 		if (yaml==1){
 			choice = 5;
 		}else{
-			cout<<"choice:   (1: joints min-jerk, 2:demos, 3:yaml) "<<endl;
+			cout<<"choice:   (1: joints min-jerk, 2: demos, 3: yaml, 4: go to init) "<<endl;
 			cin>>choice;
 		}
 		if (choice == 1){
@@ -169,72 +136,19 @@ int main(int argc, char **argv)
 			cin>> qf(6);
 		}else if (choice == 2){
 			cout<<"-not implemented yet-"<<endl;
-			// cin>>demo;
-			// cout<<"insert time_f: "<<endl;
-			// cin>>tf;
-			// if ((demo==2) || (demo==3)){
-			// 	cout<<"insert zf: "<<endl;
-			// 	cin>>zf;
-			// }
 		}else if (choice == 3){
 			cout<<"-not implemented yet-"<<endl;
-			// if (yaml==0){
-			// 	yaml = 1;
-			// 	if(!node_handle.getParam("/traj_par", traj_par)){
-			// 	ROS_ERROR("Could not get the XmlRpc value.");
-			// 	}
-			// 	if(!parseParameter(traj_par, N_ACTION, "N_ACTION")){
-			// 	ROS_ERROR("Could not parse traj_par.");
-			// 	}
-			// 	if(!parseParameter(traj_par, ACTIONS, "ACTIONS")){
-			// 	ROS_ERROR("Could not parse traj_par.");
-			// 	}
-			// 	if(!parseParameter(traj_par, TYPE, "TYPE")){
-			// 	ROS_ERROR("Could not parse traj_par."); 
-			// 	}
-			// 	// if(!parseParameter(traj_par, CUBE_RS, "CUBE_RS")){
-			// 	//   ROS_ERROR("Could not parse traj_par."); 
-			// 	// }
-			// 	if(!node_handle.getParam("/traj_par/CUBE_RS", CUBE_RS)){
-			// 	ROS_ERROR("Could not get the XmlRpc value.");
-			// 	}
-			// }
-			// if(n_act == N_ACTION){
-			// 	yaml = 0;
-			// 	n_act = 0;
-			// }else{
-			// 	tf = ACTIONS(n_act,0);
-			// 	pos_f(0) = ACTIONS(n_act,1);
-			// 	pos_f(1) = ACTIONS(n_act,2);
-			// 	pos_f(2) = ACTIONS(n_act,3);
-			// 	inter_x = TYPE(n_act,0);
-			// 	inter_y = TYPE(n_act,1);
-			// 	inter_z = TYPE(n_act,2);
-			// 	comp_x = TYPE(n_act,3);
-			// 	comp_y = TYPE(n_act,4);
-			// 	comp_z = TYPE(n_act,5);
-			// 	cube_eq = ACTIONS(n_act,4);
-			// 	cube_theta1[0] = CUBE_RS + cube_eq;
-			// 	cube_theta2[0] = cube_eq - CUBE_RS;
-			// 	choice = 1;
-			// 	n_act++;
-			// }
+		}else if (choice == 4){
+			std::vector<double> qf_array;
+			if(!node_handle.getParam("/menu/Q0_INIT", qf_array))
+				ROS_ERROR("Failed to get parameter from server.");
+			qf = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(qf_array.data(), qf_array.size());
+			choice = 1.0;
+			tf = 3.0;
 		}
 
-		ros::spinOnce();
 
-		// // pos_init = pos;
-		// if(yaml==0){
-		// 	pos_init = pos;
-		// }else{
-		// 	if (n_act==1){
-		// 		pos_init = pos;
-		// 	}else{
-		// 		pos_init(0) = ACTIONS(n_act-2,1);
-		// 		pos_init(1) = ACTIONS(n_act-2,2);
-		// 		pos_init(2) = ACTIONS(n_act-2,3);
-		// 	}
-		// }
+		ros::spinOnce();
 
 		t_init = ros::Time::now();
 
@@ -243,56 +157,21 @@ int main(int argc, char **argv)
 		while (t <= tf && init == false)
 		{
 			if (choice == 1){
-				// interpolator_pos(pos_init, pos_f, tf, t, vel);
 				interpolator_pos(q0, qf, tf, t);
 			} else if (choice == 2){
 				break;
-				// if (demo == 1){
-				// demo_inf_XY(pos_init, t);
-				// }else if(demo==2){
-				// demo_inf_XYZ(pos_init,t,zf,tf);
-				// }else if (demo==3){
-				// cube_theta1[0] = 2400;
-				// cube_theta2[0] = -1600;
-				// demo_circle_xy(pos_init,t,zf,tf);
-				// }
 			}
 
 			traj_msg.header.stamp = ros::Time::now();
 
-			std::vector<double> pose_des {traj.pos_des[0], traj.pos_des[1],traj.pos_des[2],traj.pos_des[3],traj.pos_des[4],traj.pos_des[5],traj.pos_des[6]};
-			traj_msg.position = pose_des;
+			std::vector<double> pos_des {traj.pos_des[0], traj.pos_des[1],traj.pos_des[2],traj.pos_des[3],traj.pos_des[4],traj.pos_des[5],traj.pos_des[6]};
+			traj_msg.position = pos_des;
 			std::vector<double> vel_des {traj.vel_des[0], traj.vel_des[1],traj.vel_des[2],traj.vel_des[3],traj.vel_des[4],traj.vel_des[5],traj.vel_des[6]};
 			traj_msg.velocity = vel_des;
 			std::vector<double> acc_des {traj.acc_des[0], traj.acc_des[1],traj.acc_des[2],traj.acc_des[3],traj.acc_des[4],traj.acc_des[5],traj.acc_des[6]};
 			traj_msg.effort = acc_des;
 
-			// traj_msg.pose.position.x = traj.pos_des.x();
-			// traj_msg.pose.position.y = traj.pos_des.y();
-			// traj_msg.pose.position.z = traj.pos_des.z();
-			// traj_msg.pose.orientation.x = orient.x();
-			// traj_msg.pose.orientation.y = orient.y();
-			// traj_msg.pose.orientation.z = orient.z();
-			
-			// traj_msg.velocity.position.x = traj.vel_des.x();
-			// traj_msg.velocity.position.y = traj.vel_des.y();
-			// traj_msg.velocity.position.z = traj.vel_des.z();
-			// traj_msg.velocity.orientation.x = 0;
-			// traj_msg.velocity.orientation.y = 0;
-			// traj_msg.velocity.orientation.z = 0;
-
-			// traj_msg.acceleration.position.x = traj.acc_des.x();
-			// traj_msg.acceleration.position.y = traj.acc_des.y();
-			// traj_msg.acceleration.position.z = traj.acc_des.z();
-			// traj_msg.acceleration.orientation.x = 0;
-			// traj_msg.acceleration.orientation.y = 0;
-			// traj_msg.acceleration.orientation.z = 0;
-
 			pub_cmd.publish(traj_msg);
-
-			// cube_msg.p_1 = cube_theta1;
-			// cube_msg.p_2 = cube_theta2;
-			// pub_cube.publish(cube_msg);
 
 			loop_rate.sleep();
 
