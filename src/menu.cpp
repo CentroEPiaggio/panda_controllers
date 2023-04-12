@@ -22,7 +22,8 @@
 using namespace std;
 
 #define alpha 0.1
-bool init = true;
+bool init_flag = false;
+bool init_q0 = false;
 
 struct traj_struct{
 	Eigen::Matrix<double, 7, 1> pos_des;
@@ -32,6 +33,8 @@ struct traj_struct{
 
 // define q0 as 7x1 matrix
 Eigen::Matrix<double, 7, 1> q0;
+const double q_lim_upp[] = {2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973};
+const double q_lim_low[] = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
 
 // Define the function to be called when ctrl-c (SIGINT) is sent to process
 void signal_callback_handler(int signum){
@@ -46,12 +49,8 @@ void signal_callback_handler(int signum){
 // }
 
 void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
-	//cout <<"ok_callback" <<endl;
-	if (init == true){
-		q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-		init = false;
-		//cout << "ok3" <<endl;
-	}
+	q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+	init_q0 = true;
 }
 
 void interpolator_pos(Eigen::Matrix<double, 7, 1> pos_i, Eigen::Matrix<double, 7, 1> pos_f, double tf, double t){
@@ -109,6 +108,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, signal_callback_handler);
 
 	ros::Time t_init;
+	init_q0 = false;
 	double t = 0;
 	int choice;
 	int demo = -1;
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 		if (yaml==1){
 			choice = 5;
 		}else{
-			cout<<"choice:   (1: joints min-jerk, 2: demos, 3: yaml, 4: go to init) "<<endl;
+			cout<<"choice:   (1: joints min-jerk,  2: go to init,  3: go to random  4: yaml) "<<endl;
 			cin>>choice;
 		}
 		if (choice == 1){
@@ -135,18 +135,28 @@ int main(int argc, char **argv)
 			cin>> qf(5);
 			cin>> qf(6);
 		}else if (choice == 2){
-			cout<<"-not implemented yet-"<<endl;
-		}else if (choice == 3){
-			cout<<"-not implemented yet-"<<endl;
-		}else if (choice == 4){
 			std::vector<double> qf_array;
 			if(!node_handle.getParam("/menu/Q0_INIT", qf_array))
 				ROS_ERROR("Failed to get parameter from server.");
 			qf = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(qf_array.data(), qf_array.size());
-			choice = 1.0;
+			choice = 1;
 			tf = 3.0;
+		}else if (choice == 3){
+			for(int i=0; i<7; i++){
+				double q_low = q_lim_low[i];
+				double q_upp = q_lim_upp[i];
+				qf(i) = q_low + (float(rand())/RAND_MAX)*(q_upp - q_low);
+			}
+			choice = 1;
+			tf = 3.0;
+		}else if (choice == 4){
+			cout<<"-not implemented yet-"<<endl;
 		}
 
+		if (!init_flag){
+			init_q0 = false;
+			init_flag = true;
+		}
 
 		ros::spinOnce();
 
@@ -154,11 +164,13 @@ int main(int argc, char **argv)
 
 		t = (ros::Time::now() - t_init).toSec();
 
-		while (t <= tf && init == false)
+		while (t <= tf && init_q0)
 		{
 			if (choice == 1){
 				interpolator_pos(q0, qf, tf, t);
-			} else if (choice == 2){
+			} else if (choice == 4){
+				break;
+			} else {
 				break;
 			}
 
