@@ -100,6 +100,7 @@ int main(int argc, char **argv)
 	// SET SLEEP TIME 1000 ---> 1 kHz
 	ros::Rate loop_rate(200);
 
+	srand(time(NULL));
 	double tf;
 	Eigen::Matrix<double, 7, 1> qf;
 	XmlRpc::XmlRpcValue menu_par;
@@ -114,7 +115,6 @@ int main(int argc, char **argv)
 	int demo = -1;
 	int yaml = 0;
 
-	// float CUBE_RS;
 	while (ros::ok()){
 		demo = -1;
 		if (yaml==1){
