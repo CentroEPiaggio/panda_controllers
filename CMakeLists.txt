@@ -18,10 +18,13 @@ find_package(catkin REQUIRED COMPONENTS
 	realtime_tools
 	roscpp
 	rospy
+	sensor_msgs
 )
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS math_c99 math_c99f math_tr1 math_tr1f)
+find_package(CasADi REQUIRED)
 
 #add_message_files(FILES
 # )
@@ -33,7 +36,14 @@ find_package(Franka 0.5.0 REQUIRED)
 # 	geometry_msgs
 # )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(
+	${catkin_INCLUDE_DIRS} 
+	${EIGEN3_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
+	${CasADi_INCLUDE_DIRS}
+)
+
+find_library(CASADI_LIB casadi)
 
 catkin_package(
 	LIBRARIES ${PROJECT_NAME}
@@ -48,12 +58,16 @@ catkin_package(
 	pluginlib
 	realtime_tools
 	roscpp
+	sensor_msgs
 	DEPENDS Franka
 )
 
 add_library(${PROJECT_NAME}   
 	src/computed_torque.cpp #Computed Torque controller
+	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
+	src/myLibReg.cpp #Library of regressor 
+	src/SLregressor.cpp #Class of regressor
 )
 
 # add_dependencies(${PROJECT_NAME}
@@ -71,12 +85,17 @@ add_dependencies(${PROJECT_NAME}
 )
 
 add_executable(menu src/menu.cpp)
-
 target_link_libraries(menu ${catkin_LIBRARIES})
+
+add_executable(controller_publisher src/controller_publisher.cpp)
+target_link_libraries(controller_publisher ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${CASADI_LIB})
+add_dependencies(controller_publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+install(TARGETS controller_publisher RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}
 	${catkin_LIBRARIES}
+	${CASADI_LIB}
 )
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC

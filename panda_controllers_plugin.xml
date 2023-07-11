@@ -5,6 +5,12 @@
       Computed Torque controller.
    </description>
   </class>
+
+  <class name="panda_controllers/Backstepping" type="panda_controllers::Backstepping" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Backstepping controller.
+   </description>
+  </class>
   
    <class name="panda_controllers/CartesianImpedanceControllerSoftbots" type="panda_controllers::CartesianImpedanceControllerSoftbots" base_class_type="controller_interface::ControllerBase">
    <description>
