@@ -18,7 +18,7 @@ computed_torque_controller:
     kv3: 3.0
     dt: 5
 
-computed_torque_controller:
+backstepping_controller:
     type: panda_controllers/Backstepping
     arm_id: panda
     joint_names:

@@ -22,6 +22,8 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
 
 #include <panda_controllers/myLibReg.h>
 #include <panda_controllers/SLregressor.h>
@@ -95,7 +97,7 @@ private:
 
     /* Object Regressor Slotine Li*/
 
-    regrob::SLregressor *regressor;
+    regrob::SLregressor regressor;
 
     /* Check the effort limits */
     
@@ -115,8 +117,9 @@ private:
     
     /* Setting Command Callback*/
     
-    void setCommandCB (const sensor_msgs::JointStateConstPtr& msg);
-    
+    void setCommandJoints (const sensor_msgs::JointStateConstPtr& msg_joints);
+    void setCommandCartesian(const geometry_msgs::Vector3StampedConstPtr& msg_cartesian);
+
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;

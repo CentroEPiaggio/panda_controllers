@@ -1,5 +1,4 @@
-    
-computed_torque_controller:
+    computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: $(arg prefix)arm
     joint_names:
@@ -19,7 +18,7 @@ computed_torque_controller:
     kv3: 3.0
     dt: 5
 
-computed_torque_controller:
+backstepping_controller:
     type: panda_controllers/Backstepping
     arm_id: $(arg prefix)arm
     joint_names:

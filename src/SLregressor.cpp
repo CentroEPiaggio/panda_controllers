@@ -6,11 +6,26 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include <panda_controllers/myLibReg.h>
-#include <panda_controllers/SLregressor.h>
+//#include "myLibReg.h"
+//#include "SLregressor.h"
+#include "panda_controllers/myLibReg.h"
+#include "panda_controllers/SLregressor.h"
 
 namespace regrob{
-    SLregressor::SLregressor(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_) : numJoints(nj_){
+    SLregressor::SLregressor(){
+    //SLregressor::SLregressor(const int nj_): numJoints(nj_){
+        /*
+        q = Eigen::VectorXd::Zero(numJoints);
+        dq = Eigen::VectorXd::Zero(numJoints);
+        dqr = Eigen::VectorXd::Zero(numJoints);
+        ddqr = Eigen::VectorXd::Zero(numJoints);
+        nonZeroCols.resize(numJoints*10);
+         args.resize(4);
+         for(int i=0;i<4;i++){args[i].resize(numJoints,1);}
+         res.resize(1);
+         */
+    }
+    SLregressor::SLregressor(const int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_):numJoints(nj_){
         q = Eigen::VectorXd::Zero(numJoints);
         dq = Eigen::VectorXd::Zero(numJoints);
         dqr = Eigen::VectorXd::Zero(numJoints);
@@ -24,16 +39,44 @@ namespace regrob{
             std::cout<<"in SLregress: invalid DHtable, or jointTypes dimensions \n";
         }
         
-         args.resize(4);
-         for(int i=0;i<4;i++){
-            args[i].resize(numJoints,1);
-         }
-         res.resize(1);
+        args.resize(4);
+        for(int i=0;i<4;i++){
+        args[i].resize(numJoints,1);
+        }
+        res.resize(1);
+        lab2L0 = base_;
+
+        regressor_fun = DHRegressor(DHTable,jointsTypes,lab2L0);
         
-         regressor_fun = DHRegressor(DHTable,jointsTypes,casadi::DM {{0,0,-9.81}});
-         
-         compute();
-         searchNonZero();
+        compute();
+        searchNonZero();
+    }
+    void SLregressor::init(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_){
+        numJoints = nj_;
+        q = Eigen::VectorXd::Zero(numJoints);
+        dq = Eigen::VectorXd::Zero(numJoints);
+        dqr = Eigen::VectorXd::Zero(numJoints);
+        ddqr = Eigen::VectorXd::Zero(numJoints);
+        nonZeroCols.resize(numJoints*10);
+        
+        if(DHTable_.rows()==numJoints && jTypes_.size() == numJoints){
+            DHTable = DHTable_;
+            jointsTypes = jTypes_;
+        }else{
+            std::cout<<"in SLregress: invalid DHtable, or jointTypes dimensions \n";
+        }
+        
+        args.resize(4);
+        for(int i=0;i<4;i++){
+        args[i].resize(numJoints,1);
+        }
+        res.resize(1);
+        lab2L0 = base_;
+
+        regressor_fun = DHRegressor(DHTable,jointsTypes,lab2L0);
+        
+        compute();
+        searchNonZero();
     }
     void SLregressor::compute(){
         for(int i=0;i<numJoints;i++){
@@ -47,34 +90,37 @@ namespace regrob{
     void SLregressor::searchNonZero(){
         
         casadi::Slice allRow;
-        std::vector<int> nonZeroCols(numJoints*10);
         std::vector<casadi::SX> config(4);
         std::vector<casadi::SX> res;
-        config[0] = casadi::SX::sym("q",numJoints,1);
-        config[1] = casadi::SX::sym("dq",numJoints,1);
-        config[2] = casadi::SX::sym("dqr",numJoints,1);
-        config[3] = casadi::SX::sym("ddqr",numJoints,1);
+        casadi::SX qsym = casadi::SX::sym("q",numJoints,1);
+        casadi::SX dqsym = casadi::SX::sym("dq",numJoints,1);
+        casadi::SX dqrsym = casadi::SX::sym("dqr",numJoints,1);
+        casadi::SX ddqrsym = casadi::SX::sym("ddqr",numJoints,1);
+        config[0] = qsym;
+        config[1] = dqsym;
+        config[2] = dqrsym;
+        config[3] = ddqrsym;
         
         regressor_fun.call(config,res);
 
         for(int k=0;k<numJoints*10;k++){
+            std::cout<<"["<<k<<"]"<<res[0](allRow,k)<<std::endl;
+            res[0](allRow,k).simplify(qsym);
+            std::cout<<res[0](allRow,k)<<std::endl<<std::endl;
             nonZeroCols[k] = res[0](allRow,k).is_zero();
+            std::cout<<"is zero? : "<<nonZeroCols[k]<<std::endl;
         }
-        std::cout<<"\ncolonne nulle: \n"<<nonZeroCols<<std::endl<<std::endl;
+        //std::cout<<"\ncolonne nulle: \n"<<nonZeroCols<<std::endl<<std::endl;
     }
-    void SLregressor::setArguments(const std::vector<Eigen::VectorXd>& arg_){
-        if(arg_.size() == 4){
-            if(arg_[0].size()==numJoints && arg_[1].size()==numJoints && arg_[2].size()==numJoints && arg_[3].size()==numJoints){
-                q = arg_[0];
-                dq = arg_[1];
-                dqr = arg_[2];
-                ddqr = arg_[3];
+    void SLregressor::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
+            if(q_.size() == numJoints && dq_.size()==numJoints && dqr_.size()==numJoints && ddqr_.size()==numJoints){
+                q = q_;
+                dq = dq_;
+                dqr = dqr_;
+                ddqr = ddqr_;
             } else{
                 std::cout<<"in setArguments: invalid dimensions of arguments\n";
             }
-        }else{
-            std::cout<<"in setArguments: argument must be 4 \n";
-        }
         compute();
     }
     Eigen::MatrixXd SLregressor::allColumns(){
@@ -87,5 +133,19 @@ namespace regrob{
             }
         }
         return Yfull;
+    }
+    void SLregressor::generate_code(std::string& savePath){
+    // Options for c-code auto generation
+        casadi::Dict opts = casadi::Dict();
+        opts["cpp"] = true;
+        opts["with_header"] = true;
+        
+        // prefix for c code
+        std::string prefix_code = savePath;
+        // generate functions in c code
+        casadi::CodeGenerator myCodeGen = casadi::CodeGenerator("gen_regr_fun.cpp", opts);
+        myCodeGen.add(regressor_fun);
+
+        myCodeGen.generate(prefix_code);
     }
 }

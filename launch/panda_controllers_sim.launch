@@ -11,7 +11,7 @@
 
 	<include file="$(find franka_gazebo)/launch/panda.launch">
 		<!-- <arg name="rviz" value="true" /> -->
-		<arg name="controller" value="computed_torque_controller" />
+		<arg name="controller" value="backstepping_controller" />
 	</include>
 	
 	<!--/group-->

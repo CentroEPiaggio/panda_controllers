@@ -6,8 +6,7 @@
 #include <filesystem>
 #include <stdexcept>
 
-//#include "myLibReg.h"
-#include <panda_controllers/myLibReg.h>
+#include "panda_controllers/myLibReg.h"
 
 namespace regrob{
 
@@ -72,8 +71,8 @@ namespace regrob{
         
         // Number of joints
         int nj = q.size1();
-        std::cout<<"nj: "<<nj<<std::endl;
-        std::cout<<"sixe jtypes: "<<(int)jtsType.size()<<std::endl;
+        //std::cout<<"nj: "<<nj<<std::endl;
+        //std::cout<<"sixe jtypes: "<<(int)jtsType.size()<<std::endl;
 
         // Outputs
         casadi::MXVector Ti(nj);
@@ -117,7 +116,7 @@ namespace regrob{
     }
 
     // Function for Jacobian of link i-th from Denavit-Hartenberg parameterization
-    std::tuple<casadi::MXVector,casadi::MXVector> DHJac(const casadi::MXVector& T0i_vec, const std::string& jtsType, const casadi::MX& baseOffset) {
+    std::tuple<casadi::MXVector,casadi::MXVector> DHJac(const casadi::MXVector& T0i_vec, const std::string& jtsType, frame& base_frame) {
         
         // Number of joints
         int nj = T0i_vec.size();
@@ -181,8 +180,8 @@ namespace regrob{
                 }
             }
 
-            //Ji_pos = baseOffset(Slice(0, 3), Slice(0, 3))*Ji_pos;
-            //Ji_or = baseOffset(Slice(0, 3), Slice(0, 3))*Ji_or;
+            Ji_pos = mtimes(base_frame.rotation(),Ji_pos);
+            Ji_or = mtimes(base_frame.rotation(),Ji_or);
             Ji_v[i] = Ji_pos;
             Ji_w[i] = Ji_or;
         }
@@ -297,7 +296,7 @@ namespace regrob{
         return C;
     }
 
-    casadi::Function DHRegressor(const Eigen::MatrixXd& DH_table,const std::string& jType, const casadi::MX gravity){
+    casadi::Function DHRegressor(const Eigen::MatrixXd& DH_table,const std::string& jType, frame& base_frame){
         // create a symbolic vector
         const int nj = DH_table.rows();
         casadi::MX q = casadi::MX::sym("q", nj);
@@ -323,14 +322,15 @@ namespace regrob{
         //std::cout << "T0i3 " << T0i[3].size() << std::endl;
         //std::cout << "T0i " << T0i.size() << std::endl;
 
-        J_tuple = DHJac(T0i, jType, casadi::MX::eye(4));
+        J_tuple = DHJac(T0i, jType, base_frame);
         Jvi = std::get<0>(J_tuple);
         Jwi = std::get<1>(J_tuple);
         //std::cout << "J0i3 " << Jvi[3].size() << std::endl;
         //std::cout << "J0i6 " << Jvi[6].columns() << std::endl;
         //std::cout << "J0i " << Jvi.size() << std::endl;
 
-        casadi::MX g = gravity;
+        casadi::MX g = base_frame.get_gravity();
+        //std::cout<<"in DHregressor, g:\n"<<g<<std::endl;
 
         casadi::MX Yr(nj,10*nj);
         
@@ -342,7 +342,9 @@ namespace regrob{
 
         for (int i=0; i<nj; i++) {
             
-            casadi::MX R0i = 1*T0i[i](selR,selR);
+            casadi::MX R0i = mtimes(base_frame.rotation(),T0i[i](selR,selR));
+            //std::cout<<"in DHregressor, base rotation : \n"<<base_frame.rotation()<<std::endl;
+
 
             // ------------------------- Y0r_i -------------------------- //
             casadi::MX B0_i = mtimes(Jvi[i].T(),Jvi[i]);
@@ -393,15 +395,114 @@ namespace regrob{
             casadi::Slice selCols(i*10,(i+1)*10);          // Select current columns of matrix regressor
             Yr(allRows,selCols) = Yr_i;
         }
-        /*
-        std::vector<int> nonZeroCols(nj*10);
-        for(int k=0;k<nj*10;k++){
-            nonZeroCols[k] = Yr(allRows,k).is_zero();
-            
-        }
-        std::cout<<"\ncolonne nulle simobolico: \n"<<nonZeroCols<<std::endl<<std::endl;
-        */
         casadi::Function regressor_fun("regr_fun", {q,dq,dqr,ddqr}, {densify(Yr)});
         return regressor_fun;
     }
+
+    /* ========== CLASSE FRAME DEFINIZIONE ========== */
+    frame::frame(){
+        ypr.resize(3);
+        position.resize(3);
+        gravity.resize(3);        
+    }
+    frame::frame(const vec3d& ypr_,const vec3d& pos_,const vec3d& g_){
+        ypr.resize(3);
+        position.resize(3);
+        gravity.resize(3);        
+        if(ypr_.size()==3 && pos_.size()==3 && g_.size()==3){
+        ypr = ypr_;
+        position = pos_;
+        gravity = g_;              
+        }else{
+            throw std::runtime_error("in costructor frame: invalid dimension of arguments");
+        }
+    };
+    casadi::MX frame::rotation(){
+        casadi::MX R = casadi::MX::eye(3);
+        double cy = cos(ypr[0]);
+        double sy = sin(ypr[0]);
+        double cp = cos(ypr[1]);
+        double sp = sin(ypr[1]);
+        double cr = cos(ypr[2]);
+        double sr = sin(ypr[2]);
+
+        //template R yaw-pitch-roll
+        R(0,0)=cy*cp;
+        R(0,1)=cy*sp*sr-sy*cr;
+        R(0,2)=cy*sp*cr-sy*sr;
+        R(1,0)=sy*cp;
+        R(1,1)=sy*sp*sr+cy*cr;
+        R(1,2)=sy*sp*cr-cy*sr;
+        R(2,0)=-sp;
+        R(2,1)=cp*sr;
+        R(2,2)=cp*cr;
+
+        return R;
+    };
+    casadi::MX frame::transform(){
+        casadi::MX rotTr = casadi::MX::eye(4);
+        
+        double cy = cos(ypr[0]);
+        double sy = sin(ypr[0]);
+        double cp = cos(ypr[1]);
+        double sp = sin(ypr[1]);
+        double cr = cos(ypr[2]);
+        double sr = sin(ypr[2]);
+        double dx = position[0];
+        double dy = position[1];
+        double dz = position[2];
+
+        //template R yaw-pitch-roll
+        rotTr(0,0)=cy*cp;
+        rotTr(0,1)=cy*sp*sr-sy*cr;
+        rotTr(0,2)=cy*sp*cr-sy*sr;
+        rotTr(1,0)=sy*cp;
+        rotTr(1,1)=sy*sp*sr-cy*cr;
+        rotTr(1,2)=sy*sp*cr-cy*sr;
+        rotTr(2,0)=-sp;
+        rotTr(2,1)=cp*sr;
+        rotTr(2,2)=cp*cr;
+        rotTr(0,3) = dx;
+        rotTr(1,3) = dy;
+        rotTr(2,3) = dz;
+
+        return rotTr;
+    }
+    void frame::set_gravity(const vec3d& g_){gravity = g_;}
+    void frame::set_position(const vec3d& pos_){position = pos_;}
+    void frame::set_ypr(const vec3d& ypr_){ypr = ypr_;}
+    casadi::MX frame::hat(const vec3d& v){
+        if(v.size() != 3 ){
+            std::cout<<"in function hat of class frame invalid dimension of input"<<std::endl;
+        }
+        casadi::MX vhat(3,3);
+        vhat(0,0) = 0;
+        vhat(0,1) = v[3];
+        vhat(0,2) = v[2];
+        vhat(1,0) = -v[2];
+        vhat(1,1) = 0;
+        vhat(1,2) = v[0];
+        vhat(2,0) = -v[1];
+        vhat(2,1) = -v[0];
+        vhat(2,2) = 0;
+
+        return vhat;
+    }
+    casadi::MX frame::get_gravity(){
+        casadi::MX MXg(3,1);
+        MXg(0,0) = gravity[0];
+        MXg(1,0) = gravity[1];
+        MXg(2,0) = gravity[2];
+        return MXg;
+        //return {{gravity[0]},{gravity[1]},{gravity[2]}};
+    }
+    casadi::MX frame::get_position(){
+        casadi::MX pos(3,1);
+        pos(0,0) = position[0];
+        pos(1,0) = position[1];
+        pos(2,0) = position[2];
+        return pos;
+        //return {{position[0]},{position[1]},{position[2]}};
+    }
+    vec3d frame::get_ypr(){return ypr;}
 }

@@ -2,8 +2,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the computed torque 
 
-#include <panda_controllers/myLibReg.h>
-#include <panda_controllers/SLregressor.h>
+#include "panda_controllers/SLregressor.h"
 
 namespace panda_controllers{
 
@@ -93,7 +92,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
 	/*Start command subscriber */
-	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
+	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &Backstepping::setCommandJoints, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
 	
 	const int nj = 7;
@@ -110,7 +109,8 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
                 0.088,  M_PI / 2,  	0,      0,
                 0,      0,         	0.107,  0;
 
-	regressor = new regrob::SLregressor(nj, DHTable, jTypes);
+	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
+	regressor.init(nj, DHTable, jTypes, base_to_L0);
 	//RegressorMat = Regressor.setArguments();
 
 	return true;
@@ -133,13 +133,14 @@ void Backstepping::starting(const ros::Time& time)
 	M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
 	C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
  
- 	args[0] = q_curr;
-	args[1] = dot_q_curr;
-	args[2] = Eigen::VectorXd::Zero(7,1);
-	args[3] = Eigen::VectorXd::Zero(7,1);
-	regressor->setArguments(args);
-	regressorMat = regressor->allColumns();
-	std::cout<<regressorMat.col(7)<<std::endl;
+    regressor.setArguments(q_curr,q_curr,q_curr,q_curr);
+    Eigen::MatrixXd Yr = regressor.allColumns();
+
+    for(int i=0;i<7*10;i++){
+        std::cout<<"\n["<<i<<"]"<<std::endl;
+        std::cout<<Yr.col(i)<<std::endl;      
+    }
+
 	/* Secure Initialization */
 	command_q_d = q_curr;
 	command_q_d_old = q_curr;
@@ -233,27 +234,27 @@ Eigen::Matrix<double, 7, 1> Backstepping::saturateTorqueRate(
 	return tau_d_saturated;
 }
 
-void Backstepping::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
+void Backstepping::setCommandJoints(const sensor_msgs::JointStateConstPtr& msg_joints)
 {
-	if ((msg->position).size() != 7 || (msg->position).empty()) {
+	if ((msg_joints->position).size() != 7 || (msg_joints->position).empty()) {
 
-		ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
+		ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg_joints->position).size());
 	}
 
-	if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
+	if ((msg_joints->velocity).size() != 7 || (msg_joints->velocity).empty()) {
 
-		ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg->velocity).size());
+		ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg_joints->velocity).size());
 	}
 
 	// TODO: Here we assign acceleration to effort (use trajectory_msgs::JointTrajectoryMessage)
-	if ((msg->effort).size() != 7 || (msg->effort).empty()) {
+	if ((msg_joints->effort).size() != 7 || (msg_joints->effort).empty()) {
 
-		ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg->effort).size());
+		ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg_joints->effort).size());
 	}
 
-	command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-	command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-	command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+	command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg_joints->position).data());
+	command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg_joints->velocity).data());
+	command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg_joints->effort).data());
 
 }
 
