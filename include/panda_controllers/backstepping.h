@@ -5,6 +5,7 @@
 #include <vector>
 #include <math.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 #include <controller_interface/multi_interface_controller.h>
 
@@ -22,11 +23,10 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Vector3Stamped.h>
+#include "panda_controllers/desTrajEE.h"
 
-#include <panda_controllers/myLibReg.h>
-#include <panda_controllers/SLregressor.h>
+#include "utils/myLibReg.h"
+#include "utils/SLregressor.h"
 
 #define     DEBUG   0      
 
@@ -78,14 +78,10 @@ private:
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
-    Eigen::Matrix<double, 7, 1> command_q_d;           // desired command position 
-    Eigen::Matrix<double, 7, 1> command_q_d_old;
+    Eigen::Matrix<double, 3, 1> ee_pos_cmd;           // desired command position 
+    Eigen::Matrix<double, 3, 1> ee_vel_cmd;           // desired command velocity 
+    Eigen::Matrix<double, 3, 1> ee_acc_cmd;           // desired command acceleration 
     
-    Eigen::Matrix<double, 7, 1> command_dot_q_d;       // desired command velocity
-    Eigen::Matrix<double, 7, 1> command_dot_q_d_old;
-    
-    Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;   // estimated desired acceleration command 
-
     /* Mass Matrix and Coriolis vector */
     
     Eigen::Matrix<double, 7, 7> M;
@@ -117,8 +113,7 @@ private:
     
     /* Setting Command Callback*/
     
-    void setCommandJoints (const sensor_msgs::JointStateConstPtr& msg_joints);
-    void setCommandCartesian(const geometry_msgs::Vector3StampedConstPtr& msg_cartesian);
+    void setCommand(const desTrajEE::ConstPtr& msg);
 
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
