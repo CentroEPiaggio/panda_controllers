@@ -23,18 +23,19 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS math_c99 math_c99f math_tr1 math_tr1f)
-find_package(CasADi REQUIRED)
+find_package(Boost REQUIRED) # for spline
+find_package(CasADi REQUIRED) # for regressor
 
-#add_message_files(FILES
-# )
-
-# generate_messages(
-# 	DEPENDENCIES##
-# 	franka_msgs##
-# 	std_msgs
-# 	geometry_msgs
-# )
+## to add custom msg
+add_message_files(FILES
+	desTrajEE.msg
+)
+## to create msg, specify dependecies
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 include_directories(
 	${catkin_INCLUDE_DIRS} 
@@ -70,31 +71,32 @@ add_library(${PROJECT_NAME}
 	src/SLregressor.cpp #Class of regressor
 )
 
-# add_dependencies(${PROJECT_NAME}
-#   ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#   panda_controllers ${catkin_EXPORTED_TARGETS}
-#   ${catkin_EXPORTED_TARGETS}
-#   ${PROJECT_NAME}_generate_messages_cpp
-#   ${PROJECT_NAME}_gencpp
-#   ${PROJECT_NAME}_gencfg
-# )
-
 add_dependencies(${PROJECT_NAME}
 	${${PROJECT_NAME}_EXPORTED_TARGETS}
 	panda_controllers ${catkin_EXPORTED_TARGETS}
 )
 
 add_executable(menu src/menu.cpp)
-target_link_libraries(menu ${catkin_LIBRARIES})
+target_link_libraries(menu 
+	${catkin_LIBRARIES}
+)
 
 add_executable(controller_publisher src/controller_publisher.cpp)
-target_link_libraries(controller_publisher ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${CASADI_LIB})
-add_dependencies(controller_publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(controller_publisher 
+	${catkin_LIBRARIES} 
+	${Boost_LIBRARIES} 
+	${CASADI_LIB}
+)
+add_dependencies(controller_publisher 
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
 install(TARGETS controller_publisher RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}
 	${catkin_LIBRARIES}
+	${Boost_LIBRARIES} 
 	${CASADI_LIB}
 )
 

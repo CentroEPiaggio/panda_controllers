@@ -7,6 +7,10 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+#include <boost/filesystem.hpp>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <controller_interface/multi_interface_controller.h>
 
 #include <franka_hw/franka_model_interface.h>
@@ -25,7 +29,6 @@
 #include <sensor_msgs/JointState.h>
 #include "panda_controllers/desTrajEE.h"
 
-#include "utils/myLibReg.h"
 #include "utils/SLregressor.h"
 
 #define     DEBUG   0      
@@ -69,6 +72,7 @@ private:
 
     Eigen::Matrix<double, 7, 1> q_curr;
     Eigen::Matrix<double, 7, 1> dot_q_curr;
+    Eigen::Matrix<double, 7, 1> ddot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
     
     /* Error and dot error feedback */
@@ -81,15 +85,15 @@ private:
     Eigen::Matrix<double, 3, 1> ee_pos_cmd;           // desired command position 
     Eigen::Matrix<double, 3, 1> ee_vel_cmd;           // desired command velocity 
     Eigen::Matrix<double, 3, 1> ee_acc_cmd;           // desired command acceleration 
-    
+
+    /* Parameter vector */
+
+    Eigen::Matrix<double, 70, 1> param;
+
     /* Mass Matrix and Coriolis vector */
     
     Eigen::Matrix<double, 7, 7> M;
     Eigen::Matrix<double, 7, 1> C;
-
-    /* Dynamic Regressor*/
-    
-    Eigen::Matrix<double, 7, 70> regressorMat;
 
     /* Object Regressor Slotine Li*/
 
@@ -100,8 +104,12 @@ private:
     Eigen::Matrix<double, 7, 1> saturateTorqueRate (
         const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
         const Eigen::Matrix<double, 7, 1>& tau_J_d);
-    
+
     Eigen::Matrix<double, 7, 1> tau_J_d;
+
+    /* Import parameters */
+
+    Eigen::Matrix<double, 70, 1> importCSV(const std::string& filename);
 
     static constexpr double kDeltaTauMax {1.0};
     

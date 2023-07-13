@@ -6,9 +6,11 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include "panda_controllers/myLibReg.h"
+#include "utils/myLibReg.h"
 
-namespace regrob{
+namespace regrob{ 
+
+    #define TOLL 1e-15
 
     // Function to generate matrix template of transformation from Denavit-Hartenberg parameterization
     casadi::MX DHTemplate(const Eigen::MatrixXd& rowDHTable, const casadi::MX q, char jtsType) {
@@ -145,7 +147,8 @@ namespace regrob{
             casadi::MX T_0i(4,4);           // matrix tranformation of joint 1 from joint 0
 
             // First column of jacobian
-            k0 = casadi::MX::vertcat({0, 0, 1});
+            //k0 = casadi::MX::vertcat({0, 0, 1});
+            k0(2,0) = casadi::MX::ones(1,1);
             T_0i = T0i_vec[i];
             O_0i = T_0i(r_tra_idx, c_tra_idx);
 
@@ -202,7 +205,52 @@ namespace regrob{
         }
         return mat_dq;
     }
+    // Function to create Q
+    casadi::MXVector createQ() {
 
+        casadi::MXVector Q(3);
+
+        for(int i=0;i<3;i++){
+            Q[i] = casadi::MX::zeros(3,3);
+        }
+        Q[0](1,2) = -1;
+        Q[0](2,1) = 1;
+
+        Q[1](0,2) = 1;
+        Q[1](2,0) = -1;
+
+        Q[2](0,1) = -1;
+        Q[2](1,0) = 1;
+
+        return Q;
+    }
+
+    // Function to create E
+    casadi::MXVector createE() {
+        
+        casadi::MXVector E(6);
+
+        for(int i=0;i<6;i++){
+            E[i] = casadi::MX::zeros(3,3);
+        }
+        E[0](0,0) = 1;
+
+        E[1](0,1) = 1;
+        E[1](1,0) = 1;
+
+        E[2](0,2) = 1;
+        E[2](2,0) = 1;
+
+        E[3](1,1) = 1;
+
+        E[4](1,2) = 1;
+        E[4](2,1) = 1;
+
+        E[5](2,2) = 1;
+
+        return E;
+    }
+    /*
     // Function to create Q
     casadi::MXVector createQ() {
 
@@ -271,6 +319,7 @@ namespace regrob{
 
         return E;
     }
+    */
 
     // Function to obtain elements to construct C matrix with Christoffel symbols
     casadi::MXVector stdCmatrix(const casadi::MX& B, const casadi::MX& q, const casadi::MX& dq, casadi::MX& dq_sel) {
@@ -350,8 +399,8 @@ namespace regrob{
             casadi::MX B0_i = mtimes(Jvi[i].T(),Jvi[i]);
             casadi::MXVector C = stdCmatrix(B0_i,q,dq,dq_sel);
 
-            casadi::MX dX0r_i = mtimes(B0_i,ddqr) + 0.5*mtimes((C[0]+C[1]),dqr);
-            casadi::MX W0r_i = 0.5*mtimes(C[2],dqr);
+            casadi::MX dX0r_i = mtimes(B0_i,ddqr) + mtimes((C[0]+C[1]),dqr)/2;
+            casadi::MX W0r_i = mtimes(C[2],dqr)/2;
             casadi::MX Z0r_i = -1*mtimes(Jvi[i].T(),g);
             
             casadi::MX Y0r_i = dX0r_i - W0r_i + Z0r_i;
@@ -368,8 +417,8 @@ namespace regrob{
 
                 casadi::MXVector C = stdCmatrix(B1l_i,q,dq,dq_sel);
 
-                dX1r_i(allRows,l) = mtimes(B1l_i,ddqr) + 0.5*mtimes((C[0]+C[1]),dqr);
-                W1r_i(allRows,l) = 0.5*mtimes(C[2],dqr);
+                dX1r_i(allRows,l) = mtimes(B1l_i,ddqr) + mtimes((C[0]+C[1]),dqr)/2;
+                W1r_i(allRows,l) = mtimes(C[2],dqr)/2;
             }
             casadi::MX Z1r_i= -(jacobian(mtimes(R0i.T(),g),q)).T();
             
@@ -383,8 +432,8 @@ namespace regrob{
                 casadi::MX El = E[l];
                 casadi::MX B2l_i = mtimes(Jwi[i].T(),mtimes(R0i,mtimes(El,mtimes(R0i.T(),Jwi[i]))));
                 casadi::MXVector C = stdCmatrix(B2l_i,q,dq,dq_sel);
-                dX2r_i(allRows,l) = mtimes(B2l_i,ddqr) + 0.5*mtimes((C[0]+C[1]),dqr);
-                W2r_i(allRows,l) = 0.5*mtimes(C[2],dqr);
+                dX2r_i(allRows,l) = mtimes(B2l_i,ddqr) + mtimes((C[0]+C[1]),dqr)/2;
+                W2r_i(allRows,l) = mtimes(C[2],dqr)/2;
             }
 
             casadi::MX Y2r_i = dX2r_i - W2r_i;

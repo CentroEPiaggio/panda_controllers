@@ -6,12 +6,10 @@
 #include <filesystem>
 #include <stdexcept>
 
-//#include "myLibReg.h"
-//#include "SLregressor.h"
-#include "panda_controllers/myLibReg.h"
-#include "panda_controllers/SLregressor.h"
+#include "utils/SLregressor.h"
 
 namespace regrob{
+    #define TOLLERANCE 1e-15 // precision of regressor matrix
     SLregressor::SLregressor(){
     //SLregressor::SLregressor(const int nj_): numJoints(nj_){
         /*
@@ -104,11 +102,13 @@ namespace regrob{
         regressor_fun.call(config,res);
 
         for(int k=0;k<numJoints*10;k++){
-            std::cout<<"["<<k<<"]"<<res[0](allRow,k)<<std::endl;
-            res[0](allRow,k).simplify(qsym);
-            std::cout<<res[0](allRow,k)<<std::endl<<std::endl;
+            
+            //res[0](allRow,k).simplify(qsym);
+            //std::cout<<res[0](allRow,k)<<std::endl<<std::endl;
             nonZeroCols[k] = res[0](allRow,k).is_zero();
-            std::cout<<"is zero? : "<<nonZeroCols[k]<<std::endl;
+            //std::cout<<"\n["<<k<<"]: "<<"is zero? : "<<nonZeroCols[k]<<std::endl;
+            //std::cout<<"["<<k<<"]: "<<res[0](allRow,k)<<std::endl;
+            
         }
         //std::cout<<"\ncolonne nulle: \n"<<nonZeroCols<<std::endl<<std::endl;
     }
@@ -129,6 +129,9 @@ namespace regrob{
         Eigen::MatrixXd Yfull(nrow,ncol);
         for(int i=0;i<nrow;i++){
             for(int j=0;j<ncol;j++){
+                    if ((double)(res[0](i,j)) < TOLLERANCE){
+                        res[0](i,j) = 0;
+                    }
                 Yfull(i,j) = (double)(res[0](i,j));
             }
         }

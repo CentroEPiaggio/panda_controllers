@@ -9,6 +9,8 @@
 #include <filesystem>
 #include <stdexcept>
 
+#include "utils/myLibReg.h"
+
 namespace regrob{
     class SLregressor{
         private:
