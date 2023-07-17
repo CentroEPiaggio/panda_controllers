@@ -1,5 +1,5 @@
-#ifndef SLREGRESSOR_
-#define SLREGRESSOR_
+#ifndef SLREGRESSOR_H
+#define SLREGRESSOR_H
 
 #include <iostream>
 #include <string>
@@ -9,35 +9,66 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include "utils/myLibReg.h"
+#include "utils/RegBasic.h"
 
 namespace regrob{
-    class SLregressor{
+
+    #define MU          0.002
+    #define MYZERO      0
+
+    class SLregressor: public RegBasic{
         private:
-            int numJoints;
-            Eigen::MatrixXd DHTable;
+            //int numJoints;
+            Eigen::Matrix<double,-1,4> DHTable;
             std::string jointsTypes;
             frame lab2L0;
+            bool dumped;
 
             Eigen::VectorXd q,dq,dqr,ddqr;
             
             casadi::Function regressor_fun;
+            casadi::Function jacobian_fun;
+            casadi::Function kinematic_fun;
+            
+            casadi::SX matYr;
+
             std::vector<int> nonZeroCols;
 
-            std::vector<casadi::DM> args;
-            std::vector<casadi::DM> res;
+            std::vector<casadi::SX> args;
+            std::vector<casadi::SX> regressor_res;
+            std::vector<casadi::SX> jacobian_res;
+            std::vector<casadi::SX> kinematic_res;
 
-            void searchNonZero();
-            void compute();
+            //void searchNonZero();
+            void computeReg();
+            void computeJac();
+            void computeKin();
+
+            static double mapFunction(const casadi::SXElem& elem);
+        
         public:
-            //SLregressor(const int nj_);
+
             SLregressor();
-            SLregressor(const int,const Eigen::MatrixXd&,const std::string,frame&);
-            void init(const int,const Eigen::MatrixXd&,const std::string,frame&);
+            SLregressor(const int,const Eigen::MatrixXd&,const std::string,frame&, const bool dumped_=true);
             ~SLregressor(){std::cout<<"oggetto SLregressor eliminato\n";}
+            
+            void init(const int,const Eigen::MatrixXd&,const std::string,frame&, const bool dumped_=true);
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
+            void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
+            void setArguments(const Eigen::VectorXd&);
+            //void setArgJac(const Eigen::VectorXd&,const Eigen::VectorXd&);
+            //void reduceMinCols();
+            
             Eigen::MatrixXd allColumns();
             std::vector<int> get_nonZeroCols(){return nonZeroCols;};
+            
+            Eigen::Matrix4d kinematic();
+            Eigen::MatrixXd jacobian();
+            Eigen::MatrixXd pinvJacobian();
+            Eigen::MatrixXd dotPinvJacobian();
+            //void reduceMinCols();
+            //void setDumped(const double dumped_);
+
             void generate_code(std::string&);
     };
 

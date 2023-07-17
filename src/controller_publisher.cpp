@@ -7,8 +7,8 @@
 
 Eigen::Matrix3d traj_(double t_sym) {
     
-    double A = 0.3, a = 0.8;
-    double B = 0.3, b = 0.5;
+    double A = 0.3, a = 1;
+    double B = 0.3, b = 2;
     double d = 0.1;
     double x0 = 0.6, y0 = 0, z0 = 0.5;
 

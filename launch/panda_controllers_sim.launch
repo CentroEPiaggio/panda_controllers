@@ -9,6 +9,7 @@
 	<!--node name="controller_load" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="load computed_torque_controller"/-->
 	<!--node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn computed_torque_controller"/-->
 
+	<!--<include file="$(find franka_gazebo)/launch/panda.launch">-->
 	<include file="$(find franka_gazebo)/launch/panda.launch">
 		<!-- <arg name="rviz" value="true" /> -->
 		<arg name="controller" value="backstepping_controller" />

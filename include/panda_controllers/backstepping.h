@@ -28,6 +28,7 @@
 //Ros Message
 #include <sensor_msgs/JointState.h>
 #include "panda_controllers/desTrajEE.h"
+#include "panda_controllers/log_backstepping.h"
 
 #include "utils/SLregressor.h"
 
@@ -121,7 +122,7 @@ private:
     
     /* Setting Command Callback*/
     
-    void setCommand(const desTrajEE::ConstPtr& msg);
+    void setCommandCB(const desTrajEE::ConstPtr& msg);
 
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;

@@ -29,6 +29,7 @@ find_package(CasADi REQUIRED) # for regressor
 ## to add custom msg
 add_message_files(FILES
 	desTrajEE.msg
+	log_backstepping.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -67,8 +68,9 @@ add_library(${PROJECT_NAME}
 	src/computed_torque.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	src/myLibReg.cpp #Library of regressor 
-	src/SLregressor.cpp #Class of regressor
+	src/frameLib.cpp #Library of frame
+	src/RegBasic.cpp #Library of RegBasic 
+	src/SLregressor.cpp #Class of SLregressor
 )
 
 add_dependencies(${PROJECT_NAME}
