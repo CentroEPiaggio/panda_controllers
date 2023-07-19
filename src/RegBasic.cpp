@@ -133,7 +133,7 @@ namespace regrob{
     }
 
     // Function for Jacobian of link i-th from Denavit-Hartenberg parameterization
-    std::tuple<casadi::SXVector,casadi::SXVector> RegBasic::DHJac(const casadi::SXVector& T0i_vec, const std::string& jtsType, frame& base_frame) {
+    std::tuple<casadi::SXVector,casadi::SXVector> RegBasic::DHJac(const casadi::SXVector& T0i_vec, const std::string& jtsType, frame& base_frame,frame& ee_frame) {
         
         // Number of joints
         int nj = T0i_vec.size();
@@ -194,7 +194,10 @@ namespace regrob{
                     throw std::runtime_error("DHJac: Error joint type");
                 }
             }
-
+            if(i==(nj-1)){
+                casadi::SX R0i = T_0i(r_rot_idx,r_rot_idx);
+                Ji_pos = Ji_pos - casadi::SX::mtimes({R0i,hat(ee_frame.get_translation()),R0i.T(),Ji_or});
+            } 
             Ji_pos = mtimes(base_frame.get_rotation(),Ji_pos);
             Ji_or = mtimes(base_frame.get_rotation(),Ji_or);
             Ji_v[i] = Ji_pos;
@@ -286,8 +289,8 @@ namespace regrob{
 
         return C;
     }
-/* 
-    casadi::Function RegBasic::DHRegressor(const Eigen::MatrixXd& DH_table,const std::string& jType, frame& base_frame){
+ 
+/*    casadi::Function RegBasic::DHRegressor(const Eigen::MatrixXd& DH_table,const std::string& jType, frame& base_frame){
         // create a symbolic vectors
         const int nj = DH_table.rows();
         
@@ -391,7 +394,7 @@ namespace regrob{
         return regressor_fun;
     }
  */
-    casadi::SX RegBasic::SXregressor(const Eigen::MatrixXd& DH_table,const std::string& jType, frame& base_frame){
+    casadi::SX RegBasic::SXregressor(const Eigen::MatrixXd& DH_table,const std::string& jType, frame& base_frame,frame& ee_frame){
         // create a symbolic vectors
         const int nj = DH_table.rows();
         
@@ -407,7 +410,7 @@ namespace regrob{
         T0i = std::get<0>(T_tuple);
         //Ti  = std::get<1>(T_tuple);
 
-        J_tuple = RegBasic::DHJac(T0i, jType, base_frame);
+        J_tuple = RegBasic::DHJac(T0i, jType, base_frame, ee_frame);
         Jvi = std::get<0>(J_tuple);
         Jwi = std::get<1>(J_tuple);
 
@@ -424,7 +427,9 @@ namespace regrob{
 
         for (int i=0; i<nj; i++) {
             
-            casadi::SX R0i = casadi::SX::mtimes({base_frame.get_rotation(),T0i[i](selR,selR),base_frame.get_rotation().T()});
+            casadi::SX R0i = T0i[i](selR,selR);
+            if(i==(nj-1)) R0i = mtimes(R0i,ee_frame.get_rotation()); // end-effector
+            R0i = casadi::SX::mtimes({base_frame.get_rotation(),R0i,base_frame.get_rotation().T()});
 
             // ------------------------- Y0r_i -------------------------- //
             casadi::SX B0_i = mtimes(Jvi[i].T(),Jvi[i]);
@@ -441,8 +446,8 @@ namespace regrob{
             casadi::SX W1r_i(nj,3);
 
             //casadi::SXVector B1l_i(3);
-            casadi::SX matJwR = mtimes(R0i.T(),Jwi[i]);
-            casadi::SX matJvR = mtimes(R0i.T(),Jvi[i]);
+            //casadi::SX matJwR = mtimes(R0i.T(),Jwi[i]);
+            //casadi::SX matJvR = mtimes(R0i.T(),Jvi[i]);
 
             //casadi::SX tmpMat0 = mtimes(matJwR(2,allCols).T(),matJvR(1,allCols)) - mtimes(matJwR(1,allCols).T(),matJvR(2,allCols));
             //casadi::SX tmpMat1 = mtimes(matJwR(0,allCols).T(),matJvR(2,allCols)) - mtimes(matJwR(2,allCols).T(),matJvR(0,allCols));
@@ -488,6 +493,7 @@ namespace regrob{
 
             casadi::Slice selCols(i*10,(i+1)*10);          // Select current columns of matrix regressor
             Yr(allRows,selCols) = Yr_i;
+            
         }
 
         return Yr;
@@ -502,7 +508,7 @@ namespace regrob{
     }
     
     // Function for Jacobian of link n-th from Denavit-Hartenberg parameterization
-    casadi::Function RegBasic::DHJac_fun(const Eigen::MatrixXd& DH_table, const std::string& jtsType, frame& base_frame,const double mu_) {
+    casadi::Function RegBasic::DHJac_fun(const Eigen::MatrixXd& DH_table, const std::string& jtsType, frame& base_frame,frame& ee_frame,const double mu_) {
         // create a symbolic vectors
         const int nj = DH_table.rows();
         
@@ -523,7 +529,7 @@ namespace regrob{
         T_tuple = RegBasic::DHFwKin(DH_table, jtsType);
         T0i = std::get<0>(T_tuple);
 
-        J_tuple = RegBasic::DHJac(T0i, jtsType, base_frame);
+        J_tuple = RegBasic::DHJac(T0i, jtsType, base_frame,ee_frame);
         Jvi = std::get<0>(J_tuple);
         Jwi = std::get<1>(J_tuple);
 
@@ -557,7 +563,7 @@ namespace regrob{
         //std::cout<<"Funzione del Jacobiano: "<<Jac_fun<<std::endl;
         return Jac_fun;
     }
-    casadi::Function RegBasic::DHKin_fun(const Eigen::MatrixXd& DH_table, const std::string& jtsType, frame& base_frame) {
+    casadi::Function RegBasic::DHKin_fun(const Eigen::MatrixXd& DH_table, const std::string& jtsType, frame& base_frame,frame& ee_frame) {
         // create a symbolic vectors
         const int nj = DH_table.rows();
         
@@ -569,7 +575,7 @@ namespace regrob{
         T0i = std::get<0>(T_tuple);
 
         
-        T0EE = mtimes(base_frame.get_transform(),T0i[nj-1]);
+        T0EE = casadi::SX::mtimes({base_frame.get_transform(),T0i[nj-1],ee_frame.get_transform()});
 
         casadi::Function Kin_fun("Kin_fun",{q},{densify(T0EE)});
         //std::cout<<"Funzione del Jacobiano: "<<Jac_fun<<std::endl;

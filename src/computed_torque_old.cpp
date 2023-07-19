@@ -93,27 +93,6 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
 	
-	const int nj = 7;
-	const std::string jTypes = "RRRRRRR";
-	Eigen::MatrixXd DHTable(nj,4);
-	// DHTable obatain in URDF
-	DHTable << 	0,		-M_PI_2,	0.3330, 0,
-                0,      M_PI_2,  	0,      0,
-                0.0825, M_PI_2,  	0.3160, 0,
-               -0.0825, -M_PI_2,	0,      0,
-                0,      M_PI_2,  	0.384,  0,
-                0.088,  M_PI_2,  	0,      0,
-                0,      0,         	0.107,  0;
- 
-	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
-	regrob::frame L0_to_EE({-M_PI_4,0,0},{0,0,0.1034});
-	regressore.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE);
-
-	/* Initialize inertial parameters */
-
-	param = importCSV("/home/yurs/franka_ws/src/panda_controllers/src/start_parameters.csv");
-
-	
 	return true;
 }
 
@@ -134,7 +113,7 @@ void ComputedTorque::starting(const ros::Time& time)
 
 	/* Secure Initialization */
 	command_q_d = q_curr;
-	//command_q_d << M_PI_2,-0.7855,0,-2.3561,0,M_PI_2,0.7854;
+	command_q_d << M_PI_2,-0.7855,0,-2.3561,0,M_PI_2,0.7854;
 	command_q_d_old = q_curr;
 
 	command_dot_q_d = dot_q_curr;
@@ -142,11 +121,6 @@ void ComputedTorque::starting(const ros::Time& time)
 
 	command_dot_dot_q_d.setZero();
 
-
-	/* Update regressor */
-
-	regressore.setArguments(q_curr, dot_q_curr, dot_q_curr, command_dot_dot_q_d);
-    
 	/* Defining the NEW gains */
 	Kp_apix = Kp;
 	Kv_apix = Kv;
@@ -198,14 +172,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	Kp_apix = Kp;
 	Kv_apix = Kv;
 
-
-	regressore.setArguments(q_curr, dot_q_curr, dot_q_curr, command_dot_dot_q_d);
-	Y = regressore.allColumns();
-	//Y=regressore.getRegressor_gen();
-	Eigen::Matrix<double,7,1> tau_cmd_std;
-
-	tau_cmd_std = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
-	tau_cmd = Y*param + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
+	tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
 	
 	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
@@ -261,39 +228,6 @@ void ComputedTorque::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
 	command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
 
 }
-
-Eigen::Matrix<double, 70, 1> ComputedTorque::importCSV(const std::string& filename) {
-
-    std::vector<double> data;
-    std::string line;
-    std::string absolutePath = boost::filesystem::absolute(filename).string();
-
-    std::cout << "Percorso assoluto del file: " << absolutePath << std::endl;
-    std::ifstream file(filename);
-    
-	Eigen::Matrix<double, 70, 1> param_;
-
-	if (!file.is_open()) {
-        throw std::runtime_error("Impossibile aprire il file " + filename);
-    }
-
-    while (std::getline(file, line)) {
-
-        std::stringstream ss(line);
-        std::string cell;
-
-        std::getline(ss, cell, ',');
-    	data.push_back(std::stod(cell));
-    }
-
-    file.close();
-
-	for (int i=0; i<70; i++)
-		param_[i] = data[i];
-
-    return param_;
-}
-
 
 }
 

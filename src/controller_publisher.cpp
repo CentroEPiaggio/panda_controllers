@@ -7,16 +7,16 @@
 
 Eigen::Matrix3d traj_(double t_sym) {
     
-    double A = 0.3, a = 1;
-    double B = 0.3, b = 2;
-    double d = 0.1;
-    double x0 = 0.6, y0 = 0, z0 = 0.5;
+    double A = 0.2, a = 0.5;
+    double B = 0.2, b = 1;
+    double d = M_PI_2;
+    double x0 = 0.5, y0 = 0, z0 = 0.4;
 
     Eigen::Matrix3d trajectory;
     
-    trajectory.row(0) << 0+x0, A * std::sin(a * t_sym), B * std::sin(b * t_sym + d);
-    trajectory.row(1) << 0, A * a * std::cos(a * t_sym)+y0, B * b * std::cos(b * t_sym + d);
-    trajectory.row(2) << 0, -A * a * a * std::sin(a * t_sym), -B * b * b * std::sin(b * t_sym + d) + z0;
+    trajectory.row(0) << 0+x0, A * std::sin(a * t_sym) + y0, B * std::sin(b * t_sym + d) + z0;
+    trajectory.row(1) << 0, A * a * std::cos(a * t_sym), B * b * std::cos(b * t_sym + d);
+    trajectory.row(2) << 0, -A * a * a * std::sin(a * t_sym), -B * b * b * std::sin(b * t_sym + d);
 
     return trajectory;
 }

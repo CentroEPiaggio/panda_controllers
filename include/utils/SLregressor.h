@@ -9,11 +9,12 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include "utils/RegBasic.h"
+#include "RegBasic.h"
+#include "gen_regr_fun.h"
 
 namespace regrob{
 
-    #define MU          0.002
+    #define MU          0.01
     #define MYZERO      0
 
     class SLregressor: public RegBasic{
@@ -22,6 +23,7 @@ namespace regrob{
             Eigen::Matrix<double,-1,4> DHTable;
             std::string jointsTypes;
             frame lab2L0;
+            frame Ln2EE;
             bool dumped;
 
             Eigen::VectorXd q,dq,dqr,ddqr;
@@ -39,6 +41,8 @@ namespace regrob{
             std::vector<casadi::SX> jacobian_res;
             std::vector<casadi::SX> kinematic_res;
 
+            Eigen::MatrixXd out_gen;    // output of code generation
+
             //void searchNonZero();
             void computeReg();
             void computeJac();
@@ -49,10 +53,10 @@ namespace regrob{
         public:
 
             SLregressor();
-            SLregressor(const int,const Eigen::MatrixXd&,const std::string,frame&, const bool dumped_=true);
+            SLregressor(const int,const Eigen::MatrixXd&,const std::string,frame&,frame&,const bool dumped_=true);
             ~SLregressor(){std::cout<<"oggetto SLregressor eliminato\n";}
             
-            void init(const int,const Eigen::MatrixXd&,const std::string,frame&, const bool dumped_=true);
+            void init(const int,const Eigen::MatrixXd&,const std::string,frame&,frame&,const bool dumped_=true);
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
             void setArguments(const Eigen::VectorXd&);
@@ -70,6 +74,10 @@ namespace regrob{
             //void setDumped(const double dumped_);
 
             void generate_code(std::string&);
+            void computeReg_gen();
+            
+            Eigen::MatrixXd getRegressor_gen();
+
     };
 
 }

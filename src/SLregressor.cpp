@@ -5,7 +5,7 @@ namespace regrob{
     SLregressor::SLregressor(){
         //empty costructor
     }
-    SLregressor::SLregressor(const int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_, const bool dumped_): RegBasic(nj_), dumped(dumped_){
+    SLregressor::SLregressor(const int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_,frame& ee_, const bool dumped_): RegBasic(nj_), dumped(dumped_){
         dumped = dumped_;
         double mu =  dumped ? MU:MYZERO;
         std::cout<<"dumped: "<<dumped<<std::endl;
@@ -31,13 +31,14 @@ namespace regrob{
         jacobian_res.resize(3);
         kinematic_res.resize(1);
         lab2L0 = base_;
+        Ln2EE = ee_;
         
-        matYr = SXregressor(DHTable,jTypes_,lab2L0);
+        matYr = SXregressor(DHTable,jTypes_,lab2L0,Ln2EE);
         regressor_fun = DHReg_fun(matYr);  
         
-        jacobian_fun = DHJac_fun(DHTable,jointsTypes,lab2L0,mu);
+        jacobian_fun = DHJac_fun(DHTable,jointsTypes,lab2L0,Ln2EE,mu);
 
-        kinematic_fun = DHKin_fun(DHTable,jointsTypes,lab2L0);
+        kinematic_fun = DHKin_fun(DHTable,jointsTypes,lab2L0,Ln2EE);
         
         nonZeroCols.resize(matYr.size2());
         
@@ -47,9 +48,9 @@ namespace regrob{
         
         //searchNonZero();
     }
-    void SLregressor::init(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_,const bool dumped_){
+    void SLregressor::init(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_,frame& ee_,const bool dumped_){
+        
         basic_init(nj_);
-        dumped = dumped_;
         double mu =  dumped ? MU:MYZERO;
         std::cout<<"dumped: "<<dumped<<std::endl;
         std::cout<<"mu: "<<mu<<std::endl;
@@ -73,14 +74,18 @@ namespace regrob{
         regressor_res.resize(1);
         jacobian_res.resize(3);
         kinematic_res.resize(1);
+        //-------------------------------------//
+        out_gen.resize(numJoints,10*numJoints);
+        //-------------------------------------//
         lab2L0 = base_;
-        
-        matYr = SXregressor(DHTable,jTypes_,lab2L0);
+        Ln2EE = ee_;
+
+        matYr = SXregressor(DHTable,jTypes_,lab2L0,Ln2EE);
         regressor_fun = DHReg_fun(matYr);  
         
-        jacobian_fun = DHJac_fun(DHTable,jointsTypes,lab2L0,mu);
+        jacobian_fun = DHJac_fun(DHTable,jointsTypes,lab2L0,Ln2EE,mu);
 
-        kinematic_fun = DHKin_fun(DHTable,jointsTypes,lab2L0);
+        kinematic_fun = DHKin_fun(DHTable,jointsTypes,lab2L0,Ln2EE);
         
         nonZeroCols.resize(matYr.size2());
         
@@ -181,7 +186,8 @@ namespace regrob{
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-        computeReg();
+        //computeReg();
+        computeReg_gen();
     }
     void SLregressor::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_){
         if(q_.size() == numJoints && dq_.size()==numJoints){
@@ -303,6 +309,30 @@ namespace regrob{
 
         myCodeGen.generate(prefix_code);
     }
+
+    void SLregressor::computeReg_gen(){
+        
+        long long int sz_arg;
+        long long int sz_res;
+        long long int sz_iw;
+        long long int sz_w;
+
+        int check_size = regr_fun_work(&sz_arg, &sz_res, &sz_iw, &sz_w);    
+        
+        long long p3[sz_iw];
+        double p4[sz_w];
+
+        const double* input_[] = {q.data(), dq.data(), dqr.data(), ddqr.data()};
+        double* output_[] = {out_gen.data()};
+
+        int check = regr_fun(input_, output_, p3, p4, 0);
+
+    }
+
+    Eigen::MatrixXd SLregressor::getRegressor_gen(){
+        return out_gen;
+    }
+
     double SLregressor::mapFunction(const casadi::SXElem& elem) {
         return static_cast<double>(casadi::SXElem(elem));
     }

@@ -19,6 +19,7 @@ namespace regrob{
         public:
             frame();
             frame(const vec3d& ,const vec3d&,const vec3d&);
+            frame(const vec3d& ,const vec3d&);
             ~frame(){std::cout<<"frame eliminato\n";};
 
             void set_position(const vec3d&);

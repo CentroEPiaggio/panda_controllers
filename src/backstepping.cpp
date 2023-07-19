@@ -94,7 +94,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/*Start command subscriber */
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
-	this->pub_err_ = node_handle.advertise<panda_controllers::log_backstepping> ("tracking_error", 1);
+	this->pub_err_ = node_handle.advertise<panda_controllers::log_backstepping> ("logging", 1);
 	
 	/* Initialize regressor object */
 
@@ -108,11 +108,17 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
                -0.0825, -M_PI_2,	0,      0,
                 0,      M_PI_2,  	0.384,  0,
                 0.088,  M_PI_2,  	0,      0,
-                0,      0,         	0.107+0.1034,  0-M_PI_4;
+                0,      0,         	0.107,  0;
  
-	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,0});
-	regressor.init(nj, DHTable, jTypes, base_to_L0);
+	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
+	regrob::frame L0_to_EE({-M_PI_4,0,0},{0,0,0.1034},{0,0,-9.81});
+	regressor.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE);
 
+	regrob::frame base_to_L02({0,0,0},{0,0,0},{0,0,0});
+	regrob::frame L0_to_EE2({-M_PI_4,0,0},{0,0,0.1034},{0,0,0});
+	regressor2.init(nj, DHTable, jTypes, base_to_L02, L0_to_EE2);
+
+	
 	/* Initialize inertial parameters */
 
 	param = importCSV("/home/yurs/franka_ws/src/panda_controllers/src/start_parameters.csv");
@@ -135,6 +141,8 @@ void Backstepping::starting(const ros::Time& time)
 	/* Secure initialization command */
 
 	ee_pos_cmd = T0EE.translation();
+	//ee_pos_cmd << 0,0.307,0.487;
+	//ee_pos_cmd << 0.6,0,0.8;
 	ee_vel_cmd = Eigen::Vector3d::Zero();
 	ee_acc_cmd = Eigen::Vector3d::Zero();
 
@@ -151,7 +159,6 @@ void Backstepping::starting(const ros::Time& time)
 	/* Update regressor */
 
 	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-    regressor.allColumns(); // initialize stack of function (?)
     
 	Kp_apix = Kp;
 	Kv_apix = Kv; 
@@ -166,30 +173,23 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Affine3d T0EE(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
-	
 	std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
-	Eigen::Map<Eigen::Matrix<double, 6, 7> > jacobian(jacobian_array.data());	
-
-	/* Update Jacobian */
+	Eigen::Map<Eigen::Matrix<double, 6, 7> > jacobian(jacobian_array.data());
+	std::array<double, 7> gravity_array = model_handle_->getGravity();
+	Eigen::Map<Eigen::Matrix<double, 7, 1> > G(gravity_array.data());
+	
+	/* Update Jacobian Function */
 
 	regressor.setArguments(q_curr,dot_q_curr);
 	
-	/* Compute pseudo-inverse  of jacobian and its derivative */
+	/* Compute pseudo-inverse of jacobian and its derivative */
 
-	Eigen::MatrixXd pJacEE;	
-
-	Eigen::Matrix4d myT0EE;
-	Eigen::MatrixXd myJacEE;
 	Eigen::MatrixXd mypJacEE;
 	Eigen::MatrixXd mydot_pJacEE;
-	
-  	pseudoInverse(jacobian.transpose(), pJacEE);
 
-	myT0EE = regressor.kinematic();
-	myJacEE = regressor.jacobian();
 	mypJacEE = regressor.pinvJacobian();
 	mydot_pJacEE = regressor.dotPinvJacobian();
-	
+
 	/* Compute error */
 
 	Eigen::Vector3d ee_position = T0EE.translation();
@@ -198,16 +198,10 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Vector3d error = ee_pos_cmd - ee_position;
 	Eigen::Vector3d dot_error = ee_vel_cmd - ee_velocity;
 
-	std::cout<<"ros position: \n"<<T0EE.affine()<<std::endl;
-	std::cout<<"my position: \n"<<myT0EE<<std::endl;
-	std::cout<<"ros jacobian: \n"<<jacobian<<std::endl;
-	std::cout<<"my jacobian: \n"<<myJacEE<<std::endl;
-	std::cout<<"ros error: \n"<<error<<std::endl;
-	std::cout<<"my dot_error: \n"<<dot_error<<std::endl;
-
 	/* Compute reference (Position Control) */
 
-	Eigen::Matrix3d Lambda = Eigen::Matrix3d::Identity();	// da mettere su init e inizializzare con rosparam
+	Eigen::Matrix3d Lambda = Eigen::Matrix3d::Identity()*1;	// da mettere su init e inizializzare con rosparam
+	
 	Eigen::Vector3d tmp_position = ee_vel_cmd + Lambda * error;
 	Eigen::Vector3d tmp_velocity = ee_acc_cmd + Lambda * dot_error;
 	
@@ -215,19 +209,11 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Matrix<double,7,1> ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position;
 	Eigen::Matrix<double,7,1> s = dot_qr - dot_q_curr;
 	
-	std::cout<<"mypJacEE * tmp_velocity: \n"<<mypJacEE * tmp_velocity<<std::endl;
-	std::cout<<"mydot_pJacEE * tmp_position: \n"<<mydot_pJacEE * tmp_position<<std::endl;
-	std::cout<<"dot_qr: \n"<<dot_qr<<std::endl;
-	std::cout<<"ddot_qr: \n"<<ddot_qr<<std::endl;
-
-	std::cout<<"s: \n"<<s<<std::endl;
-	
-	/* Update regressor */
+	/* Update Regressor Function */
 
 	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
 
 	/* Gain Matrix */ 
-	// perchè aggiornarlo? e' un attributo già inizializzato
 	Kp_apix = Kp;
 	Kv_apix = Kv;
 
@@ -245,39 +231,41 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	Eigen::MatrixXd Yr = regressor.allColumns();
 
+	Eigen::MatrixXd Yr2 = regressor2.allColumns();
+	//Yr = regressor.getRegressor_gen();
 	/* Update inertial parameters */
 
-	dot_param = -R.inverse()*Yr.transpose()*s;
+	dot_param = R.inverse()*Yr.transpose()*s;
 	delta_t = (double)period.sec+(double)period.nsec*1e-9;
  	//param_new = param + delta_t*dot_param;
 	//param = param_new;
  
-
 	/* Update tau and parameters */
-
-	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error;
-
-	std::cout<<"Yr*param: \n"<<Yr*param<<std::endl;
-	std::cout<<"Kd*s: \n"<<Kd*s<<std::endl;
-	std::cout<<"jacobian.topRows(3).transpose()*error: \n"<<jacobian.topRows(3).transpose()*error<<std::endl;
+	
+	std::cout<<"gravity: \n "<<G<<std::endl;
+	std::cout<<"(Yr-Yr2)*param: \n "<<(Yr-Yr2)*param<<std::endl;
+	
+	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error - G;
 	
  	// Publish tracking errors as joint states
 	panda_controllers::log_backstepping msg_log;
 
 	msg_log.header.stamp = ros::Time::now();
 
-	msg_log.error_position[0] = error[0];
-	msg_log.error_position[1] = error[1];
-	msg_log.error_position[2] = error[2];
+	fillMsg(msg_log.error_pos_EE, error);
+	fillMsg(msg_log.dot_error_pos_EE, dot_error);
+	fillMsg(msg_log.dot_qr, dot_qr);
+	fillMsg(msg_log.ddot_qr, ddot_qr);
+	fillMsg(msg_log.s, s);
+	fillMsg(msg_log.Link1_param, param.segment(0, 10));
+	fillMsg(msg_log.Link2_param, param.segment(10, 10));
+	fillMsg(msg_log.Link3_param, param.segment(20, 10));
+	fillMsg(msg_log.Link4_param, param.segment(30, 10));
+	fillMsg(msg_log.Link5_param, param.segment(40, 10));
+	fillMsg(msg_log.Link6_param, param.segment(50, 10));
+	fillMsg(msg_log.Link7_param, param.segment(60, 10));
+	fillMsg(msg_log.tau_cmd, tau_cmd);
 
-	for (int i = 0; i < 70; ++i) {
-		msg_log.inertial_parameters[i] = param(i);
-	}
-
-	msg_log.end_effector_position[0] = ee_position[0];
-	msg_log.end_effector_position[1] = ee_position[1];
-	msg_log.end_effector_position[2] = ee_position[2];
-	
 	/* for (int i = 0; i < 7; ++i) {
 		msg_log.joint_angles[i] = q_curr[i];
 	} */
@@ -352,6 +340,15 @@ Eigen::Matrix<double, 70, 1> Backstepping::importCSV(const std::string& filename
 		param_[i] = data[i];
 
     return param_;
+}
+
+template <size_t N>
+void Backstepping::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_) {
+    
+	int dim = data_.size();
+    for (int i = 0; i < dim; i++) {
+        msg_[i] = data_[i];
+    }
 }
 
 }

@@ -19,6 +19,18 @@ namespace regrob{
             throw std::runtime_error("in costructor frame: invalid dimension of arguments");
         }
     };
+    frame::frame(const vec3d& ypr_,const vec3d& pos_){
+        ypr.resize(3);
+        position.resize(3);
+        gravity.resize(3);        
+        if(ypr_.size()==3 && pos_.size()==3){
+        ypr = ypr_;
+        position = pos_;
+        gravity = {0,0,-9.81};              
+        }else{
+            throw std::runtime_error("in costructor frame: invalid dimension of arguments");
+        }
+    };
     
     vec3d frame::get_ypr(){return ypr;}
     casadi::SX frame::get_rotation(){

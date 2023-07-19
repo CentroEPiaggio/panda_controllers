@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+
 #include <controller_interface/multi_interface_controller.h>
 
 #include <franka_hw/franka_model_interface.h>
@@ -96,9 +97,13 @@ private:
     Eigen::Matrix<double, 7, 7> M;
     Eigen::Matrix<double, 7, 1> C;
 
+    Eigen::Matrix<double, 7, 70>Yr;
+    Eigen::Matrix<double, 7, 70>Yr2;
+	
     /* Object Regressor Slotine Li*/
 
     regrob::SLregressor regressor;
+    regrob::SLregressor regressor2;
 
     /* Check the effort limits */
     
@@ -127,6 +132,10 @@ private:
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
+
+    template <size_t N>
+    void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
+
 };
 
 }
