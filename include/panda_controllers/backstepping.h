@@ -31,7 +31,7 @@
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/log_backstepping.h"
 
-#include "utils/SLregressor.h"
+#include "utils/ThunderPanda.h"
 
 #define     DEBUG   0      
 
@@ -96,14 +96,15 @@ private:
     
     Eigen::Matrix<double, 7, 7> M;
     Eigen::Matrix<double, 7, 1> C;
+    Eigen::Matrix<double, 7, 1> G;
 
     Eigen::Matrix<double, 7, 70>Yr;
-    Eigen::Matrix<double, 7, 70>Yr2;
 	
     /* Object Regressor Slotine Li*/
 
-    regrob::SLregressor regressor;
-    regrob::SLregressor regressor2;
+    //regrob::SLregressor regressor;
+    regrob::thunderPanda fastRegMat;
+
 
     /* Check the effort limits */
     

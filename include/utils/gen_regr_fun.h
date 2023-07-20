@@ -32,4 +32,84 @@ extern "C" int regr_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int 
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 727
+#define regr_fun_SZ_W 754
+extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int jac_fun_alloc_mem(void);
+extern "C" int jac_fun_init_mem(int mem);
+extern "C" void jac_fun_free_mem(int mem);
+extern "C" int jac_fun_checkout(void);
+extern "C" void jac_fun_release(int mem);
+extern "C" void jac_fun_incref(void);
+extern "C" void jac_fun_decref(void);
+extern "C" casadi_int jac_fun_n_in(void);
+extern "C" casadi_int jac_fun_n_out(void);
+extern "C" casadi_real jac_fun_default_in(casadi_int i);
+extern "C" const char* jac_fun_name_in(casadi_int i);
+extern "C" const char* jac_fun_name_out(casadi_int i);
+extern "C" const casadi_int* jac_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* jac_fun_sparsity_out(casadi_int i);
+extern "C" int jac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define jac_fun_SZ_ARG 1
+#define jac_fun_SZ_RES 1
+#define jac_fun_SZ_IW 0
+#define jac_fun_SZ_W 63
+extern "C" int pinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int pinvJac_fun_alloc_mem(void);
+extern "C" int pinvJac_fun_init_mem(int mem);
+extern "C" void pinvJac_fun_free_mem(int mem);
+extern "C" int pinvJac_fun_checkout(void);
+extern "C" void pinvJac_fun_release(int mem);
+extern "C" void pinvJac_fun_incref(void);
+extern "C" void pinvJac_fun_decref(void);
+extern "C" casadi_int pinvJac_fun_n_in(void);
+extern "C" casadi_int pinvJac_fun_n_out(void);
+extern "C" casadi_real pinvJac_fun_default_in(casadi_int i);
+extern "C" const char* pinvJac_fun_name_in(casadi_int i);
+extern "C" const char* pinvJac_fun_name_out(casadi_int i);
+extern "C" const casadi_int* pinvJac_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* pinvJac_fun_sparsity_out(casadi_int i);
+extern "C" int pinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define pinvJac_fun_SZ_ARG 1
+#define pinvJac_fun_SZ_RES 1
+#define pinvJac_fun_SZ_IW 0
+#define pinvJac_fun_SZ_W 98
+extern "C" int dotPinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int dotPinvJac_fun_alloc_mem(void);
+extern "C" int dotPinvJac_fun_init_mem(int mem);
+extern "C" void dotPinvJac_fun_free_mem(int mem);
+extern "C" int dotPinvJac_fun_checkout(void);
+extern "C" void dotPinvJac_fun_release(int mem);
+extern "C" void dotPinvJac_fun_incref(void);
+extern "C" void dotPinvJac_fun_decref(void);
+extern "C" casadi_int dotPinvJac_fun_n_in(void);
+extern "C" casadi_int dotPinvJac_fun_n_out(void);
+extern "C" casadi_real dotPinvJac_fun_default_in(casadi_int i);
+extern "C" const char* dotPinvJac_fun_name_in(casadi_int i);
+extern "C" const char* dotPinvJac_fun_name_out(casadi_int i);
+extern "C" const casadi_int* dotPinvJac_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* dotPinvJac_fun_sparsity_out(casadi_int i);
+extern "C" int dotPinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define dotPinvJac_fun_SZ_ARG 2
+#define dotPinvJac_fun_SZ_RES 1
+#define dotPinvJac_fun_SZ_IW 0
+#define dotPinvJac_fun_SZ_W 369
+extern "C" int Kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int Kin_fun_alloc_mem(void);
+extern "C" int Kin_fun_init_mem(int mem);
+extern "C" void Kin_fun_free_mem(int mem);
+extern "C" int Kin_fun_checkout(void);
+extern "C" void Kin_fun_release(int mem);
+extern "C" void Kin_fun_incref(void);
+extern "C" void Kin_fun_decref(void);
+extern "C" casadi_int Kin_fun_n_in(void);
+extern "C" casadi_int Kin_fun_n_out(void);
+extern "C" casadi_real Kin_fun_default_in(casadi_int i);
+extern "C" const char* Kin_fun_name_in(casadi_int i);
+extern "C" const char* Kin_fun_name_out(casadi_int i);
+extern "C" const casadi_int* Kin_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* Kin_fun_sparsity_out(casadi_int i);
+extern "C" int Kin_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define Kin_fun_SZ_ARG 1
+#define Kin_fun_SZ_RES 1
+#define Kin_fun_SZ_IW 0
+#define Kin_fun_SZ_W 50

@@ -65,13 +65,14 @@ catkin_package(
 )
 
 add_library(${PROJECT_NAME}   
-	src/computed_torque.cpp #Computed Torque controller
+	#src/computed_torque.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	src/FrameOffset.cpp #Library of frame
-	src/RegBasic.cpp #Library of RegBasic 
-	src/SLregressor.cpp #Class of SLregressor
+	#src/FrameOffset.cpp #Library of frame
+	#src/RegBasic.cpp #Library of RegBasic 
+	#src/SLregressor.cpp #Class of SLregressor
 	src/gen_regr_fun.cpp
+	src/ThunderPanda.cpp
 )
 
 add_dependencies(${PROJECT_NAME}

@@ -1,7 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the Backstepping 
-#include "utils/pseudo_inversion.h"
 
 namespace panda_controllers{
 
@@ -99,7 +98,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/* Initialize regressor object */
 
 	const int nj = 7;
-	const std::string jTypes = "RRRRRRR";
+	/* const std::string jTypes = "RRRRRRR";
 	Eigen::MatrixXd DHTable(nj,4);
 
 	// DHTable obatain in URDF
@@ -113,13 +112,10 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
  
 	regrob::FrameOffset base_to_L0({0,0,0},{0,0,0},{0,0,-9.8});
 	regrob::FrameOffset L0_to_EE({-M_PI_4,0,0},{0,0,0.1034},{0,0,-9.8});
-	regressor.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE);
+	regressor.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE); */
 
-	regrob::FrameOffset base_to_L02({0,0,0},{0,0,0},{0,0,0});
-	regrob::FrameOffset L0_to_EE2({-M_PI_4,0,0},{0,0,0.1034},{0,0,0});
-	regressor2.init(nj, DHTable, jTypes, base_to_L02, L0_to_EE2);
+	fastRegMat.init(nj);
 
-	
 	/* Initialize inertial parameters */
 
 	param = importCSV("/home/yurs/franka_ws/src/panda_controllers/src/start_parameters.csv");
@@ -136,6 +132,13 @@ void Backstepping::starting(const ros::Time& time)
 	Eigen::Affine3d T0EE(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+
+	double mass_ee = robot_state.m_ee;
+	Eigen::Matrix<double,6,1> inertial_ee = Eigen::Map<Eigen::Matrix<double, 6, 1>>(robot_state.I_ee.data());
+
+	std::cout<<"mass\n"<<mass_ee<<std::endl;
+	std::cout<<"inertia\n"<<inertial_ee<<std::endl;
+	
 
 	std::cout<<q_curr<<std::endl;
 
@@ -158,10 +161,10 @@ void Backstepping::starting(const ros::Time& time)
 	Eigen::Matrix<double,7,1> ddot_qr = Eigen::VectorXd::Zero(7,1);
 	
 	/* Update regressor */
+/* 
+	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);*/
+    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
 
-	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-    regressor2.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-    
 	Kp_apix = Kp;
 	Kv_apix = Kv; 
 }
@@ -182,17 +185,17 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > G(gravity_array.data());
 	
 	/* Update Jacobian Function */
+	/* 
+	regressor.setArguments(q_curr,dot_q_curr); */
+	fastRegMat.setArguments(q_curr,dot_q_curr);
 
-	regressor.setArguments(q_curr,dot_q_curr);
-	regressor2.setArguments(q_curr,dot_q_curr);
-	
 	/* Compute pseudo-inverse of jacobian and its derivative */
 
-	Eigen::MatrixXd mypJacEE;
-	Eigen::MatrixXd mydot_pJacEE;
-
+	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
+	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+/* 
 	mypJacEE = regressor.pinvJacobian();
-	mydot_pJacEE = regressor.dotPinvJacobian();
+	mydot_pJacEE = regressor.dotPinvJacobian(); */
 
 	/* Compute error */
 
@@ -214,9 +217,11 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Matrix<double,7,1> s = dot_qr - dot_q_curr;
 	
 	/* Update Regressor Function */
+/* 
+	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr); */
 
-	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-	regressor2.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	Yr = fastRegMat.getReg_gen();
 
 	/* Gain Matrix */ 
 	Kp_apix = Kp;
@@ -233,22 +238,19 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Matrix<double,70,1> param_new;
 	Eigen::Matrix<double,70,1> dot_param;
 	double delta_t;
-
-	Eigen::MatrixXd Yr = regressor.allColumns();
-	Eigen::MatrixXd Yr2 = regressor2.allColumns();
+/* 
+	Eigen::MatrixXd Yr = regressor.allColumns(); */
 
 	//Yr = regressor.getRegressor_gen();
 	/* Update inertial parameters */
-
+	
 	dot_param = R.inverse()*Yr.transpose()*s;
 	delta_t = (double)period.sec+(double)period.nsec*1e-9;
- 	param_new = param + delta_t*dot_param;
+ 	
+	param_new = param + delta_t*dot_param;
 	param = param_new;
  
 	/* Update tau and parameters */
-	
-	std::cout<<"gravity: \n "<<G<<std::endl;
-	std::cout<<"(Yr-Yr2)*param: \n "<<(Yr-Yr2)*param<<std::endl;
 	
 	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error-G;
 	
