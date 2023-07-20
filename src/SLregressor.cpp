@@ -1,11 +1,11 @@
 #include "utils/SLregressor.h"
 
 namespace regrob{
-
-    SLregressor::SLregressor(){
-        //empty costructor
-    }
-    SLregressor::SLregressor(const int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_,frame& ee_, const bool dumped_): RegBasic(nj_), dumped(dumped_){
+    
+    SLregressor::SLregressor(){}
+    SLregressor::SLregressor(
+        const int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,
+        FrameOffset& base_,FrameOffset& ee_, const bool dumped_): RegBasic(nj_), dumped(dumped_){
         dumped = dumped_;
         double mu =  dumped ? MU:MYZERO;
         std::cout<<"dumped: "<<dumped<<std::endl;
@@ -48,7 +48,8 @@ namespace regrob{
         
         //searchNonZero();
     }
-    void SLregressor::init(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,frame& base_,frame& ee_,const bool dumped_){
+    void SLregressor::init(int nj_, const Eigen::MatrixXd& DHTable_, const std::string jTypes_,
+        FrameOffset& base_,FrameOffset& ee_,const bool dumped_){
         
         basic_init(nj_);
         double mu =  dumped ? MU:MYZERO;
@@ -177,7 +178,8 @@ namespace regrob{
         
         computeReg();
     }*/
-    void SLregressor::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
+    void SLregressor::setArguments(
+        const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
         if(q_.size() == numJoints && dq_.size()==numJoints && dqr_.size()==numJoints && ddqr_.size()==numJoints){
             q = q_;
             dq = dq_;
@@ -186,8 +188,8 @@ namespace regrob{
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-        //computeReg();
-        computeReg_gen();
+        computeReg();
+        //computeReg_gen();
     }
     void SLregressor::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_){
         if(q_.size() == numJoints && dq_.size()==numJoints){

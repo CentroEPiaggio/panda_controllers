@@ -22,8 +22,8 @@ namespace regrob{
             //int numJoints;
             Eigen::Matrix<double,-1,4> DHTable;
             std::string jointsTypes;
-            frame lab2L0;
-            frame Ln2EE;
+            FrameOffset lab2L0;
+            FrameOffset Ln2EE;
             bool dumped;
 
             Eigen::VectorXd q,dq,dqr,ddqr;
@@ -53,10 +53,10 @@ namespace regrob{
         public:
 
             SLregressor();
-            SLregressor(const int,const Eigen::MatrixXd&,const std::string,frame&,frame&,const bool dumped_=true);
+            SLregressor(const int,const Eigen::MatrixXd&,const std::string,FrameOffset&,FrameOffset&,const bool dumped_=true);
             ~SLregressor(){std::cout<<"oggetto SLregressor eliminato\n";}
             
-            void init(const int,const Eigen::MatrixXd&,const std::string,frame&,frame&,const bool dumped_=true);
+            void init(const int,const Eigen::MatrixXd&,const std::string,FrameOffset&,FrameOffset&,const bool dumped_=true);
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
             void setArguments(const Eigen::VectorXd&);

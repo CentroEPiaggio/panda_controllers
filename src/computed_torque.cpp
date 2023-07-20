@@ -105,8 +105,8 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
                 0.088,  M_PI_2,  	0,      0,
                 0,      0,         	0.107,  0;
  
-	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
-	regrob::frame L0_to_EE({-M_PI_4,0,0},{0,0,0.1034});
+	regrob::FrameOffset base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
+	regrob::FrameOffset L0_to_EE({-M_PI_4,0,0},{0,0,0.1034});
 	regressore.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE);
 
 	/* Initialize inertial parameters */

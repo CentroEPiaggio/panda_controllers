@@ -68,7 +68,7 @@ add_library(${PROJECT_NAME}
 	src/computed_torque.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	src/frameLib.cpp #Library of frame
+	src/FrameOffset.cpp #Library of frame
 	src/RegBasic.cpp #Library of RegBasic 
 	src/SLregressor.cpp #Class of SLregressor
 	src/gen_regr_fun.cpp

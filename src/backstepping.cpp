@@ -101,6 +101,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	const int nj = 7;
 	const std::string jTypes = "RRRRRRR";
 	Eigen::MatrixXd DHTable(nj,4);
+
 	// DHTable obatain in URDF
 	DHTable << 	0,		-M_PI_2,	0.3330, 0,
                 0,      M_PI_2,  	0,      0,
@@ -110,12 +111,12 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
                 0.088,  M_PI_2,  	0,      0,
                 0,      0,         	0.107,  0;
  
-	regrob::frame base_to_L0({0,0,0},{0,0,0},{0,0,-9.81});
-	regrob::frame L0_to_EE({-M_PI_4,0,0},{0,0,0.1034},{0,0,-9.81});
+	regrob::FrameOffset base_to_L0({0,0,0},{0,0,0},{0,0,-9.8});
+	regrob::FrameOffset L0_to_EE({-M_PI_4,0,0},{0,0,0.1034},{0,0,-9.8});
 	regressor.init(nj, DHTable, jTypes, base_to_L0, L0_to_EE);
 
-	regrob::frame base_to_L02({0,0,0},{0,0,0},{0,0,0});
-	regrob::frame L0_to_EE2({-M_PI_4,0,0},{0,0,0.1034},{0,0,0});
+	regrob::FrameOffset base_to_L02({0,0,0},{0,0,0},{0,0,0});
+	regrob::FrameOffset L0_to_EE2({-M_PI_4,0,0},{0,0,0.1034},{0,0,0});
 	regressor2.init(nj, DHTable, jTypes, base_to_L02, L0_to_EE2);
 
 	
@@ -159,6 +160,7 @@ void Backstepping::starting(const ros::Time& time)
 	/* Update regressor */
 
 	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+    regressor2.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
     
 	Kp_apix = Kp;
 	Kv_apix = Kv; 
@@ -175,12 +177,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 	std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 	Eigen::Map<Eigen::Matrix<double, 6, 7> > jacobian(jacobian_array.data());
+
 	std::array<double, 7> gravity_array = model_handle_->getGravity();
 	Eigen::Map<Eigen::Matrix<double, 7, 1> > G(gravity_array.data());
 	
 	/* Update Jacobian Function */
 
 	regressor.setArguments(q_curr,dot_q_curr);
+	regressor2.setArguments(q_curr,dot_q_curr);
 	
 	/* Compute pseudo-inverse of jacobian and its derivative */
 
@@ -212,6 +216,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	/* Update Regressor Function */
 
 	regressor.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	regressor2.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
 
 	/* Gain Matrix */ 
 	Kp_apix = Kp;
@@ -230,22 +235,22 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	double delta_t;
 
 	Eigen::MatrixXd Yr = regressor.allColumns();
-
 	Eigen::MatrixXd Yr2 = regressor2.allColumns();
+
 	//Yr = regressor.getRegressor_gen();
 	/* Update inertial parameters */
 
 	dot_param = R.inverse()*Yr.transpose()*s;
 	delta_t = (double)period.sec+(double)period.nsec*1e-9;
- 	//param_new = param + delta_t*dot_param;
-	//param = param_new;
+ 	param_new = param + delta_t*dot_param;
+	param = param_new;
  
 	/* Update tau and parameters */
 	
 	std::cout<<"gravity: \n "<<G<<std::endl;
 	std::cout<<"(Yr-Yr2)*param: \n "<<(Yr-Yr2)*param<<std::endl;
 	
-	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error - G;
+	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error-G;
 	
  	// Publish tracking errors as joint states
 	panda_controllers::log_backstepping msg_log;
