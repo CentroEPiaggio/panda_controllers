@@ -18,7 +18,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/* Inizializing the Kp and Kv gains */
 
 	double kp1, kp2, kp3, kv1, kv2, kv3;
-
+	
 	if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3) 
 		|| !node_handle.getParam("kv1", kv1) || !node_handle.getParam("kv2", kv2) || !node_handle.getParam("kv3", kv3)) {
 		ROS_ERROR("Backstepping: Could not get parameter kpi or kv!");
