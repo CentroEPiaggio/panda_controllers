@@ -10,35 +10,60 @@
 
 namespace regrob{
 
+    /* Class thunderPanda 
+    Useful functions for adaptive control with Slotine-Li regressor
+    Usable only for generated code from casadi library! */
     class thunderPanda{
-        private:
-            int num_joints;
-            Eigen::VectorXd q,dq,dqr,ddqr;
-            Eigen::MatrixXd reg_gen;    // output of code generated
-            Eigen::MatrixXd jac_gen;    // output of code generated
-            Eigen::MatrixXd pinvJac_gen;    // output of code generated
-            Eigen::MatrixXd dotPinvJac_gen;    // output of code generated
-            Eigen::MatrixXd kin_gen;    // output of code generated
 
-            void computeReg_gen();
-            void computeJac_gen();
-            void computePinvJac_gen();
-            void computeDotPinvJac_gen();
-            void computeKin_gen();
+        private:
+
+            /* Number of joints */
+            int num_joints;
+            /* Joints' variables */
+            Eigen::VectorXd q,dq,dqr,ddqr;
+            /* Output of generated code */
+            Eigen::MatrixXd reg_gen, jac_gen, pinvJac_gen, dotPinvJac_gen, kin_gen;
+            /* Compute generated code */
+            void computeReg_gen(), computeJac_gen(), computePinvJac_gen(), computeDotPinvJac_gen(), computeKin_gen();
             
         public:
+            
+            /* Empty constructor */
             thunderPanda();
+            
+            /* Constructor to init variables*/
             thunderPanda(const int);
+            
+            /* Destructor*/
             ~thunderPanda(){std::cout<<"\ndelted obj thunderPanda\n";};
+            
+            /* Init variables */
             void init(const int);
+            
+            /* Set q, dq, dqr, ddqr, to compute Regressor */
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
+            
+            /* Set q, dq, to compute pseudo-inverse of jacobian and derivate of pseudo-inverse jacobian */
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
+            
+            /* Set q to compute forward kinematic */
             void setArguments(const Eigen::VectorXd&);
+            
+            /* Get regressor matrix */
             Eigen::MatrixXd getReg_gen(){return reg_gen;};
+            
+            /* Get jacobian matrix */
             Eigen::MatrixXd getJac_gen(){return jac_gen;};
+            
+            /* Get pseudo-inverse jacobian matrix */
             Eigen::MatrixXd getPinvJac_gen(){return pinvJac_gen;};
+            
+            /* Get derivative of pseudo-inverse jacobian matrix */
             Eigen::MatrixXd getDotPinvJac_gen(){return dotPinvJac_gen;};
+            
+            /* Get regressor matrix */
             Eigen::MatrixXd getKin_gen(){return kin_gen;};
+    
     };
 
 }

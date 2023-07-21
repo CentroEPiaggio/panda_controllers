@@ -85,17 +85,27 @@ target_link_libraries(menu
 	${catkin_LIBRARIES}
 )
 
-add_executable(controller_publisher src/controller_publisher.cpp)
-target_link_libraries(controller_publisher 
+add_executable(command_desEE src/command_desEE.cpp)
+target_link_libraries(command_desEE
 	${catkin_LIBRARIES} 
 	${Boost_LIBRARIES} 
 	${CASADI_LIB}
 )
-add_dependencies(controller_publisher 
+add_dependencies(command_desEE
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
-install(TARGETS controller_publisher RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+add_executable(trajectory_visualizer src/trajectory_visualizer.cpp)
+target_link_libraries(trajectory_visualizer
+	${catkin_LIBRARIES}
+)
+add_dependencies(trajectory_visualizer
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+
+install(TARGETS command_desEE RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}

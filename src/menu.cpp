@@ -6,19 +6,18 @@
 #include <signal.h>
 
 #include <geometry_msgs/PoseStamped.h>
-
 // #include <panda_controllers/DesiredProjectTrajectory.h>
 // #include <panda_controllers/cubeRef.h>
-// #include "utils/parsing_utilities.h"
+
 #include "ros/ros.h"
 
 #include <sstream>
-// #include <eigen_conversions/eigen_msg.h>
 
 // ROS Service and Message Includes
 #include "std_msgs/Float64.h"
 #include "std_msgs/Bool.h"
 #include "std_srvs/SetBool.h"
+
 // #include "geometry_msgs/Pose.h"
 #include "sensor_msgs/JointState.h"
 
@@ -33,17 +32,6 @@ struct traj_struct{
 	Eigen::Matrix<double, 7, 1> acc_des;
 } traj;
 
-// struct traj_struct{
-//     Eigen::Vector3d pos_des;
-//     Eigen::Vector3d vel_des;
-//     Eigen::Vector3d acc_des;
-//     Eigen::Vector3d or_des;
-//     Eigen::Vector3d dor_des;
-//     Eigen::Vector3d ddor_des;
-// } traj;
-
-// Eigen::Vector3d pos;
-// Eigen::Vector3d orient;
 
 // define q0 as 7x1 matrix
 Eigen::Matrix<double, 7, 1> q0;
@@ -54,11 +42,6 @@ void signal_callback_handler(int signum){
 	// Terminate program
 	exit(signum);
 }
-
-// void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
-//   pos << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-//   orient << msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z;
-// }
 
 void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
 	//cout <<"ok_callback" <<endl;
@@ -74,7 +57,6 @@ void interpolator_pos(Eigen::Matrix<double, 7, 1> pos_i, Eigen::Matrix<double, 7
 	traj.vel_des << (pos_i - pos_f)*(60*(pow(t,3)/pow(tf,4)) - 30*(pow(t,4)/pow(tf,5)) -30*(pow(t,2)/pow(tf,3)));
 	traj.acc_des << (pos_i - pos_f)*(180*(pow(t,2)/pow(tf,4)) - 120*(pow(t,3)/pow(tf,5)) -60*(t/pow(tf,3)));
 }
-
 
 // void demo_inf_XY(Eigen::Vector3d pos_i, double t){
 // 	Eigen::Vector3d tmp;

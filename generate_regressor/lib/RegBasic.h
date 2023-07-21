@@ -83,7 +83,7 @@ namespace regrob{
             casadi::SXVector stdCmatrix(const casadi::SX& B);
             
             /* Compute Regressor of Slotine Li
-            DHTable format [a alpha d theta]
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */
@@ -94,7 +94,7 @@ namespace regrob{
             casadi::Function DHReg_fun(const casadi::SX& SX_Yr);
             
             /* Create casadi function to compute jacobian
-            DHTable format [a alpha d theta]
+            DHTable:Denavit-Hartenberg table format [a alpha d theta]
             jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link 
@@ -103,7 +103,7 @@ namespace regrob{
                 const Eigen::MatrixXd& DHtable, const std::string& jtsType, FrameOffset& base_frame,FrameOffset& ee_frame);
             
             /* Create casadi function to compute pseudo-jacobian
-            DHTable format [a alpha d theta]
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link 
@@ -112,7 +112,7 @@ namespace regrob{
                 const Eigen::MatrixXd& DH_table, const std::string& jtsType, FrameOffset& base_frame,FrameOffset& ee_frame,const double tol_);
             
             /* Create casadi function to compute derivate of pseudo-jacobian
-            DHTable format [a alpha d theta]
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link 
@@ -121,7 +121,7 @@ namespace regrob{
                 const Eigen::MatrixXd& DH_table, const std::string& jtsType, FrameOffset& base_frame,FrameOffset& ee_frame,const double tol_);
             
             /* Create casadi function to compute forward kinematic
-            DHTable format [a alpha d theta]
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */

@@ -1,8 +1,11 @@
 #include "utils/ThunderPanda.h"
 
 namespace regrob{
+    
     thunderPanda::thunderPanda(){};
+    
     thunderPanda::thunderPanda(const int nj_):num_joints(nj_){
+        
         q = Eigen::VectorXd::Zero(num_joints);
         dq = Eigen::VectorXd::Zero(num_joints);
         dqr = Eigen::VectorXd::Zero(num_joints);
@@ -15,6 +18,7 @@ namespace regrob{
         kin_gen.resize(4,4);
         
     }
+   
     void thunderPanda::init(const int nj_){
         num_joints = nj_;
         q = Eigen::VectorXd::Zero(num_joints);
@@ -28,6 +32,7 @@ namespace regrob{
         dotPinvJac_gen.resize(7,6);
         kin_gen.resize(4,4);
     }
+    
     void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
         if(q_.size() == num_joints && dq_.size()== num_joints && dqr_.size()==num_joints && ddqr_.size()==num_joints){
             q = q_;
@@ -39,6 +44,7 @@ namespace regrob{
         }
         computeReg_gen();
     }
+    
     void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_){
         if(q_.size() == num_joints && dq_.size()== num_joints){
             q = q_;
@@ -51,6 +57,7 @@ namespace regrob{
         computeDotPinvJac_gen();
         //computeKin_gen();
     }
+    
     void thunderPanda::setArguments(const Eigen::VectorXd& q_){
         if(q_.size() == num_joints){
             q = q_;
@@ -61,6 +68,7 @@ namespace regrob{
         //computePinvJac_gen();
         computeKin_gen();
     }
+    
     void thunderPanda::computeReg_gen(){
         
         long long int sz_arg;
@@ -79,6 +87,7 @@ namespace regrob{
         int check = regr_fun(input_, output_, p3, p4, 0);
 
     }
+    
     void thunderPanda::computeJac_gen(){
         
         long long int sz_arg;
@@ -97,6 +106,7 @@ namespace regrob{
         int check = jac_fun(input_, output_, p3, p4, 0);
 
     }
+    
     void thunderPanda::computePinvJac_gen(){
         
         long long int sz_arg;
@@ -115,6 +125,7 @@ namespace regrob{
         int check = pinvJac_fun(input_, output_, p3, p4, 0);
 
     }
+    
     void thunderPanda::computeDotPinvJac_gen(){
         
         long long int sz_arg;
@@ -133,6 +144,7 @@ namespace regrob{
         int check = dotPinvJac_fun(input_, output_, p3, p4, 0);
 
     }
+    
     void thunderPanda::computeKin_gen(){
         
         long long int sz_arg;
@@ -151,4 +163,5 @@ namespace regrob{
         int check = Kin_fun(input_, output_, p3, p4, 0);
 
     }
+
 }

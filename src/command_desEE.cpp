@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     double ros_time;
     double rate_f = 10; // Frequenza di pubblicazione dei messaggi (10 Hz)
 
-    ros::init(argc, argv, "controller_publisher");
+    ros::init(argc, argv, "commmand_desEE");
  
     ros::NodeHandle nh;
     ros::Publisher des_ee_pub;

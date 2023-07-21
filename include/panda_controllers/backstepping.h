@@ -64,23 +64,25 @@ private:
     
     /* Gain Matrices */
     
-    Eigen::Matrix<double, 7, 7> Kp; 
-    Eigen::Matrix<double, 7, 7> Kv;
-    
-    Eigen::Matrix<double, 7, 7> Kp_apix; 
-    Eigen::Matrix<double, 7, 7> Kv_apix;
+    Eigen::Matrix3d Lambda; 
+    Eigen::Matrix<double, 70, 70> R;
+    Eigen::Matrix<double, 7, 7> Kd;
+
  
     /* Defining q_current, dot_q_current, and tau_cmd */
 
     Eigen::Matrix<double, 7, 1> q_curr;
     Eigen::Matrix<double, 7, 1> dot_q_curr;
-    Eigen::Matrix<double, 7, 1> ddot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
     
+    Eigen::Matrix<double, 7, 1> dot_qr;
+    Eigen::Matrix<double, 7, 1> ddot_qr;
+    Eigen::Matrix<double, 7, 1> s;
+
     /* Error and dot error feedback */
     
-    Eigen::Matrix<double, 7, 1> error;
-    Eigen::Matrix<double, 7, 1> dot_error;
+    Eigen::Matrix<double, 3, 1> error;
+    Eigen::Matrix<double, 3, 1> dot_error;
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
@@ -98,13 +100,11 @@ private:
     Eigen::Matrix<double, 7, 1> C;
     Eigen::Matrix<double, 7, 1> G;
 
-    Eigen::Matrix<double, 7, 70>Yr;
+    Eigen::Matrix<double, 7, 70> Yr;
 	
     /* Object Regressor Slotine Li*/
 
-    //regrob::SLregressor regressor;
     regrob::thunderPanda fastRegMat;
-
 
     /* Check the effort limits */
     
@@ -115,8 +115,6 @@ private:
     Eigen::Matrix<double, 7, 1> tau_J_d;
 
     /* Import parameters */
-
-    Eigen::Matrix<double, 70, 1> importCSV(const std::string& filename);
 
     static constexpr double kDeltaTauMax {1.0};
     
@@ -136,6 +134,8 @@ private:
 
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
+
+	panda_controllers::log_backstepping msg_log;
 
 };
 

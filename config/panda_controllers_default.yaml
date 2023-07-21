@@ -1,14 +1,18 @@
+joint_names_arr: &jointNames
+    - panda_joint1
+    - panda_joint2
+    - panda_joint3
+    - panda_joint4
+    - panda_joint5
+    - panda_joint6
+    - panda_joint7
+
+
 computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: panda
-    joint_names:
-         - panda_joint1
-         - panda_joint2
-         - panda_joint3
-         - panda_joint4
-         - panda_joint5
-         - panda_joint6
-         - panda_joint7
+    joint_names: *jointNames
+    
     # --- Controller parameters --- #
     kp1: 300.0   #default: 120.0
     kp2: 150.0   #default: 70.0
@@ -21,31 +25,16 @@ computed_torque_controller:
 backstepping_controller:
     type: panda_controllers/Backstepping
     arm_id: panda
-    joint_names:
-         - panda_joint1
-         - panda_joint2
-         - panda_joint3
-         - panda_joint4
-         - panda_joint5
-         - panda_joint6
-         - panda_joint7
+    joint_names: *jointNames
+    
     # --- Controller parameters --- #
-    kp1: 300.0   #default: 120.0
-    kp2: 150.0   #default: 70.0
-    kp3: 30.0    #default: 50.0
-    kv1: 30.0
-    kv2: 15.0
-    kv3: 3.0
-    dt: 5
+    dt: 0.001
+    gainLambda: 1   # gain for Lambda matrix
+    gainR: 1        # gain for R matrix
+    gainKd: 1       # gain for Kd matrix
+    
 
 cartesian_impedance_controller_softbots:
     type: panda_controllers/CartesianImpedanceControllerSoftbots
     arm_id: panda
-    joint_names:
-        - panda_joint1
-        - panda_joint2
-        - panda_joint3
-        - panda_joint4
-        - panda_joint5
-        - panda_joint6
-        - panda_joint7
+    joint_names: *jointNames

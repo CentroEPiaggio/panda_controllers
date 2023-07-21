@@ -32,7 +32,7 @@ extern "C" int regr_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int 
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 754
+#define regr_fun_SZ_W 749
 extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int jac_fun_alloc_mem(void);
 extern "C" int jac_fun_init_mem(int mem);
@@ -52,7 +52,7 @@ extern "C" int jac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define jac_fun_SZ_ARG 1
 #define jac_fun_SZ_RES 1
 #define jac_fun_SZ_IW 0
-#define jac_fun_SZ_W 63
+#define jac_fun_SZ_W 53
 extern "C" int pinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int pinvJac_fun_alloc_mem(void);
 extern "C" int pinvJac_fun_init_mem(int mem);
@@ -72,7 +72,7 @@ extern "C" int pinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_i
 #define pinvJac_fun_SZ_ARG 1
 #define pinvJac_fun_SZ_RES 1
 #define pinvJac_fun_SZ_IW 0
-#define pinvJac_fun_SZ_W 98
+#define pinvJac_fun_SZ_W 97
 extern "C" int dotPinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotPinvJac_fun_alloc_mem(void);
 extern "C" int dotPinvJac_fun_init_mem(int mem);
@@ -92,7 +92,7 @@ extern "C" int dotPinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define dotPinvJac_fun_SZ_ARG 2
 #define dotPinvJac_fun_SZ_RES 1
 #define dotPinvJac_fun_SZ_IW 0
-#define dotPinvJac_fun_SZ_W 369
+#define dotPinvJac_fun_SZ_W 325
 extern "C" int Kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int Kin_fun_alloc_mem(void);
 extern "C" int Kin_fun_init_mem(int mem);
@@ -112,4 +112,4 @@ extern "C" int Kin_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define Kin_fun_SZ_ARG 1
 #define Kin_fun_SZ_RES 1
 #define Kin_fun_SZ_IW 0
-#define Kin_fun_SZ_W 50
+#define Kin_fun_SZ_W 48
