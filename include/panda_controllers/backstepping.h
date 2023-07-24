@@ -28,6 +28,7 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+#include <geometry_msgs/Point.h>
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/log_backstepping.h"
 
@@ -60,6 +61,8 @@ private:
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
     Eigen::Matrix<double, 7, 1> tau_limit;
+    Eigen::Matrix<double, 7, 1> q_min_limit;
+    Eigen::Matrix<double, 7, 1> q_max_limit;
     Eigen::Matrix<double, 7, 1> q_dot_limit;
     
     /* Gain Matrices */
@@ -123,7 +126,8 @@ private:
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Publisher pub_err_;
-    
+    ros::Publisher pub_config_;
+
     /* Setting Command Callback*/
     
     void setCommandCB(const desTrajEE::ConstPtr& msg);
@@ -136,6 +140,7 @@ private:
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
 
 	panda_controllers::log_backstepping msg_log;
+    geometry_msgs::Point msg_config;
 
 };
 

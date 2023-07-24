@@ -1,0 +1,15 @@
+<!-- Launch file per il nodo command_desEE -->
+<?xml version="1.0" ?>
+<launch>
+
+    <!-- Specifica il pacchetto che contiene il nodo ROS -->
+    <arg name="package" default="panda_controllers" />
+    <arg name="node_name" default="command_desEE" />
+
+    <!-- Specifica il percorso del file YAML contenente i parametri -->
+    <arg name="yaml_file" default="$(find panda_controllers)/config/panda_trajectory.yaml" />
+    <rosparam command="load" file="$(arg yaml_file)" />
+
+    <node name="$(arg node_name)" pkg="$(arg package)" type="command_desEE" />
+
+</launch>

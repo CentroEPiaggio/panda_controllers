@@ -19,6 +19,8 @@ find_package(catkin REQUIRED COMPONENTS
 	roscpp
 	rospy
 	sensor_msgs
+	visualization_msgs
+	tf2_ros
 )
 
 find_package(Eigen3 REQUIRED)
@@ -84,34 +86,36 @@ add_executable(menu src/menu.cpp)
 target_link_libraries(menu 
 	${catkin_LIBRARIES}
 )
-
-add_executable(command_desEE src/command_desEE.cpp)
-target_link_libraries(command_desEE
-	${catkin_LIBRARIES} 
-	${Boost_LIBRARIES} 
-	${CASADI_LIB}
-)
-add_dependencies(command_desEE
+add_dependencies(menu
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
 
+#add_executable(command_desEE src/command_desEE.cpp)
+#target_link_libraries(command_desEE
+#	${catkin_LIBRARIES} 
+	#${Boost_LIBRARIES} 
+	#${CASADI_LIB}
+#)
+#add_dependencies(command_desEE
+#	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+#	${catkin_EXPORTED_TARGETS}
+#)
+
 add_executable(trajectory_visualizer src/trajectory_visualizer.cpp)
 target_link_libraries(trajectory_visualizer
-	${catkin_LIBRARIES}
+	${catkin_LIBRARIES}	
 )
 add_dependencies(trajectory_visualizer
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
 
-install(TARGETS command_desEE RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
-
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}
 	${catkin_LIBRARIES}
-	${Boost_LIBRARIES} 
-	${CASADI_LIB}
+	#${Boost_LIBRARIES}
+	#${CASADI_LIB}
 )
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC

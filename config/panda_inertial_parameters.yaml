@@ -1,7 +1,7 @@
 # Inertial parameters referred to joint's frame(!), only for arm + hand
 # Format of link parameters [m,pgx,pgy,pgz,Ixx,Ixy,Ixz,Iyy,I,yz,Izz]
 # Obtained with transformation of URDF file from $(find franka_gazebo)/test/launch/panda-gazebo.urdf
-# and $(find franka_description)/robots/common/franka_hand.xacro 
+# and $(find franka_description)/robots/common/franka_robot.xacro 
 # or from $(find franka_description)/robots/common/inertial.yaml considering a specific Denavit-Hartenberg parametrization
 
 link_1_params: &link1

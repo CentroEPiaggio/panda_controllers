@@ -18,14 +18,10 @@ namespace regrob{
 
         private:
             
-            /* Variable joint's angles */
-            casadi::SX q;
-            /* Variable joint's velocities */
-            casadi::SX dq;
-            /* Variable joint's velocities reference */
-            casadi::SX dqr;
-            /* Variable joint's accelerationts reference */
-            casadi::SX ddqr;
+            /* Variable for joints */
+            casadi::SX q, dq, dqr, ddqr;
+            /* Variable for dH to minimize distance from q_bar respect q_max-q_min*/
+            casadi::SX q_bar, q_max, q_min;
 
             /* Tensor E for extract tensor of inertia parameters */
             casadi::SXVector E;
@@ -127,6 +123,10 @@ namespace regrob{
             ee_frame: is used to set transformation between end-effector and last link */
             casadi::Function DHKin_fun(
                 const Eigen::MatrixXd& DHtable, const std::string& jtsType, FrameOffset& base_frame,FrameOffset& ee_frame);
+
+            /* Joint velocity in the null space
+            Function minimized the distance from q and q_bar respect q_range = q_max-q_min */
+            casadi::Function dHDistFromq_fun();
 
     };
 }

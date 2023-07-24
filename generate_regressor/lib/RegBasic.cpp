@@ -10,6 +10,11 @@ namespace regrob{
         dq = casadi::SX::sym("dq", numJoints,1);
         dqr = casadi::SX::sym("dqr", numJoints,1);
         ddqr = casadi::SX::sym("ddqr", numJoints,1);
+
+        q_bar = casadi::SX::sym("q_bar", numJoints,1);
+        q_max = casadi::SX::sym("q_max", numJoints,1);
+        q_min = casadi::SX::sym("q_min", numJoints,1);
+        
         E = createE();
         Q = createQ();
         dq_sel = dq_select();
@@ -22,6 +27,11 @@ namespace regrob{
         dq = casadi::SX::sym("dq", numJoints,1);
         dqr = casadi::SX::sym("dqr", numJoints,1);
         ddqr = casadi::SX::sym("ddqr", numJoints,1);
+        
+        q_bar = casadi::SX::sym("q_bar", numJoints,1);
+        q_max = casadi::SX::sym("q_max", numJoints,1);
+        q_min = casadi::SX::sym("q_min", numJoints,1);
+        
         E = createE();
         Q = createQ();
         dq_sel = dq_select(); 
@@ -459,4 +469,19 @@ namespace regrob{
         return Kin_fun;
     }
 
+    casadi::Function RegBasic::dHDistFromq_fun(){
+        
+        casadi::SX H;
+        casadi::SX dH(7,1);
+
+        for (int i=0; i<numJoints;i++){
+            H = H + (q(i)-q_bar(i))/(q_max(i)-q_min(i))*(q(i)-q_bar(i))/(q_max(i)-q_min(i));
+        }
+
+        dH = jacobian(-1/(2*numJoints)*H, q);
+        
+        casadi::Function H_distq_fun("H_distq",{q,q_bar,q_min,q_max},{densify(dH)});
+        
+        return H_distq_fun;
+    };
 }

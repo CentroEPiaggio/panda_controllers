@@ -33,13 +33,17 @@ namespace regrob{
             bool dumped;
             /* Variable for joints */
             Eigen::VectorXd q,dq,dqr,ddqr;
-            
+            /* Variable for dH to minimize distance from q_bar respect q_max-q_min*/
+            Eigen::VectorXd qbar,qmin,qmax;
+
             /* Casadi function */
-            casadi::Function regressor_fun, jacobian_fun, pinvJacobian_fun, dotPinvJacobian_fun, kinematic_fun;
+            casadi::Function regressor_fun, jacobian_fun, pinvJacobian_fun, dotPinvJacobian_fun, kinematic_fun,
+                            dH_distqbar_fun;
             /* Input of casadi function */
-            std::vector<casadi::SX> args;
+            std::vector<casadi::SX> args1, args2;
             /* Output of casadi function */
-            std::vector<casadi::SX> regressor_res, jacobian_res, pinvJacobian_res, dotPinvJacobian_res, kinematic_res;
+            std::vector<casadi::SX> regressor_res, jacobian_res, pinvJacobian_res, dotPinvJacobian_res, kinematic_res, 
+                                    dH_distqbar_res;
             
             /* Matrix for regressor */
             casadi::SX matYr;
@@ -50,6 +54,8 @@ namespace regrob{
             void computeJac();
             /* Update forward kinematic result */
             void computeKin();
+            /* Update forward dH that minimize distance from q_bar result */
+            void computedHqbar();
 
             /* Function to transform casadi element to double */
             static double mapFunction(const casadi::SXElem& elem);
@@ -89,22 +95,28 @@ namespace regrob{
 
             /* Set q to compute forward kinematic */
             void setArguments(const Eigen::VectorXd&);
-            
+
+            /* Set q, q_bar, q_min, q_max, to compute dH  that minimize distance from q_bar respect q_max-q_min */
+            void setArgsdH(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
+
             /* Get regressor matrix */
             Eigen::MatrixXd allColumns();
             
             /* Get forward kinematic matrix */
             Eigen::Matrix4d kinematic();
             
-            /* Get forward jacobian matrix */
+            /* Get jacobian matrix */
             Eigen::MatrixXd jacobian();
             
-            /* Get forward pseudo-inverse of jacobian matrix */
+            /* Get pseudo-inverse of jacobian matrix */
             Eigen::MatrixXd pinvJacobian();
 
-            /* Get forward derivate pseudo-inverse of jacobian matrix */
+            /* Get derivate pseudo-inverse of jacobian matrix */
             Eigen::MatrixXd dotPinvJacobian();
 
+            /* Get dH that minimize distance from q_bar respect q_max-q_min */
+            Eigen::MatrixXd dH_distqbar();
+            
             //void reduceMinCols();
 
             /* Generate code in cpp to lose dependencies from casadi library. 

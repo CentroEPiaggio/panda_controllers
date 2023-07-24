@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<!-- Launch file per il nodo menu -->
+<launch>
+    <!-- Specifica nome pacchetto e nodo -->
+    <arg name="package" default="panda_controllers" />
+    <arg name="node_name" default="menu" />
+
+    <!-- Specifica il percorso del file YAML contenente i parametri delle traiettorie-->
+    <arg name="yaml_file" default="$(find panda_controllers)/config/panda_trajectory.yaml" />
+    <rosparam command="load" file="$(arg yaml_file)" />
+
+    <node name="$(arg node_name)" pkg="$(arg package)" type="menu" output="screen"/>
+    
+</launch>

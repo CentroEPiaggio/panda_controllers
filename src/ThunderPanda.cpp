@@ -11,12 +11,16 @@ namespace regrob{
         dqr = Eigen::VectorXd::Zero(num_joints);
         ddqr = Eigen::VectorXd::Zero(num_joints);
 
+        qbar = Eigen::VectorXd::Zero(num_joints);
+        qmin = Eigen::VectorXd::Zero(num_joints);
+        qmax = Eigen::VectorXd::Zero(num_joints);
+
         reg_gen.resize(num_joints,10*num_joints);
         jac_gen.resize(6,7);
         pinvJac_gen.resize(7,6);
         dotPinvJac_gen.resize(7,6);
         kin_gen.resize(4,4);
-        
+        dHdistq_gen.resize(7,1);
     }
    
     void thunderPanda::init(const int nj_){
@@ -26,11 +30,16 @@ namespace regrob{
         dqr = Eigen::VectorXd::Zero(num_joints);
         ddqr = Eigen::VectorXd::Zero(num_joints);
 
+        qbar = Eigen::VectorXd::Zero(num_joints);
+        qmin = Eigen::VectorXd::Zero(num_joints);
+        qmax = Eigen::VectorXd::Zero(num_joints);
+
         reg_gen.resize(num_joints,10*num_joints);
         jac_gen.resize(6,7);
         pinvJac_gen.resize(7,6);
         dotPinvJac_gen.resize(7,6);
         kin_gen.resize(4,4);
+        dHdistq_gen.resize(7,1);
     }
     
     void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
@@ -69,6 +78,18 @@ namespace regrob{
         computeKin_gen();
     }
     
+    void thunderPanda::setArgsdHdistq(const Eigen::VectorXd& q_,const Eigen::VectorXd& qbar_,const Eigen::VectorXd& qmin_,const Eigen::VectorXd& qmax_){
+        if(q_.size() == num_joints && qbar_.size()== num_joints && qmin_.size()==num_joints && qmax_.size()==num_joints){
+            q = q_;
+            qbar = qbar_;
+            qmin = qmin_;
+            qmax = qmax_;
+        } else{
+            std::cout<<"in setArguments: invalid dimensions of arguments\n";
+        }
+        computedHdistq_gen();
+    }
+
     void thunderPanda::computeReg_gen(){
         
         long long int sz_arg;
@@ -161,6 +182,25 @@ namespace regrob{
         double* output_[] = {kin_gen.data()};
 
         int check = Kin_fun(input_, output_, p3, p4, 0);
+
+    }
+
+    void thunderPanda::computedHdistq_gen(){
+        
+        long long int sz_arg;
+        long long int sz_res;
+        long long int sz_iw;
+        long long int sz_w;
+
+        int check_size = H_distq_work(&sz_arg, &sz_res, &sz_iw, &sz_w);    
+        
+        long long p3[sz_iw];
+        double p4[sz_w];
+
+        const double* input_[] = {q.data(),qbar.data(),qmin.data(),qmax.data()};
+        double* output_[] = {dHdistq_gen.data()};
+
+        int check = H_distq(input_, output_, p3, p4, 0);
 
     }
 

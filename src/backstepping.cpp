@@ -113,12 +113,15 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/* Initialize joint (torque,velocity) limits */
 
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
+	q_max_limit << 2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973;
+	q_min_limit << -2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973;
 	q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
 	/*Start command subscriber and advertise */
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<panda_controllers::log_backstepping> ("logging", 1);
+	this->pub_config_ = node_handle.advertise<geometry_msgs::Point> ("current_config", 1);
 	
 	/* Initialize regressor object */
 
@@ -140,9 +143,9 @@ void Backstepping::starting(const ros::Time& time)
 	double mass_ee = robot_state.m_ee;
 	Eigen::Matrix<double,3,3> inertial_ee = Eigen::Map<Eigen::Matrix<double, 3, 3>>(robot_state.I_ee.data());
 
-/* 	std::cout<<"\nmass\n"<<mass_ee<<std::endl;
+ 	std::cout<<"\nmass\n"<<mass_ee<<std::endl;
 	std::cout<<"\ninertia\n"<<inertial_ee<<std::endl;
- */
+
 	/* Secure initialization command */
 
 	ee_pos_cmd = T0EE.translation();
@@ -164,6 +167,9 @@ void Backstepping::starting(const ros::Time& time)
 	/* Update regressor */
 
     fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+
+	fastRegMat.setArgsdHdistq(q_curr,(q_max_limit+q_min_limit)/2, q_min_limit, q_max_limit);
+
 }
 
 void Backstepping::update(const ros::Time&, const ros::Duration& period)
@@ -188,10 +194,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	fastRegMat.setArguments(q_curr,dot_q_curr);
 
+	fastRegMat.setArgsdHdistq(q_curr,(q_max_limit+q_min_limit)/2, q_min_limit, q_max_limit);
+
 	/* Compute pseudo-inverse of jacobian and its derivative */
 
 	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
 	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+
+	Eigen::MatrixXd mydH = fastRegMat.getdHdistq_gen();
 
 	/* Compute error */
 
@@ -205,7 +215,8 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	Eigen::Vector3d tmp_position = ee_vel_cmd + Lambda * error;
 	Eigen::Vector3d tmp_velocity = ee_acc_cmd + Lambda * dot_error;
-	
+	Eigen::MatrixXd myI = Eigen::MatrixXd::Identity(7,7);
+	//dot_qr = mypJacEE * tmp_position + (myI-mypJacEE*jacobian)*mydH;
 	dot_qr = mypJacEE * tmp_position;
 	ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position;
 	s = dot_qr - dot_q_curr;
@@ -215,7 +226,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
 	Yr = fastRegMat.getReg_gen();
 
-	/* tau_J_d is the desired link-side joint torque sensor signals without gravity */
+	/* tau_J_d is past tau_cmd saturated */
 
 	tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
 
@@ -254,9 +265,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fillMsg(msg_log.Link7_param, param.segment(60, 10));
 	fillMsg(msg_log.tau_cmd, tau_cmd);
 
-	this->pub_err_.publish(msg_log);
+	msg_config.x = T0EE.translation()(0);
+	msg_config.y = T0EE.translation()(1);
+	msg_config.z = T0EE.translation()(2);
 
-	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
+	this->pub_err_.publish(msg_log);
+	this->pub_config_.publish(msg_config);
+
+	/* Saturate the derivate of tau_cmd */
 	
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 	

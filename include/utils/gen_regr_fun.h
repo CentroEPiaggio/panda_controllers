@@ -32,7 +32,7 @@ extern "C" int regr_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int 
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 754
+#define regr_fun_SZ_W 749
 extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int jac_fun_alloc_mem(void);
 extern "C" int jac_fun_init_mem(int mem);
@@ -52,7 +52,7 @@ extern "C" int jac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define jac_fun_SZ_ARG 1
 #define jac_fun_SZ_RES 1
 #define jac_fun_SZ_IW 0
-#define jac_fun_SZ_W 63
+#define jac_fun_SZ_W 53
 extern "C" int pinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int pinvJac_fun_alloc_mem(void);
 extern "C" int pinvJac_fun_init_mem(int mem);
@@ -72,7 +72,7 @@ extern "C" int pinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_i
 #define pinvJac_fun_SZ_ARG 1
 #define pinvJac_fun_SZ_RES 1
 #define pinvJac_fun_SZ_IW 0
-#define pinvJac_fun_SZ_W 98
+#define pinvJac_fun_SZ_W 97
 extern "C" int dotPinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotPinvJac_fun_alloc_mem(void);
 extern "C" int dotPinvJac_fun_init_mem(int mem);
@@ -92,7 +92,7 @@ extern "C" int dotPinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define dotPinvJac_fun_SZ_ARG 2
 #define dotPinvJac_fun_SZ_RES 1
 #define dotPinvJac_fun_SZ_IW 0
-#define dotPinvJac_fun_SZ_W 369
+#define dotPinvJac_fun_SZ_W 325
 extern "C" int Kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int Kin_fun_alloc_mem(void);
 extern "C" int Kin_fun_init_mem(int mem);
@@ -112,4 +112,24 @@ extern "C" int Kin_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *
 #define Kin_fun_SZ_ARG 1
 #define Kin_fun_SZ_RES 1
 #define Kin_fun_SZ_IW 0
-#define Kin_fun_SZ_W 50
+#define Kin_fun_SZ_W 48
+extern "C" int H_distq(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int H_distq_alloc_mem(void);
+extern "C" int H_distq_init_mem(int mem);
+extern "C" void H_distq_free_mem(int mem);
+extern "C" int H_distq_checkout(void);
+extern "C" void H_distq_release(int mem);
+extern "C" void H_distq_incref(void);
+extern "C" void H_distq_decref(void);
+extern "C" casadi_int H_distq_n_in(void);
+extern "C" casadi_int H_distq_n_out(void);
+extern "C" casadi_real H_distq_default_in(casadi_int i);
+extern "C" const char* H_distq_name_in(casadi_int i);
+extern "C" const char* H_distq_name_out(casadi_int i);
+extern "C" const casadi_int* H_distq_sparsity_in(casadi_int i);
+extern "C" const casadi_int* H_distq_sparsity_out(casadi_int i);
+extern "C" int H_distq_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define H_distq_SZ_ARG 4
+#define H_distq_SZ_RES 1
+#define H_distq_SZ_IW 0
+#define H_distq_SZ_W 0

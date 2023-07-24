@@ -1,0 +1,88 @@
+#include <vector>
+#include <eigen3/Eigen/Dense>
+#include <geometry_msgs/Point.h>
+#include <ros/ros.h>
+
+#include "panda_controllers/desTrajEE.h"
+
+double xstart = 0;
+double ystart = 0;
+double zstart = 0;
+
+Eigen::Matrix3d traj_(double t_sym, double A, double B, double a, double b, double phi) {
+    
+    Eigen::Matrix3d trajectory;
+        
+    double xstart = 0.5;
+    double ystart = 0;
+    double zstart = 0.4;
+
+    trajectory.row(0) << 0 + xstart, A * std::cos(a * t_sym + phi) + ystart, B * std::sin(b * t_sym) + zstart;
+    trajectory.row(1) << 0, - A * a * std::sin(a * t_sym + phi), B * b * std::cos(b * t_sym);
+    trajectory.row(2) << 0, - A * a * a * std::cos(a * t_sym + phi), -B * b * b * std::sin(b * t_sym);
+
+    return trajectory;
+}
+
+void configCallback(const geometry_msgs::PointConstPtr& config_msg) {
+    
+    xstart = config_msg->x;
+    ystart = config_msg->y;
+    zstart = config_msg->z;
+}
+
+int main(int argc, char** argv)
+{
+
+    ros::init(argc, argv, "commmand_desEE");
+ 
+    ros::NodeHandle node_handle;
+    ros::Publisher des_ee_pub;
+    ros::Rate rate(10);
+    panda_controllers::desTrajEE desTraj;
+
+    ros::Subscriber config_sub = node_handle.subscribe<geometry_msgs::Point>("current_config", 1, configCallback);
+    des_ee_pub = node_handle.advertise<panda_controllers::desTrajEE>("/backstepping_controller/command", 1);
+    
+    double A1, A2, f1, f2, phi;
+
+    if (!node_handle.getParam("Amp1", A1) || !node_handle.getParam("Amp2", A2) ||
+        !node_handle.getParam("freq1", f1) || !node_handle.getParam("freq2", f2) ||
+        !node_handle.getParam("phi", phi)) {
+		ROS_ERROR("Could not get parameters A1, A2, f1, f2, phi!");
+		return false;
+	}
+
+    double time_0;      // Tempo iniziale
+    double time_now;
+    double delta_t;
+    
+    time_0 = (double)ros::Time::now().sec + (double)ros::Time::now().nsec*1e-9;
+
+    Eigen::Matrix3d trajectory_t;
+    while (ros::ok())
+    {
+        desTraj.header.stamp = ros::Time::now();  // Imposta il timestamp corrente        
+        time_now = ros::Time::now().toSec();
+        delta_t = time_now - time_0;
+        trajectory_t = traj_(delta_t, A1, A2, f1, f2, phi);
+
+        desTraj.position.x = trajectory_t(0,0);
+        desTraj.position.y = trajectory_t(0,1);
+        desTraj.position.z = trajectory_t(0,2);
+        
+        desTraj.velocity.x = trajectory_t(1,0);
+        desTraj.velocity.y = trajectory_t(1,1);
+        desTraj.velocity.z = trajectory_t(1,2);
+        
+        desTraj.acceleration.x = trajectory_t(2,0);
+        desTraj.acceleration.y = trajectory_t(2,1);
+        desTraj.acceleration.z = trajectory_t(2,2);
+
+        des_ee_pub.publish(desTraj);
+
+        rate.sleep();
+    }
+        
+    return 0;
+}
