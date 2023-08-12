@@ -1,4 +1,6 @@
-# panda-controllers [project-adaptive] (https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
+# panda-controllers [project-adaptive](https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
+
+![Backstepping Adaptive](./image/ezgif.com-crop.gif)
 
 Here you can find adaptive controller and some classes implemented with casadi library to generalize the problem.
 
