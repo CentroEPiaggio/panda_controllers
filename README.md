@@ -5,13 +5,13 @@
 Here you can find adaptive controller and some classes implemented with casadi library to generalize the problem.
 
 ## Table of Contents
-1. [Requirements](##Requirements)
-1. [Installation](##Installation)
+1. [Requirements](#Requirements)
+1. [Installation](#Installation)
    1. `project-adaptive` 
    1. `casadi`
    1. `yaml-cpp`
-1. [Running controllers](##Running-controllers)
-1. [To Do](##To-do)
+1. [Running controllers](#Running-controllers)
+1. [To Do](#To-Do)
 
 ## Requirements
 * To use this controllers you need to install the package [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git) in your workspace.
