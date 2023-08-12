@@ -6,12 +6,12 @@ Here you can find adaptive controller and some classes implemented with casadi l
 
 ## Table of Contents
 1. [Requirements](#Requirements)
-1. [Installation](#markdown-header-installation)
+1. [Installation](#Installation)
    1. `project-adaptive` 
    1. `casadi`
    1. `yaml-cpp`
-1. [Running controllers](#markdown-header-overviews)
-1. [To Do](#markdown-header-to-do)
+1. [Running controllers](#Running-controllers)
+1. [To Do](#To-do)
 
 ## Requirements
 * To use this controllers you need to install the package [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git) in your workspace.
@@ -83,5 +83,5 @@ In the package, there is a launch file related to the spawning of controller `pa
 
 ## To do
 
-* [-] implement a class that convert URDF parametrization file in Denavit-Hartenberg parametrization
+* [-] implement a function that convert URDF parametrization in Denavit-Hartenberg parametrization
 * [-] implement a class that generalize integrations of name of casadi functions with ThunderPanda class 
