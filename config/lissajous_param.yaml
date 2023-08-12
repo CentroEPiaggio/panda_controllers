@@ -1,0 +1,9 @@
+lissajous:
+  ampX: 0
+  ampY: 0.3
+  ampZ: 0.3
+  freqX: 0
+  freqY: 1 # must be different from 0
+  freqZ: 4
+  phiX : 0
+  phiZ : 0

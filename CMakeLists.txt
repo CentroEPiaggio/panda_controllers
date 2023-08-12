@@ -20,13 +20,14 @@ find_package(catkin REQUIRED COMPONENTS
 	rospy
 	sensor_msgs
 	visualization_msgs
-	tf2_ros
 )
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
-find_package(Boost REQUIRED) # for spline
-find_package(CasADi REQUIRED) # for regressor
+#find_package(Boost REQUIRED)
+
+#find_package(CasADi REQUIRED) # for regressor
+#find_library(CASADI_LIB casadi)
 
 ## to add custom msg
 add_message_files(FILES
@@ -43,11 +44,11 @@ generate_messages(
 include_directories(
 	${catkin_INCLUDE_DIRS} 
 	${EIGEN3_INCLUDE_DIRS}
-	${Boost_INCLUDE_DIRS}
-	${CasADi_INCLUDE_DIRS}
+	#${Boost_INCLUDE_DIRS}
+#	${CasADi_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-find_library(CASADI_LIB casadi)
 
 catkin_package(
 	LIBRARIES ${PROJECT_NAME}
@@ -70,9 +71,6 @@ add_library(${PROJECT_NAME}
 	#src/computed_torque.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	#src/FrameOffset.cpp #Library of frame
-	#src/RegBasic.cpp #Library of RegBasic 
-	#src/SLregressor.cpp #Class of SLregressor
 	src/gen_regr_fun.cpp
 	src/ThunderPanda.cpp
 )
@@ -82,27 +80,20 @@ add_dependencies(${PROJECT_NAME}
 	panda_controllers ${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(menu src/menu.cpp)
-target_link_libraries(menu 
+add_executable(lissajous
+	src/lissajous_node.cpp
+)
+target_link_libraries(lissajous
 	${catkin_LIBRARIES}
 )
-add_dependencies(menu
+add_dependencies(lissajous
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
 
-#add_executable(command_desEE src/command_desEE.cpp)
-#target_link_libraries(command_desEE
-#	${catkin_LIBRARIES} 
-	#${Boost_LIBRARIES} 
-	#${CASADI_LIB}
-#)
-#add_dependencies(command_desEE
-#	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-#	${catkin_EXPORTED_TARGETS}
-#)
-
-add_executable(trajectory_visualizer src/trajectory_visualizer.cpp)
+add_executable(trajectory_visualizer 
+	src/trajectory_visualizer.cpp
+)
 target_link_libraries(trajectory_visualizer
 	${catkin_LIBRARIES}	
 )

@@ -2,22 +2,22 @@
 <!-- Launch file per far partire:
 - gazebo (e rviz)
 - il controllore desiderato 
-- il menu -->
+- il lissajous -->
 <launch>
 
 	<!-- <arg name="robot_ip" default="192.168.0.210" /> -->
-	<arg name="arm_id" 		default="panda" doc="Name of the panda robot to spawn" />
-	<arg name="controller" 	value="backstepping_controller" />
-	<arg name="use_gripper" value="true" />
-	<arg name="rviz" 		value="true" />
-	<arg name="menu" 		value="false" />
+	<arg name="arm_id" 			default="panda" doc="Name of the panda robot to spawn" />
+	<arg name="controller" 		value="backstepping_controller" />
+	<arg name="use_gripper" 	value="true" />
+	<arg name="rviz" 			value="true" />
+	<arg name="trajectory_node" value="false" />
 	
 	<arg name="package" default="panda_controllers" />
-	<arg name="node_name" default="menu" />
-	<arg name="trajectory" default="$(find panda_controllers)/config/panda_trajectory.yaml" />
+	<arg name="node_name" default="lissajous" />
+	<arg name="trajectory" default="$(find panda_controllers)/config/lissajous_param.yaml" />
     
 	<rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" file="$(find panda_controllers)/config/panda_inertial_parameters.yaml" />
+	<rosparam command="load" file="$(find panda_controllers)/config/inertial_DH.yaml" />
 	<rosparam command="load" file="$(arg trajectory)" />
 	
 	<include file="$(find panda_controllers)/launch/panda.launch">
@@ -28,7 +28,6 @@
 	</include>
 
 	<include file="$(find panda_controllers)/launch/panda_rviz.launch" if="$(arg rviz)" /> <!-- nodo per disegnare su rviz -->
-	<include file="$(find panda_controllers)/launch/menu.launch" if="$(arg menu)" />
-	
+	<include file="$(find panda_controllers)/launch/lissajous.launch" if="$(arg trajectory_node)" />
 	
 </launch>

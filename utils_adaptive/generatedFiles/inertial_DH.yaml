@@ -1,0 +1,100 @@
+# Inertial parameters referred to joint's frame(!), only for arm + hand
+# Format of link parameters [m, m*pgx, m*pgy, m*pgz, Ixx, Ixy, Ixz, Iyy, Iyz, Izz]
+# Obtained with transformation of URDF file from $(find franka_gazebo)/test/launch/panda-gazebo.urdf
+# and $(find franka_description)/robots/common/franka_robot.xacro
+# or from $(find franka_description)/robots/common/inertial.yaml considering a specific Denavit-Hartenberg parametrization
+
+link1_params: &link1
+  mass: 4.9706840000000003
+  m_origin:
+    xyz: [0.019261400500000001, 0.23670397208000002, 0.010343993403999985]
+  inertia:
+    xx: 0.71466336900072336
+    xy: -0.0058547721081899998
+    xz: -0.00017908297444049954
+    yy: 0.0092131637772112206
+    yz: -0.018676419034101478
+    zz: 0.71795648107738708
+
+link2_params: &link2
+  mass: 0.646926
+  m_origin:
+    xyz: [-0.002031994566, 0.0022610063699999988, 0.018579714719999998]
+  inertia:
+    xx: 0.0085035116240215498
+    xy: 0.010246898178991829
+    xz: 0.0039833588839355205
+    yy: 0.026534991901690206
+    yz: -0.00063906389705360017
+    zz: 0.028124284712194955
+
+link3_params: &link3
+  mass: 3.2286039999999998
+  m_origin:
+    xyz: [-0.17751510512800001, -0.21470862320799999, -0.12672916420800001]
+  inertia:
+    xx: 0.056494926014070829
+    xy: 0.00040910952122225584
+    xz: -0.0022068229064842581
+    yy: 0.025564508663640115
+    yz: 0.021232742878160418
+    zz: 0.060193688370726112
+
+link4_params: &link4
+  mass: 3.5878950000000001
+  m_origin:
+    xyz: [0.10523296035, -0.098502069329999969, 0.37464440800499998]
+  inertia:
+    xx: 0.067677270250859914
+    xy: -0.0015570656934488986
+    xz: -0.0031923204867866503
+    yy: 0.070529477166539595
+    yz: -0.018926487577369266
+    zz: 0.025342758538451318
+
+link5_params: &link5
+  mass: 1.225946
+  m_origin:
+    xyz: [-0.014653732538, -0.047121686401999999, -0.050343472489999999]
+  inertia:
+    xx: 0.039427570958035521
+    xy: -0.0034737544824368937
+    xz: 0.0015152444733270295
+    yy: 0.010869510762828563
+    yz: 0.0017060520520981285
+    zz: 0.031460372325260388
+
+link6_params: &link6
+  mass: 1.666555
+  m_origin:
+    xyz: [-0.046415223304999989, -0.017527158935000002, 0.023526756935]
+  inertia:
+    xx: 0.0024804603581707902
+    xy: -0.00066985109650131503
+    xz: 0.00054624370739668482
+    yy: 0.0070578376119189504
+    yz: -0.00058843090268539499
+    zz: 0.0058310435147869502
+
+link7_params: &link7
+  mass: 1.495522
+  m_origin:
+    xyz: [8.1247519484730843e-05, 0.003258380100858002, -0.086647880166000016]
+  inertia:
+    xx: 0.02968410761433753
+    xy: 0.0012785281107393859
+    xz: 0.0010492590892020074
+    yy: 0.03046989017770602
+    yz: -0.001854522569306316
+    zz: 0.0066856519673609456
+
+default_controller: &default
+  link1: *link1
+  link2: *link2
+  link3: *link3
+  link4: *link4
+  link5: *link5
+  link6: *link6
+  link7: *link7
+
+backstepping_controller: *default

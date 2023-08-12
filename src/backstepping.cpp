@@ -48,24 +48,24 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	/* Inizializing the Lambda and R and Kd gains */
 	
-	double gainLambda, gainR, gainKd;
+	double gainLambda, gainR, gainKd, gainKn;
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
 		!node_handle.getParam("gainR", gainR) ||
-		!node_handle.getParam("gainKd", gainKd)) {
+		!node_handle.getParam("gainKd", gainKd)||
+		!node_handle.getParam("update_param", update_param_flag)) {
 		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
 		return false;
 	}
 
 	Lambda = gainLambda * Eigen::Matrix3d::Identity();
 	R = gainR * Eigen::MatrixXd::Identity(70, 70);
-	Kd = gainKd * Eigen::MatrixXd::Identity(7, 7);
-
-	/* Assigning the time */
-   
-	if (!node_handle.getParam("dt", dt)) {
-		ROS_ERROR("Backstepping: Could not get parameter dt!");
-		return false;
+	if(R.determinant()!=0){
+		Rinv = R.inverse();
+	}else{
+		update_param_flag = false;
 	}
+
+	Kd = gainKd * Eigen::MatrixXd::Identity(7, 7);
 
 	/* Assigning joint names */
 
@@ -84,31 +84,33 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		}
 	}
 	
-	/* Assigning inertial parameters */
+	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics */
 
-	std::vector<double> link_1_arr, link_2_arr, link_3_arr, link_4_arr, link_5_arr, link_6_arr, link_7_arr, hand_arr;
-	if (!node_handle.getParam("link_1", link_1_arr) || link_1_arr.size() != 10 ||
-		!node_handle.getParam("link_2", link_2_arr) || link_2_arr.size() != 10 ||
-		!node_handle.getParam("link_3", link_3_arr) || link_3_arr.size() != 10 ||
-		!node_handle.getParam("link_4", link_4_arr) || link_4_arr.size() != 10 ||
-		!node_handle.getParam("link_5", link_5_arr) || link_5_arr.size() != 10 ||
-		!node_handle.getParam("link_6", link_6_arr) || link_6_arr.size() != 10 ||
-		!node_handle.getParam("link_7", link_7_arr) || link_7_arr.size() != 10 ||
-		!node_handle.getParam("end_effector", hand_arr) || hand_arr.size() != 10 ) {
-		ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
-		return false;
+	std::vector<Eigen::VectorXd> link_vector(7);
+
+	for(int i=0; i<7; i++){
+
+		double mass, xx, xy, xz, yy, yz, zz;
+		std::vector<double> distCM;
+		
+		distCM.resize(3);
+		
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_origin/xyz", distCM) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/yy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/yz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/zz", zz)){
+				
+			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
+			return 1;
+		}
+
+		param.segment(10*i, 10) << mass,distCM[0],distCM[1],distCM[2],xx,xy,xz,yy,yz,zz;
 	}
-
-	Eigen::VectorXd link_1 = Eigen::Map<Eigen::VectorXd>(link_1_arr.data(), 10, 1);
-	Eigen::VectorXd link_2 = Eigen::Map<Eigen::VectorXd>(link_2_arr.data(), 10, 1);
-	Eigen::VectorXd link_3 = Eigen::Map<Eigen::VectorXd>(link_3_arr.data(), 10, 1);
-	Eigen::VectorXd link_4 = Eigen::Map<Eigen::VectorXd>(link_4_arr.data(), 10, 1);
-	Eigen::VectorXd link_5 = Eigen::Map<Eigen::VectorXd>(link_5_arr.data(), 10, 1);
-	Eigen::VectorXd link_6 = Eigen::Map<Eigen::VectorXd>(link_6_arr.data(), 10, 1);
-	Eigen::VectorXd link_7 = Eigen::Map<Eigen::VectorXd>(link_7_arr.data(), 10, 1);
-	Eigen::VectorXd hand = Eigen::Map<Eigen::VectorXd>(hand_arr.data(), 10, 1);
-
-	param << link_1, link_2, link_3, link_4, link_5, link_6, link_7;
+	
 
 	/* Initialize joint (torque,velocity) limits */
 
@@ -140,36 +142,26 @@ void Backstepping::starting(const ros::Time& time)
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
-	double mass_ee = robot_state.m_ee;
-	Eigen::Matrix<double,3,3> inertial_ee = Eigen::Map<Eigen::Matrix<double, 3, 3>>(robot_state.I_ee.data());
-
- 	std::cout<<"\nmass\n"<<mass_ee<<std::endl;
-	std::cout<<"\ninertia\n"<<inertial_ee<<std::endl;
-
 	/* Secure initialization command */
 
 	ee_pos_cmd = T0EE.translation();
-	//ee_pos_cmd << 0,0.307,0.487;
-	//ee_pos_cmd << 0.6,0,0.8;
-	ee_vel_cmd = Eigen::Vector3d::Zero();
-	ee_acc_cmd = Eigen::Vector3d::Zero();
+	ee_vel_cmd.setZero();
+	ee_acc_cmd.setZero();
 
 	/* Compute error */
 
-	error = Eigen::Vector3d::Zero();
-	dot_error = Eigen::Vector3d::Zero();
+	error.setZero();
+	dot_error.setZero();
 	
 	/* Compute reference (Position Control) */
 	
-	dot_qr = Eigen::VectorXd::Zero(7,1);
-	ddot_qr = Eigen::VectorXd::Zero(7,1);
+	dot_qr.setZero();
+	ddot_qr.setZero();
 	
 	/* Update regressor */
 
+	dot_param.setZero();
     fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-
-	fastRegMat.setArgsdHdistq(q_curr,(q_max_limit+q_min_limit)/2, q_min_limit, q_max_limit);
-
 }
 
 void Backstepping::update(const ros::Time&, const ros::Duration& period)
@@ -189,19 +181,15 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
-
+	
 	/* Update pseudo-inverse of jacobian and its derivative */
 
 	fastRegMat.setArguments(q_curr,dot_q_curr);
-
-	fastRegMat.setArgsdHdistq(q_curr,(q_max_limit+q_min_limit)/2, q_min_limit, q_max_limit);
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
 
 	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
 	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
-
-	Eigen::MatrixXd mydH = fastRegMat.getdHdistq_gen();
 
 	/* Compute error */
 
@@ -215,8 +203,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	Eigen::Vector3d tmp_position = ee_vel_cmd + Lambda * error;
 	Eigen::Vector3d tmp_velocity = ee_acc_cmd + Lambda * dot_error;
-	Eigen::MatrixXd myI = Eigen::MatrixXd::Identity(7,7);
-	//dot_qr = mypJacEE * tmp_position + (myI-mypJacEE*jacobian)*mydH;
+
 	dot_qr = mypJacEE * tmp_position;
 	ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position;
 	s = dot_qr - dot_q_curr;
@@ -232,22 +219,19 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Backstepping control law */
 
-	Eigen::Matrix<double,70,1> param_new;
-	Eigen::Matrix<double,70,1> dot_param;
-	double delta_t;
+	dt = period.toSec();
 
 	/* Update inertial parameters */
 	
-	dot_param = R.inverse()*Yr.transpose()*s;
-	delta_t = (double)period.sec+(double)period.nsec*1e-9;
- 	
-	param_new = param + delta_t*dot_param;
-	param = param_new;
- 
+	if (update_param_flag){
+		dot_param = Rinv*Yr.transpose()*s;
+		param = param + dt*dot_param;
+	}
+
 	/* Compute tau command */
 	
 	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error-G;
-	
+
  	/* Publish tracking errors as joint states */
 
 	msg_log.header.stamp = ros::Time::now();

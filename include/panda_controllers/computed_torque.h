@@ -6,11 +6,6 @@
 #include <math.h>
 #include <Eigen/Dense>
 
-#include <boost/filesystem.hpp>
-#include <fstream>
-#include <sstream>
-#include <string>
-
 #include <controller_interface/multi_interface_controller.h>
 
 #include <franka_hw/franka_model_interface.h>
@@ -27,8 +22,6 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
-
-#include "utils/SLregressor.h"
 
 #define     DEBUG   0      
 
@@ -72,7 +65,6 @@ private:
     Eigen::Matrix<double, 7, 1> q_curr;
     Eigen::Matrix<double, 7, 1> dot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
-    Eigen::Matrix<double, 7, 1> ddot_q_curr;
     
     /* Error and dot error feedback */
     
@@ -89,20 +81,11 @@ private:
     
     Eigen::Matrix<double, 7, 1> command_dot_dot_q_d;   // estimated desired acceleration command 
 
-    /* Parameter vector */
-
-    Eigen::Matrix<double, 70, 1> param;
-
     /* Mass Matrix and Coriolis vector */
     
     Eigen::Matrix<double, 7, 7> M;
     Eigen::Matrix<double, 7, 1> C;
-    Eigen::Matrix<double, 7, 70> Y;
-
-
-    /* Object Regressor Slotine Li*/
-
-    regrob::SLregressor regressore;
+    //Eigen::Matrix<double, 7, 70> Y;
 
     /* Check the effort limits */
     
@@ -114,10 +97,6 @@ private:
 
     static constexpr double kDeltaTauMax {1.0};
     
-    /* Import parameters */
-
-    Eigen::Matrix<double, 70, 1> importCSV(const std::string& filename);
-
     /* ROS variables */
     
     ros::NodeHandle cvc_nh;

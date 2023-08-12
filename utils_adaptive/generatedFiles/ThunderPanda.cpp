@@ -1,5 +1,5 @@
-#include "utils/ThunderPanda.h"
-#include "utils/gen_regr_fun.h"
+#include "ThunderPanda.h"
+#include "gen_regr_fun.h"
 
 namespace regrob{
     
@@ -69,6 +69,18 @@ namespace regrob{
         computeKin_gen();
     }
     
+    void thunderPanda::setArgsdHdistq(const Eigen::VectorXd& q_,const Eigen::VectorXd& qbar_,const Eigen::VectorXd& qmin_,const Eigen::VectorXd& qmax_){
+        if(q_.size() == num_joints && qbar_.size()== num_joints && qmin_.size()==num_joints && qmax_.size()==num_joints){
+            q = q_;
+            qbar = qbar_;
+            qmin = qmin_;
+            qmax = qmax_;
+        } else{
+            std::cout<<"in setArguments: invalid dimensions of arguments\n";
+        }
+        computedHdistq_gen();
+    }
+
     void thunderPanda::computeReg_gen(){
         
         long long p3[regr_fun_SZ_IW];
@@ -133,6 +145,25 @@ namespace regrob{
         double* output_[] = {kin_gen.data()};
 
         int check = kin_fun(input_, output_, p3, p4, 0);
+
+    }
+
+    void thunderPanda::computedHdistq_gen(){
+        
+        long long int sz_arg;
+        long long int sz_res;
+        long long int sz_iw;
+        long long int sz_w;
+
+        int check_size = dHDistq_fun_work(&sz_arg, &sz_res, &sz_iw, &sz_w);    
+        
+        long long p3[sz_iw];
+        double p4[sz_w];
+
+        const double* input_[] = {q.data(),qbar.data(),qmin.data(),qmax.data()};
+        double* output_[] = {dHdistq_gen.data()};
+
+        int check = dHDistq_fun(input_, output_, p3, p4, 0);
 
     }
 

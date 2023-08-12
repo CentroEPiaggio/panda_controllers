@@ -48,6 +48,8 @@ namespace regrob{
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
             /* Set q to compute forward kinematic */
             void setArguments(const Eigen::VectorXd&);
+            /* Set q to compute forward kinematic */
+            void setArgsdHdistq(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
             
             /* Get regressor matrix */
             Eigen::MatrixXd getReg_gen(){return reg_gen;};
@@ -59,6 +61,8 @@ namespace regrob{
             Eigen::MatrixXd getDotPinvJac_gen(){return dotPinvJac_gen;};
             /* Get regressor matrix */
             Eigen::MatrixXd getKin_gen(){return kin_gen;};
+            /* Get dH matrix */
+            Eigen::MatrixXd getdHdistq_gen(){return dHdistq_gen;};
     
     };
 

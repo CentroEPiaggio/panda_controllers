@@ -7,6 +7,10 @@ joint_names_arr: &jointNames
     - panda_joint6
     - panda_joint7
 
+cartesian_impedance_controller_softbots:
+    type: panda_controllers/CartesianImpedanceControllerSoftbots
+    arm_id: panda
+    joint_names: *jointNames
 
 computed_torque_controller:
     type: panda_controllers/ComputedTorque
@@ -28,13 +32,8 @@ backstepping_controller:
     joint_names: *jointNames
     
     # --- Controller parameters --- #
-    dt: 0.001
-    gainLambda: 1   # gain for Lambda matrix
-    gainR: 1        # gain for R matrix
-    gainKd: 1       # gain for Kd matrix
+    gainLambda: 2       # gain for Lambda matrix
+    gainR: 1            # gain for R matrix
+    gainKd: 1           # gain for Kd matrix
+    update_param: true  # bool to update inertial parameters
     
-
-cartesian_impedance_controller_softbots:
-    type: panda_controllers/CartesianImpedanceControllerSoftbots
-    arm_id: panda
-    joint_names: *jointNames

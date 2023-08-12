@@ -68,10 +68,11 @@ private:
     /* Gain Matrices */
     
     Eigen::Matrix3d Lambda; 
-    Eigen::Matrix<double, 70, 70> R;
     Eigen::Matrix<double, 7, 7> Kd;
+    Eigen::Matrix<double, 70, 70> R;
+    Eigen::Matrix<double, 70, 70> Rinv;
+    bool update_param_flag;
 
- 
     /* Defining q_current, dot_q_current, and tau_cmd */
 
     Eigen::Matrix<double, 7, 1> q_curr;
@@ -96,13 +97,10 @@ private:
     /* Parameter vector */
 
     Eigen::Matrix<double, 70, 1> param;
+    Eigen::Matrix<double,70,1> dot_param;
 
-    /* Mass Matrix and Coriolis vector */
+    /* Regressor Matrix */
     
-    Eigen::Matrix<double, 7, 7> M;
-    Eigen::Matrix<double, 7, 1> C;
-    Eigen::Matrix<double, 7, 1> G;
-
     Eigen::Matrix<double, 7, 70> Yr;
 	
     /* Object Regressor Slotine Li*/
@@ -136,6 +134,8 @@ private:
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
 
+    /* Message */
+    
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
 
