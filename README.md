@@ -7,9 +7,9 @@ Here you can find adaptive controller and some classes implemented with casadi l
 ## Table of Contents
 1. [Requirements](#Requirements)
 1. [Installation](#Installation)
-   1. [`project-adaptive`](#project-adaptive) 
-   1. [`casadi`](#casadi)
-   1. [`yaml-cpp`](#yaml-cpp)
+   1. [project-adaptive](#project-adaptive) 
+   1. [casadi](#casadi)
+   1. [yaml-cpp](#yaml-cpp)
 1. [Running controllers](#Running-controllers)
 1. [To Do](#To-Do)
 
