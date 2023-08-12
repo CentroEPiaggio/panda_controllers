@@ -5,7 +5,7 @@
 Here you can find adaptive controller and some classes implemented with casadi library to generalize the problem.
 
 ## Table of Contents
-1. [Requirements](#markdown-header-requirements)
+1. [Requirements](#Requirements)
 1. [Installation](#markdown-header-installation)
    1. `project-adaptive` 
    1. `casadi`
@@ -13,7 +13,7 @@ Here you can find adaptive controller and some classes implemented with casadi l
 1. [Running controllers](#markdown-header-overviews)
 1. [To Do](#markdown-header-to-do)
 
-## [Requirements](#markdown-header-requirements)
+## Requirements
 * To use this controllers you need to install the package [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git) in your workspace.
 * If you want use and/or modify implemented casadi classes you have to install [casadi](https://github.com/casadi/casadi.git).
 * If you want generate yaml file you have to install [yaml-cpp](https://github.com/jbeder/yaml-cpp.git).
