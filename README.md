@@ -45,13 +45,11 @@ That are following:
 1. Clone the `main` repostery of `casadi`:
    ```
    git clone https://github.com/casadi/casadi.git -b main casadi
-
    ```
 
 1. Set the environment variable `CMAKE_PREFIX_PATH` to inform CMake where the dependecies are located. For example if headers and libraries are installed under `$HOME/local/`, then type:
    ```
    export CMAKE_PREFIX_PATH=$HOME/local/
-
    ```
 
 1. Make install
