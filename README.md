@@ -77,11 +77,11 @@ That are following:
    sudo make install
    ```
 
-## Running controllers
+## Running Controllers
 
 In the package, there is a launch file related to the spawning of controller `panda_controllers_sim.launch`, that is useful to set type of controller and rviz visualization.
 
-## To do
+## To Do
 
 * [-] implement a function that convert URDF parametrization in Denavit-Hartenberg parametrization
 * [-] implement a class that generalize integrations of name of casadi functions with ThunderPanda class 
