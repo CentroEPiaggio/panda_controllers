@@ -1,4 +1,4 @@
-# panda-controllers [project-adaptive](https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
+# panda-controllers - [project-adaptive](https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
 
 ![Backstepping Adaptive](./image/ezgif.com-crop.gif)
 
