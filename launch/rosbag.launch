@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+    
+    <!-- trajectory -->
+    <arg name="trajectory_node" default="true" />
+
+    <!-- rosbag -->
+    <arg name="topics"      default="/backstepping_controller/current_config /backstepping_controller/logging /joint_states /clock /backstepping_controller/command"/>
+    <arg name="bag_path"    default="/home/yurs/Documents/MATLAB/Robotica/rosbag"/>
+    <arg name="bag_name"    default="$(arg bag_path)/sim"/>
+    <arg name="duration"    default="35"/>
+    
+    <!-- rosbag_name -->
+    <arg name="gainLambda"  default="2.0"/>
+    <arg name="gainR"       default="1.0"/>
+    <arg name="gainKd"      default="10.0"/>
+    <arg name="gainKn"      default="10.0"/>
+    <arg name="adapt"       default="false"/>
+    <arg name="traj_type"   default="asdf"/>
+    <arg name="param_off"   default="p0"/>
+    <arg name="gain"        default="$(arg gainLambda)_$(arg gainR)_$(arg gainKd)_$(arg gainKn)"/>
+    
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
+        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
+    </node>
+
+    <include file="$(find panda_controllers)/launch/lissajous.launch" if="$(arg trajectory_node)" />
+
+</launch>

@@ -100,7 +100,9 @@ int main(){
     transform[3].rpy = {+M_PI_2,0,0};
     transform[4].rpy = {-M_PI_2,0,0};
     transform[5].rpy = {-M_PI_2,0,0};
-    transform[6].rpy = {0,0,0+M_PI_4};
+    transform[6].rpy = {0,0,0+M_PI_4*0};
+
+    //transform[6].rpy = {0,0,0};
     transform[7].rpy = {0,0,0}; // hand
     
     transform[0].xyz = {0,0,0}; // link 1
@@ -109,7 +111,8 @@ int main(){
     transform[3].xyz = {0.0825,0,0};
     transform[4].xyz = {0,0,0};
     transform[5].xyz = {-0.088,0,0};
-    transform[6].xyz = {0,0,-0.107-0.1034};
+    transform[6].xyz = {0,0,-0.107-0.1034*0};
+    //transform[6].xyz = {0,0,-0.107};
     transform[7].xyz = {0,0,0}; // hand
 
     newlinks.resize(NUMLINKS);
@@ -122,7 +125,7 @@ int main(){
 
     LinkProp link_7, link_hand, newlink_7;
 
-    link_7 = newlinks[6];
+/*     link_7 = newlinks[6];
     link_hand = newlinks[7];
     
     newlink_7.name = link_7.name;
@@ -134,7 +137,7 @@ int main(){
     for (int i=0; i<3;i++){
         newlink_7.xyz[i] = link_7.xyz[i]+link_hand.xyz[i];
     } 
-    newlinks[6] = newlink_7;
+    newlinks[6] = newlink_7; */
     
     //-------------------------------Generate YAML-----------------------------------//
         

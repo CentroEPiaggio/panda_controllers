@@ -113,7 +113,7 @@ void ComputedTorque::starting(const ros::Time& time)
 
 	/* Secure Initialization */
 	command_q_d = q_curr;
-	command_q_d << M_PI_2,-0.7855,0,-2.3561,0,M_PI_2,0.7854;
+	//command_q_d << M_PI_2,-0.7855,0,-2.3561,0,M_PI_2,0.7854;
 	command_q_d_old = q_curr;
 
 	command_dot_q_d = dot_q_curr;
@@ -174,10 +174,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 	tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
 	
+	std::cout<<"\ntau \n"<<tau_cmd<<std::endl;
+
 	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 	
-	std::cout<<tau_cmd<<std::endl;
 
 	/* Set the command for each joint */
 	for (size_t i = 0; i < 7; i++) {

@@ -6,6 +6,12 @@
    </description>
   </class>
 
+  <class name="panda_controllers/ComputedTorqueAdaptive" type="panda_controllers::ComputedTorqueAdaptive" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Computed Torque Adaptive controller.
+   </description>
+  </class>
+
   <class name="panda_controllers/Backstepping" type="panda_controllers::Backstepping" base_class_type="controller_interface::ControllerBase">
    <description>
       Backstepping controller.

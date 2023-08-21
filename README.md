@@ -1,19 +1,19 @@
-# panda-controllers [project-adaptive](https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
+# panda-controllers - [project-adaptive](https://github.com/CentroEPiaggio/panda_controllers/tree/project_adaptive)
 
 ![Backstepping Adaptive](./image/ezgif.com-crop.gif)
 
 Here you can find adaptive controller and some classes implemented with casadi library to generalize the problem.
 
 ## Table of Contents
-1. [Requirements](#markdown-header-requirements)
-1. [Installation](#markdown-header-installation)
-   1. `project-adaptive` 
+1. [Requirements](#Requirements)
+1. [Installation](#Installation)
+   1. `project-adaptive`
    1. `casadi`
    1. `yaml-cpp`
-1. [Running controllers](#markdown-header-overviews)
-1. [To Do](#markdown-header-to-do)
+1. [Running controllers](#Running-controllers)
+1. [To Do](#To-Do)
 
-## Requirements 
+## Requirements
 * To use this controllers you need to install the package [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git) in your workspace.
 * If you want use and/or modify implemented casadi classes you have to install [casadi](https://github.com/casadi/casadi.git).
 * If you want generate yaml file you have to install [yaml-cpp](https://github.com/jbeder/yaml-cpp.git).
@@ -45,13 +45,11 @@ That are following:
 1. Clone the `main` repostery of `casadi`:
    ```
    git clone https://github.com/casadi/casadi.git -b main casadi
-
    ```
 
 1. Set the environment variable `CMAKE_PREFIX_PATH` to inform CMake where the dependecies are located. For example if headers and libraries are installed under `$HOME/local/`, then type:
    ```
    export CMAKE_PREFIX_PATH=$HOME/local/
-
    ```
 
 1. Make install
@@ -79,11 +77,11 @@ That are following:
    sudo make install
    ```
 
-## Running controllers
+## Running Controllers
 
 In the package, there is a launch file related to the spawning of controller `panda_controllers_sim.launch`, that is useful to set type of controller and rviz visualization.
 
-## To do
+## To Do
 
-* [-] implement a class that convert URDF parametrization file in Denavit-Hartenberg parametrization
+* [-] implement a function that convert URDF parametrization in Denavit-Hartenberg parametrization
 * [-] implement a class that generalize integrations of name of casadi functions with ThunderPanda class 

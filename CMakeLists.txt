@@ -33,6 +33,7 @@ find_package(Franka 0.5.0 REQUIRED)
 add_message_files(FILES
 	desTrajEE.msg
 	log_backstepping.msg
+	point.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -68,7 +69,8 @@ catkin_package(
 )
 
 add_library(${PROJECT_NAME}   
-	#src/computed_torque.cpp #Computed Torque controller
+	src/computed_torque.cpp #Computed Torque controller
+	src/computed_torque_adaptive.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	src/gen_regr_fun.cpp

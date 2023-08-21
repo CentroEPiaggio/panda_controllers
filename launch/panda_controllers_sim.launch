@@ -1,33 +1,29 @@
 <?xml version="1.0" ?>
 <!-- Launch file per far partire:
 - gazebo (e rviz)
-- il controllore desiderato 
-- il lissajous -->
+- il controllore desiderato: backstepping_controller, computed_torque_adaptive_controller
+- la lissajous -->
 <launch>
 
 	<!-- <arg name="robot_ip" default="192.168.0.210" /> -->
 	<arg name="arm_id" 			default="panda" doc="Name of the panda robot to spawn" />
-	<arg name="controller" 		value="backstepping_controller" />
-	<arg name="use_gripper" 	value="true" />
-	<arg name="rviz" 			value="true" />
-	<arg name="trajectory_node" value="false" />
+	<arg name="controller" 		default="backstepping_controller" />
+	<arg name="use_gripper" 	default="false" />
+	<arg name="rviz" 			default="true" />
+	<arg name="trajectory_node" default="true" />
 	
-	<arg name="package" default="panda_controllers" />
-	<arg name="node_name" default="lissajous" />
-	<arg name="trajectory" default="$(find panda_controllers)/config/lissajous_param.yaml" />
+	<arg name="package" 		default="panda_controllers" />
     
-	<rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" file="$(find panda_controllers)/config/inertial_DH.yaml" />
-	<rosparam command="load" file="$(arg trajectory)" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH.yaml" />
 	
 	<include file="$(find panda_controllers)/launch/panda.launch">
 		<arg name="rviz_config" value="$(find panda_controllers)/launch/rviz/franka_marker.rviz" />
-		<arg name="rviz" value="$(arg rviz)" />
+		<arg name="rviz" 		value="$(arg rviz)" />
 		<arg name="use_gripper" value="$(arg use_gripper)" />
-		<arg name="controller" value="$(arg controller)" />
+		<arg name="controller" 	value="$(arg controller)" />
 	</include>
 
-	<include file="$(find panda_controllers)/launch/panda_rviz.launch" if="$(arg rviz)" /> <!-- nodo per disegnare su rviz -->
-	<include file="$(find panda_controllers)/launch/lissajous.launch" if="$(arg trajectory_node)" />
+	<include file="$(find panda_controllers)/launch/panda_rviz.launch" if="$(arg rviz)" />
 	
 </launch>

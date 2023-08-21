@@ -13,46 +13,6 @@
 #define casadi_int long long int
 #endif
 
-extern "C" int kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int kin_fun_alloc_mem(void);
-extern "C" int kin_fun_init_mem(int mem);
-extern "C" void kin_fun_free_mem(int mem);
-extern "C" int kin_fun_checkout(void);
-extern "C" void kin_fun_release(int mem);
-extern "C" void kin_fun_incref(void);
-extern "C" void kin_fun_decref(void);
-extern "C" casadi_int kin_fun_n_in(void);
-extern "C" casadi_int kin_fun_n_out(void);
-extern "C" casadi_real kin_fun_default_in(casadi_int i);
-extern "C" const char* kin_fun_name_in(casadi_int i);
-extern "C" const char* kin_fun_name_out(casadi_int i);
-extern "C" const casadi_int* kin_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* kin_fun_sparsity_out(casadi_int i);
-extern "C" int kin_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define kin_fun_SZ_ARG 1
-#define kin_fun_SZ_RES 1
-#define kin_fun_SZ_IW 0
-#define kin_fun_SZ_W 48
-extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int jac_fun_alloc_mem(void);
-extern "C" int jac_fun_init_mem(int mem);
-extern "C" void jac_fun_free_mem(int mem);
-extern "C" int jac_fun_checkout(void);
-extern "C" void jac_fun_release(int mem);
-extern "C" void jac_fun_incref(void);
-extern "C" void jac_fun_decref(void);
-extern "C" casadi_int jac_fun_n_in(void);
-extern "C" casadi_int jac_fun_n_out(void);
-extern "C" casadi_real jac_fun_default_in(casadi_int i);
-extern "C" const char* jac_fun_name_in(casadi_int i);
-extern "C" const char* jac_fun_name_out(casadi_int i);
-extern "C" const casadi_int* jac_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* jac_fun_sparsity_out(casadi_int i);
-extern "C" int jac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define jac_fun_SZ_ARG 1
-#define jac_fun_SZ_RES 1
-#define jac_fun_SZ_IW 0
-#define jac_fun_SZ_W 53
 extern "C" int dotJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotJac_fun_alloc_mem(void);
 extern "C" int dotJac_fun_init_mem(int mem);
@@ -113,6 +73,46 @@ extern "C" int dotPinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define dotPinvJac_fun_SZ_RES 1
 #define dotPinvJac_fun_SZ_IW 0
 #define dotPinvJac_fun_SZ_W 325
+extern "C" int kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int kin_fun_alloc_mem(void);
+extern "C" int kin_fun_init_mem(int mem);
+extern "C" void kin_fun_free_mem(int mem);
+extern "C" int kin_fun_checkout(void);
+extern "C" void kin_fun_release(int mem);
+extern "C" void kin_fun_incref(void);
+extern "C" void kin_fun_decref(void);
+extern "C" casadi_int kin_fun_n_in(void);
+extern "C" casadi_int kin_fun_n_out(void);
+extern "C" casadi_real kin_fun_default_in(casadi_int i);
+extern "C" const char* kin_fun_name_in(casadi_int i);
+extern "C" const char* kin_fun_name_out(casadi_int i);
+extern "C" const casadi_int* kin_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* kin_fun_sparsity_out(casadi_int i);
+extern "C" int kin_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define kin_fun_SZ_ARG 1
+#define kin_fun_SZ_RES 1
+#define kin_fun_SZ_IW 0
+#define kin_fun_SZ_W 48
+extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int jac_fun_alloc_mem(void);
+extern "C" int jac_fun_init_mem(int mem);
+extern "C" void jac_fun_free_mem(int mem);
+extern "C" int jac_fun_checkout(void);
+extern "C" void jac_fun_release(int mem);
+extern "C" void jac_fun_incref(void);
+extern "C" void jac_fun_decref(void);
+extern "C" casadi_int jac_fun_n_in(void);
+extern "C" casadi_int jac_fun_n_out(void);
+extern "C" casadi_real jac_fun_default_in(casadi_int i);
+extern "C" const char* jac_fun_name_in(casadi_int i);
+extern "C" const char* jac_fun_name_out(casadi_int i);
+extern "C" const casadi_int* jac_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* jac_fun_sparsity_out(casadi_int i);
+extern "C" int jac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define jac_fun_SZ_ARG 1
+#define jac_fun_SZ_RES 1
+#define jac_fun_SZ_IW 0
+#define jac_fun_SZ_W 53
 extern "C" int regr_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int regr_fun_alloc_mem(void);
 extern "C" int regr_fun_init_mem(int mem);
@@ -132,4 +132,104 @@ extern "C" int regr_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int 
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 749
+#define regr_fun_SZ_W 748
+extern "C" int massReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int massReg_fun_alloc_mem(void);
+extern "C" int massReg_fun_init_mem(int mem);
+extern "C" void massReg_fun_free_mem(int mem);
+extern "C" int massReg_fun_checkout(void);
+extern "C" void massReg_fun_release(int mem);
+extern "C" void massReg_fun_incref(void);
+extern "C" void massReg_fun_decref(void);
+extern "C" casadi_int massReg_fun_n_in(void);
+extern "C" casadi_int massReg_fun_n_out(void);
+extern "C" casadi_real massReg_fun_default_in(casadi_int i);
+extern "C" const char* massReg_fun_name_in(casadi_int i);
+extern "C" const char* massReg_fun_name_out(casadi_int i);
+extern "C" const casadi_int* massReg_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* massReg_fun_sparsity_out(casadi_int i);
+extern "C" int massReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define massReg_fun_SZ_ARG 2
+#define massReg_fun_SZ_RES 1
+#define massReg_fun_SZ_IW 0
+#define massReg_fun_SZ_W 75
+extern "C" int coriolisReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int coriolisReg_fun_alloc_mem(void);
+extern "C" int coriolisReg_fun_init_mem(int mem);
+extern "C" void coriolisReg_fun_free_mem(int mem);
+extern "C" int coriolisReg_fun_checkout(void);
+extern "C" void coriolisReg_fun_release(int mem);
+extern "C" void coriolisReg_fun_incref(void);
+extern "C" void coriolisReg_fun_decref(void);
+extern "C" casadi_int coriolisReg_fun_n_in(void);
+extern "C" casadi_int coriolisReg_fun_n_out(void);
+extern "C" casadi_real coriolisReg_fun_default_in(casadi_int i);
+extern "C" const char* coriolisReg_fun_name_in(casadi_int i);
+extern "C" const char* coriolisReg_fun_name_out(casadi_int i);
+extern "C" const casadi_int* coriolisReg_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* coriolisReg_fun_sparsity_out(casadi_int i);
+extern "C" int coriolisReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define coriolisReg_fun_SZ_ARG 3
+#define coriolisReg_fun_SZ_RES 1
+#define coriolisReg_fun_SZ_IW 0
+#define coriolisReg_fun_SZ_W 716
+extern "C" int gravityReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int gravityReg_fun_alloc_mem(void);
+extern "C" int gravityReg_fun_init_mem(int mem);
+extern "C" void gravityReg_fun_free_mem(int mem);
+extern "C" int gravityReg_fun_checkout(void);
+extern "C" void gravityReg_fun_release(int mem);
+extern "C" void gravityReg_fun_incref(void);
+extern "C" void gravityReg_fun_decref(void);
+extern "C" casadi_int gravityReg_fun_n_in(void);
+extern "C" casadi_int gravityReg_fun_n_out(void);
+extern "C" casadi_real gravityReg_fun_default_in(casadi_int i);
+extern "C" const char* gravityReg_fun_name_in(casadi_int i);
+extern "C" const char* gravityReg_fun_name_out(casadi_int i);
+extern "C" const casadi_int* gravityReg_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* gravityReg_fun_sparsity_out(casadi_int i);
+extern "C" int gravityReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define gravityReg_fun_SZ_ARG 1
+#define gravityReg_fun_SZ_RES 1
+#define gravityReg_fun_SZ_IW 0
+#define gravityReg_fun_SZ_W 79
+extern "C" int gradDistq_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int gradDistq_fun_alloc_mem(void);
+extern "C" int gradDistq_fun_init_mem(int mem);
+extern "C" void gradDistq_fun_free_mem(int mem);
+extern "C" int gradDistq_fun_checkout(void);
+extern "C" void gradDistq_fun_release(int mem);
+extern "C" void gradDistq_fun_incref(void);
+extern "C" void gradDistq_fun_decref(void);
+extern "C" casadi_int gradDistq_fun_n_in(void);
+extern "C" casadi_int gradDistq_fun_n_out(void);
+extern "C" casadi_real gradDistq_fun_default_in(casadi_int i);
+extern "C" const char* gradDistq_fun_name_in(casadi_int i);
+extern "C" const char* gradDistq_fun_name_out(casadi_int i);
+extern "C" const casadi_int* gradDistq_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* gradDistq_fun_sparsity_out(casadi_int i);
+extern "C" int gradDistq_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define gradDistq_fun_SZ_ARG 1
+#define gradDistq_fun_SZ_RES 1
+#define gradDistq_fun_SZ_IW 0
+#define gradDistq_fun_SZ_W 4
+extern "C" int dotGradDistq_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int dotGradDistq_fun_alloc_mem(void);
+extern "C" int dotGradDistq_fun_init_mem(int mem);
+extern "C" void dotGradDistq_fun_free_mem(int mem);
+extern "C" int dotGradDistq_fun_checkout(void);
+extern "C" void dotGradDistq_fun_release(int mem);
+extern "C" void dotGradDistq_fun_incref(void);
+extern "C" void dotGradDistq_fun_decref(void);
+extern "C" casadi_int dotGradDistq_fun_n_in(void);
+extern "C" casadi_int dotGradDistq_fun_n_out(void);
+extern "C" casadi_real dotGradDistq_fun_default_in(casadi_int i);
+extern "C" const char* dotGradDistq_fun_name_in(casadi_int i);
+extern "C" const char* dotGradDistq_fun_name_out(casadi_int i);
+extern "C" const casadi_int* dotGradDistq_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* dotGradDistq_fun_sparsity_out(casadi_int i);
+extern "C" int dotGradDistq_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define dotGradDistq_fun_SZ_ARG 2
+#define dotGradDistq_fun_SZ_RES 1
+#define dotGradDistq_fun_SZ_IW 0
+#define dotGradDistq_fun_SZ_W 4

@@ -2,12 +2,15 @@
 
 /* Function name used to generate code */
 #define REG_STRING "regr_fun"
+#define MASS_STRING "massReg_fun"
+#define CORIOLIS_STRING "coriolisReg_fun"
+#define GRAVITY_STRING "gravityReg_fun"
 
 /* File name of generated code */
 #define GENERATED_FILE "regressor_fun.cpp"
 
 /* Define number of function generable */
-#define NUMBER_FUNCTIONS 1
+#define NUMBER_FUNCTIONS 6
 
 namespace regrob{
     
@@ -53,6 +56,9 @@ namespace regrob{
         kinematic_res.resize(1);
         jacobian_res.resize(1);
         regressor_res.resize(1);
+        massReg_res.resize(1);
+        coriolisReg_res.resize(1);
+        gravityReg_res.resize(1);
 
         init_casadi_functions();
     }
@@ -134,7 +140,7 @@ namespace regrob{
         return C;
     }
     
-    casadi::SX RobReg::SXregressor(
+    casadi::SXVector RobReg::SXregressor(
         const casadi::SX& q_, const casadi::SX& dq_, const casadi::SX& dqr_, const casadi::SX& ddqr_, 
         const std::string jointsType_, const Eigen::MatrixXd& DHtable_, FrameOffset& base_frame,FrameOffset& ee_frame){
         
@@ -155,7 +161,10 @@ namespace regrob{
         casadi::SX g = base_frame.get_gravity();
 
         casadi::SX Yr(nj,10*nj);        // regressor matrix
-        
+        casadi::SX Mr(nj,10*nj);
+        casadi::SX Cr(nj,10*nj);
+        casadi::SX Gr(nj,10*nj);
+                
         casadi::Slice allRows;
         casadi::Slice allCols(0,nj);          
         casadi::Slice selR(0,3);
@@ -179,8 +188,8 @@ namespace regrob{
             casadi::SX B0_i = mtimes(Jvi[i].T(),Jvi[i]);
             casadi::SXVector C = RobReg::stdCmatrix(B0_i, q_, dq_, dq_sel_);
 
-            casadi::SX dX0r_i = mtimes(B0_i,ddqr_) + mtimes((C[0]+C[1]),dqr_)/2;
-            casadi::SX W0r_i = mtimes(C[2],dqr_)/2;
+            casadi::SX dX0r_i = mtimes(B0_i,ddqr_);
+            casadi::SX W0r_i = -mtimes((C[0]+C[1]-C[2]),dqr_)/2;
             casadi::SX Z0r_i = -mtimes(Jvi[i].T(),g);
             
             casadi::SX Y0r_i = dX0r_i - W0r_i + Z0r_i;
@@ -197,8 +206,8 @@ namespace regrob{
                                    casadi::SX::mtimes({Jvi[i].T(),R0i,Ql,R0i.T(),Jwi[i]});
                 casadi::SXVector C = RobReg::stdCmatrix(B1l_i, q_, dq_, dq_sel_);
 
-                dX1r_i(allRows,l) = mtimes(B1l_i,ddqr_) + mtimes((C[0]+C[1]),dqr_)/2;
-                W1r_i(allRows,l) = mtimes(C[2],dqr_)/2;
+                dX1r_i(allRows,l) = mtimes(B1l_i,ddqr_);
+                W1r_i(allRows,l) = -mtimes(C[0]+C[1]-C[2],dqr_)/2;
             }
             casadi::SX Z1r_i= -(jacobian(mtimes(R0i.T(),g),q_)).T();
             
@@ -215,8 +224,8 @@ namespace regrob{
                 casadi::SX B2l_i = casadi::SX::mtimes({Jwi[i].T(),R0i,El,R0i.T(),Jwi[i]});
                 casadi::SXVector C = RobReg::stdCmatrix(B2l_i, q_, dq_, dq_sel_);
 
-                dX2r_i(allRows,l) = mtimes(B2l_i,ddqr_) + mtimes((C[0]+C[1]),dqr_)/2;
-                W2r_i(allRows,l) = mtimes(C[2],dqr_)/2;
+                dX2r_i(allRows,l) = mtimes(B2l_i,ddqr_);
+                W2r_i(allRows,l) = -mtimes(C[0]+C[1]-C[2],dqr_)/2;
             }
 
             casadi::SX Y2r_i = dX2r_i - W2r_i;
@@ -224,29 +233,76 @@ namespace regrob{
             // ------------------------- Yr_i -------------------------- //
 
             casadi::SX Yr_i = horzcat(Y0r_i,Y1r_i,Y2r_i);
+            casadi::SX Mr_i = horzcat(dX0r_i,dX1r_i,dX2r_i);
+            casadi::SX Cr_i = horzcat(-W0r_i,-W1r_i,-W2r_i);
+            casadi::SX Gr_i = horzcat(Z0r_i,Z1r_i,casadi::SX::zeros(nj,6));
 
+            //casadi::SX Yreg_i = Mr_i + Cr_i + Gr_i;
+            
             casadi::Slice selCols(i*10,(i+1)*10);          // Select current columns of matrix regressor
             Yr(allRows,selCols) = Yr_i;
-            
+            Mr(allRows,selCols) = Mr_i;
+            Cr(allRows,selCols) = Cr_i;
+            Gr(allRows,selCols) = Gr_i;
+            //std::cout<< Yreg_i-Yr_i <<std::endl;
         }
 
-        return Yr;
+        return {Yr, Mr, Cr, Gr};
     }
     
     void RobReg::init_casadi_functions(){
 
         DHKin();
         DHJac();
+
         Regressor();
+        massReg();
+        coriolisReg();
+        gravityReg();
     }
     
     void RobReg::Regressor(){
         
-        SX_Yr = SXregressor(_q_, _dq_, _dqr_, _ddqr_, _jointsType_, _DHtable_, lab2L0, Ln2EE);
+        casadi::SXVector result;
+        result = SXregressor(_q_, _dq_, _dqr_, _ddqr_, _jointsType_, _DHtable_, lab2L0, Ln2EE);
         
+        SX_Yr = result[0];
         casadi::Function regr_fun(REG_STRING, {_q_,_dq_,_dqr_,_ddqr_}, {densify(SX_Yr)});
         
         regressor_fun = regr_fun;
+    }
+
+    void RobReg::massReg(){
+        
+        casadi::SXVector result;
+        result = SXregressor(_q_, _dq_, _dqr_, _ddqr_, _jointsType_, _DHtable_, lab2L0, Ln2EE);
+        
+        SX_mass = result[1];
+        casadi::Function m_fun(MASS_STRING, {_q_,_ddqr_}, {densify(SX_mass)});
+        
+        massReg_fun = m_fun;
+    }
+    
+    void RobReg::coriolisReg(){
+        
+        casadi::SXVector result;
+        result = SXregressor(_q_, _dq_, _dqr_, _ddqr_, _jointsType_, _DHtable_, lab2L0, Ln2EE);
+        
+        SX_coriolis = result[2];
+        casadi::Function c_fun(CORIOLIS_STRING, {_q_,_dq_,_dqr_}, {densify(SX_coriolis)});
+        
+        coriolisReg_fun = c_fun;
+    }
+
+    void RobReg::gravityReg(){
+        
+        casadi::SXVector result;
+        result = SXregressor(_q_, _dq_, _dqr_, _ddqr_, _jointsType_, _DHtable_, lab2L0, Ln2EE);
+        
+        SX_gravity = result[3];
+        casadi::Function g_fun(GRAVITY_STRING, {_q_}, {densify(SX_gravity)});
+        
+        gravityReg_fun = g_fun;
     }
 
     void RobReg::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
@@ -271,6 +327,9 @@ namespace regrob{
         kinematic_fun.call({args[0]},kinematic_res);
         jacobian_fun.call({args[0]},jacobian_res);
         regressor_fun.call(args,regressor_res);
+        massReg_fun.call({args[0],args[3]},massReg_res);
+        coriolisReg_fun.call({args[0],args[1],args[2]},coriolisReg_res);
+        gravityReg_fun.call({args[0]},gravityReg_res);
     }
     
     Eigen::MatrixXd RobReg::getRegressor(){
@@ -284,6 +343,39 @@ namespace regrob{
         return Yfull;
     }
  
+    Eigen::MatrixXd RobReg::getMassReg(){
+        
+        const int nrow = SX_mass.size1();
+        const int ncol = SX_mass.size2();
+        Eigen::MatrixXd Mfull(nrow,ncol);
+        std::vector<casadi::SXElem> m_elements = massReg_res[0].get_elements();
+        std::transform(m_elements.begin(), m_elements.end(), Mfull.data(), mapFunction);
+        
+        return Mfull;
+    }
+
+    Eigen::MatrixXd RobReg::getCoriolisReg(){
+        
+        const int nrow = SX_coriolis.size1();
+        const int ncol = SX_coriolis.size2();
+        Eigen::MatrixXd Cfull(nrow,ncol);
+        std::vector<casadi::SXElem> c_elements = coriolisReg_res[0].get_elements();
+        std::transform(c_elements.begin(), c_elements.end(), Cfull.data(), mapFunction);
+        
+        return Cfull;
+    }
+
+    Eigen::MatrixXd RobReg::getGravityReg(){
+        
+        const int nrow = SX_gravity.size1();
+        const int ncol = SX_gravity.size2();
+        Eigen::MatrixXd Gfull(nrow,ncol);
+        std::vector<casadi::SXElem> g_elements = gravityReg_res[0].get_elements();
+        std::transform(g_elements.begin(), g_elements.end(), Gfull.data(), mapFunction);
+        
+        return Gfull;
+    }
+
     void RobReg::generate_code(std::string& savePath){
         
         // Options for c-code auto generation
@@ -294,23 +386,49 @@ namespace regrob{
         // generate functions in c code
         casadi::CodeGenerator myCodeGen = casadi::CodeGenerator(GENERATED_FILE, opts);
 
+        myCodeGen.add(kinematic_fun);
+        myCodeGen.add(jacobian_fun);
         myCodeGen.add(regressor_fun);
+        myCodeGen.add(massReg_fun);
+        myCodeGen.add(coriolisReg_fun);
+        myCodeGen.add(gravityReg_fun);
 
         myCodeGen.generate(savePath);
     }
 
     std::vector<std::string> RobReg::getFunctionsName() {
-        std::vector<std::string> name_funs;
-        name_funs.resize(NUMBER_FUNCTIONS);
-        name_funs[0] = REG_STRING;
-        return name_funs;
+
+        std::vector<std::string> orig_name_funs;
+        std::vector<std::string> all_name_funs;
+        int dim_orig_funs;
+
+        orig_name_funs = RobKinBasic::getFunctionsName();
+
+        dim_orig_funs = orig_name_funs.size();
+        all_name_funs.resize(NUMBER_FUNCTIONS);
+
+        for (int i=0; i<dim_orig_funs; i++){
+            all_name_funs[i] = orig_name_funs[i];
+        }        
+        
+        all_name_funs[dim_orig_funs] = REG_STRING;
+        all_name_funs[dim_orig_funs+1] = MASS_STRING;
+        all_name_funs[dim_orig_funs+2] = CORIOLIS_STRING;
+        all_name_funs[dim_orig_funs+3] = GRAVITY_STRING;
+        
+        return all_name_funs;
     }
 
     std::vector<casadi::Function> RobReg::getCasadiFunctions() {
         std::vector<casadi::Function> casadi_funs;
         casadi_funs.resize(NUMBER_FUNCTIONS);
 
-        casadi_funs[0] = regressor_fun;
+        casadi_funs[0] = kinematic_fun;
+        casadi_funs[1] = jacobian_fun;
+        casadi_funs[2] = regressor_fun;
+        casadi_funs[3] = massReg_fun;
+        casadi_funs[4] = coriolisReg_fun;
+        casadi_funs[5] = gravityReg_fun;
 
         return casadi_funs;
     }

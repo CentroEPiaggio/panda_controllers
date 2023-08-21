@@ -26,6 +26,20 @@ computed_torque_controller:
     kv3: 3.0
     dt: 5
 
+computed_torque_adaptive_controller:
+    type: panda_controllers/ComputedTorqueAdaptive
+    arm_id: panda
+    joint_names: *jointNames
+    
+    # --- Controller parameters --- #
+    kp1: 300.0   #default: 120.0
+    kp2: 150.0   #default: 70.0
+    kp3: 30.0    #default: 50.0
+    kv1: 30.0
+    kv2: 15.0
+    kv3: 3.0
+    dt: 5
+
 backstepping_controller:
     type: panda_controllers/Backstepping
     arm_id: panda
@@ -35,5 +49,7 @@ backstepping_controller:
     gainLambda: 2       # gain for Lambda matrix
     gainR: 1            # gain for R matrix
     gainKd: 1           # gain for Kd matrix
+    gainKn: 10          # gain for Kn matrix
+    p_param: 0
     update_param: true  # bool to update inertial parameters
     

@@ -10,11 +10,11 @@ namespace regrob{
 
     struct LinkProp {
 
-    double mass;
-    std::vector<double> parI = std::vector<double>(6); // Inertia in the order xx, xy, xz, yy, yz, zz
-    std::vector<double> xyz = std::vector<double>(3); // Origin xyz as std::vector
-    std::vector<double> rpy = std::vector<double>(3);
-    std::string name;
+        double mass;
+        std::vector<double> parI = std::vector<double>(6); // Inertia in the order xx, xy, xz, yy, yz, zz
+        std::vector<double> xyz = std::vector<double>(3); // Origin xyz as std::vector
+        std::vector<double> rpy = std::vector<double>(3);
+        std::string name;
     };
 
 

@@ -1,6 +1,7 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the Backstepping 
+#include <random>
 
 namespace panda_controllers{
 
@@ -52,6 +53,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
 		!node_handle.getParam("gainR", gainR) ||
 		!node_handle.getParam("gainKd", gainKd)||
+		!node_handle.getParam("gainKd", gainKn)||
 		!node_handle.getParam("update_param", update_param_flag)) {
 		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
 		return false;
@@ -59,13 +61,14 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	Lambda = gainLambda * Eigen::Matrix3d::Identity();
 	R = gainR * Eigen::MatrixXd::Identity(70, 70);
+	Kd = gainKd * Eigen::MatrixXd::Identity(7, 7);
+	Kn = gainKn * Eigen::MatrixXd::Identity(7, 7);
+	
 	if(R.determinant()!=0){
 		Rinv = R.inverse();
 	}else{
 		update_param_flag = false;
 	}
-
-	Kd = gainKd * Eigen::MatrixXd::Identity(7, 7);
 
 	/* Assigning joint names */
 
@@ -107,10 +110,26 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
 			return 1;
 		}
-
 		param.segment(10*i, 10) << mass,distCM[0],distCM[1],distCM[2],xx,xy,xz,yy,yz,zz;
 	}
-	
+
+	double p_param;
+	if (!node_handle.getParam("p_param", p_param) ) {
+		ROS_ERROR("Backstepping: Could not get gain parameter for p_param!");
+		return false;
+	}
+
+	std::random_device rd;
+    std::mt19937 gen(rd());
+    // Crea una distribuzione gaussiana con media 0 e deviazione standard 1
+    std::normal_distribution<double> dist(0.0, p_param);
+    Eigen::VectorXd gauss_param(70);
+
+    // Genera numeri casuali con distribuzione gaussiana e riempi il vettore
+    for (int i = 0; i < 70; i++) {
+        gauss_param(i) = dist(gen)*param[i];
+    }
+	param = param + gauss_param/100;
 
 	/* Initialize joint (torque,velocity) limits */
 
@@ -123,7 +142,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<panda_controllers::log_backstepping> ("logging", 1);
-	this->pub_config_ = node_handle.advertise<geometry_msgs::Point> ("current_config", 1);
+	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
 	
 	/* Initialize regressor object */
 
@@ -142,6 +161,7 @@ void Backstepping::starting(const ros::Time& time)
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
+	
 	/* Secure initialization command */
 
 	ee_pos_cmd = T0EE.translation();
@@ -181,15 +201,31 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
-	
+
 	/* Update pseudo-inverse of jacobian and its derivative */
 
+	fastRegMat.setArguments(q_curr);
 	fastRegMat.setArguments(q_curr,dot_q_curr);
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
 
+	Eigen::MatrixXd mydot_JacEE = fastRegMat.getDotJac_gen();
+	
 	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
 	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+	
+	Eigen::MatrixXd mycostSelfMove = fastRegMat.getGradDistq_gen();
+	Eigen::MatrixXd mydot_costSelfMove = fastRegMat.getDotGradDist_gen();
+	
+/* ---------------------------------------------------------------------------- */
+/*Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
+Eigen::MatrixXd myKin = fastRegMat.getKin_gen();
+
+std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
+std::cout<<"\n ros jacobian \n"<<jacobian<<std::endl;
+std::cout<<"\n my kinematic \n"<<myKin<<std::endl;
+std::cout<<"\n ros kinematic \n"<<T0EE.matrix()<<std::endl; */
+/* ---------------------------------------------------------------------------- */
 
 	/* Compute error */
 
@@ -204,13 +240,45 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Vector3d tmp_position = ee_vel_cmd + Lambda * error;
 	Eigen::Vector3d tmp_velocity = ee_acc_cmd + Lambda * dot_error;
 
-	dot_qr = mypJacEE * tmp_position;
-	ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position;
-	s = dot_qr - dot_q_curr;
+	Eigen::MatrixXd myI = Eigen::MatrixXd::Identity(7,7);
+	Eigen::MatrixXd myNullProj = Eigen::MatrixXd::Identity(7,7);
 	
+	myNullProj = myI-mypJacEE*jacobian;
+	dot_qr = mypJacEE * tmp_position + Kn*myNullProj*mycostSelfMove;
+	ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position + Kn*(myNullProj*mydot_costSelfMove - (mydot_pJacEE*jacobian + mypJacEE*mydot_JacEE)*mycostSelfMove);
+	s = dot_qr - dot_q_curr;
+
+/*  	std::cout<<"\n1\n"<<mypJacEE * tmp_position<<std::endl;
+	std::cout<<"\n2\n"<<Kn*myNullProj*mycostSelfMove<<std::endl;
+	std::cout<<"\n3\n"<<mycostSelfMove<<std::endl; */
+
 	/* Update and Compute Regressor */
 
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr);
+
+/* ---------------------------------------------------------------------------- */
+/* Eigen::MatrixXd myMReg = fastRegMat.getMassReg_gen();
+Eigen::MatrixXd myCReg = fastRegMat.getCoriolisReg_gen();
+Eigen::MatrixXd myGReg = fastRegMat.getGravityReg_gen();
+Eigen::Matrix<double, 7, 7> M;
+Eigen::Matrix<double, 7, 1> C;
+
+std::array<double, 49> mass_array = model_handle_->getMass();
+std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
+
+M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
+	
+std::cout<<"\n my mass contribute \n"<<myMReg*param<<std::endl;
+std::cout<<"\n ros mass contribute \n"<<M*ddot_qr<<std::endl;
+std::cout<<"\n my coriolis contribute \n"<<myCReg*param<<std::endl;
+std::cout<<"\n ros coriolis contribute \n"<<C<<std::endl;
+std::cout<<"\n my gravity contribute \n"<<myGReg*param<<std::endl;
+std::cout<<"\n ros gravity contribute \n"<<G<<std::endl; */
+/* ---------------------------------------------------------------------------- */
+
+
 	Yr = fastRegMat.getReg_gen();
 
 	/* tau_J_d is past tau_cmd saturated */
@@ -231,10 +299,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	/* Compute tau command */
 	
 	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error-G;
+/* 	std::cout<<"\nYr*param-G\n"<<Yr*param-G<<std::endl;
+	std::cout<<"\nKd*s\n"<<Kd*s<<std::endl;
+	std::cout<<"\njac_err\n"<<jacobian.topRows(3).transpose()*error<<std::endl;
+*/
 
  	/* Publish tracking errors as joint states */
-
-	msg_log.header.stamp = ros::Time::now();
+	time_now = ros::Time::now();
+	msg_log.header.stamp = time_now;
 	fillMsg(msg_log.error_pos_EE, error);
 	fillMsg(msg_log.dot_error_pos_EE, dot_error);
 	fillMsg(msg_log.dot_qr, dot_qr);
@@ -249,9 +321,10 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fillMsg(msg_log.Link7_param, param.segment(60, 10));
 	fillMsg(msg_log.tau_cmd, tau_cmd);
 
-	msg_config.x = T0EE.translation()(0);
-	msg_config.y = T0EE.translation()(1);
-	msg_config.z = T0EE.translation()(2);
+	msg_config.header.stamp  = time_now;
+	msg_config.xyz.x = T0EE.translation()(0);
+	msg_config.xyz.y = T0EE.translation()(1);
+	msg_config.xyz.z = T0EE.translation()(2);
 
 	this->pub_err_.publish(msg_log);
 	this->pub_config_.publish(msg_config);

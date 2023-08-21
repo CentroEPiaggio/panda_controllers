@@ -1,17 +1,18 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/Point.h>
+#include "panda_controllers/point.h"
 #include <eigen3/Eigen/Core>
 
 Eigen::Vector3d pose_EE;
 
-void configCallback(const geometry_msgs::Point& msg) {
+void configCallback(const panda_controllers::point& msg) {
     
     double EE_x, EE_y, EE_z;
 	
-	EE_x = msg.x;
-	EE_y = msg.y;
-	EE_z = msg.z;
+	EE_x = msg.xyz.x;
+	EE_y = msg.xyz.y;
+	EE_z = msg.xyz.z;
 
 	pose_EE << EE_x, EE_y, EE_z;
 

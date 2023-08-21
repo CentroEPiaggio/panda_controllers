@@ -116,7 +116,6 @@ namespace regrob{
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-
         compute();
     }
 

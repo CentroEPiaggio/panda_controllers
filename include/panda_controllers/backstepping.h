@@ -28,7 +28,8 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
-#include <geometry_msgs/Point.h>
+//#include <geometry_msgs/Point.h>
+#include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/log_backstepping.h"
 
@@ -57,6 +58,7 @@ private:
     /* Definig the timing */
     
     double dt;
+    ros::Time time_now;
     
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
@@ -69,6 +71,7 @@ private:
     
     Eigen::Matrix3d Lambda; 
     Eigen::Matrix<double, 7, 7> Kd;
+    Eigen::Matrix<double, 7, 7> Kn;
     Eigen::Matrix<double, 70, 70> R;
     Eigen::Matrix<double, 70, 70> Rinv;
     bool update_param_flag;
@@ -97,7 +100,7 @@ private:
     /* Parameter vector */
 
     Eigen::Matrix<double, 70, 1> param;
-    Eigen::Matrix<double,70,1> dot_param;
+    Eigen::Matrix<double, 70, 1> dot_param;
 
     /* Regressor Matrix */
     
@@ -138,9 +141,8 @@ private:
     
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
-
 	panda_controllers::log_backstepping msg_log;
-    geometry_msgs::Point msg_config;
+    panda_controllers::point msg_config;
 
 };
 

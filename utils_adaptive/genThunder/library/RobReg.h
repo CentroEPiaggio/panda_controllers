@@ -30,7 +30,7 @@ namespace regrob{
             std::vector<casadi::SX> args;
 
             /* Matrix SX of regressor */
-            casadi::SX SX_Yr;
+            casadi::SX SX_Yr, SX_mass, SX_coriolis, SX_gravity;
             /* Variable for joints to set arguments*/
             Eigen::VectorXd q, dq, dqr, ddqr;
 
@@ -41,11 +41,17 @@ namespace regrob{
 
             /* Create regressor casadi function */
             void Regressor();
+            /* Create regressor casadi function */
+            void massReg();
+            /* Create regressor casadi function */
+            void coriolisReg();
+            /* Create regressor casadi function */
+            void gravityReg();
 
             /* Output of casadi function */
-            std::vector<casadi::SX> regressor_res;
+            std::vector<casadi::SX> regressor_res, massReg_res, coriolisReg_res, gravityReg_res;
             /* Casadi function */
-            casadi::Function regressor_fun;
+            casadi::Function regressor_fun, massReg_fun, coriolisReg_fun, gravityReg_fun;
 
             /* Creation of dq_sel matrix */
             casadi::SX dq_select(const casadi::SX& dq_);
@@ -57,7 +63,7 @@ namespace regrob{
             /* Compute C matrix with Christoffel symbols */
             casadi::SXVector stdCmatrix(const casadi::SX& B, const casadi::SX& q_, const casadi::SX& dq_, const casadi::SX& dq_sel_);
             /* Compute Regressor of Slotine Li from Denavit-Hartenberg parameterization*/
-            casadi::SX SXregressor(
+            casadi::SXVector SXregressor(
                 const casadi::SX& q_, const casadi::SX& dq_, const casadi::SX& dqr_, const casadi::SX& ddqr_, 
                 const std::string jointsType_, const Eigen::MatrixXd& DHtable_, FrameOffset& base_frame,FrameOffset& ee_frame);
 
@@ -88,6 +94,12 @@ namespace regrob{
 
             /* Get regressor matrix */
             Eigen::MatrixXd getRegressor();
+            /* Get regressor matrix */
+            Eigen::MatrixXd getMassReg();
+            /* Get regressor matrix */
+            Eigen::MatrixXd getCoriolisReg();
+            /* Get regressor matrix */
+            Eigen::MatrixXd getGravityReg();
             /* Generate code for regressor */
             virtual void generate_code(std::string&);
             /* Get function name used to generate code in RobReg */
