@@ -34,6 +34,7 @@ add_message_files(FILES
 	desTrajEE.msg
 	log_backstepping.msg
 	point.msg
+	link_params.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -82,24 +83,25 @@ add_dependencies(${PROJECT_NAME}
 	panda_controllers ${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(lissajous
-	src/lissajous_node.cpp
+add_executable(command_node
+	src/command_node.cpp
+	src/gen_traj_fun.cpp
 )
-target_link_libraries(lissajous
+target_link_libraries(command_node
 	${catkin_LIBRARIES}
 )
-add_dependencies(lissajous
+add_dependencies(command_node
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(trajectory_visualizer 
-	src/trajectory_visualizer.cpp
+add_executable(trajectory_rviz
+	src/trajectory_rviz.cpp
 )
-target_link_libraries(trajectory_visualizer
+target_link_libraries(trajectory_rviz
 	${catkin_LIBRARIES}	
 )
-add_dependencies(trajectory_visualizer
+add_dependencies(trajectory_rviz
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )

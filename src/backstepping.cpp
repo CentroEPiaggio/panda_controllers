@@ -1,6 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
-#include <panda_controllers/backstepping.h> //library of the Backstepping 
+#include <panda_controllers/backstepping.h> //library of the Backstepping
 #include <random>
 
 namespace panda_controllers{
@@ -47,37 +47,14 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		return false;
 	}
 
-	/* Inizializing the Lambda and R and Kd gains */
-	
-	double gainLambda, gainR, gainKd, gainKn;
-	if (!node_handle.getParam("gainLambda", gainLambda) ||
-		!node_handle.getParam("gainR", gainR) ||
-		!node_handle.getParam("gainKd", gainKd)||
-		!node_handle.getParam("gainKd", gainKn)||
-		!node_handle.getParam("update_param", update_param_flag)) {
-		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
-		return false;
-	}
-
-	Lambda = gainLambda * Eigen::Matrix3d::Identity();
-	R = gainR * Eigen::MatrixXd::Identity(70, 70);
-	Kd = gainKd * Eigen::MatrixXd::Identity(7, 7);
-	Kn = gainKn * Eigen::MatrixXd::Identity(7, 7);
-	
-	if(R.determinant()!=0){
-		Rinv = R.inverse();
-	}else{
-		update_param_flag = false;
-	}
-
 	/* Assigning joint names */
 
 	std::vector<std::string> joint_names;
-	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
+	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != NJ) {
 		ROS_ERROR("Backstepping: Error in parsing joints name!");
 		return false;
 	}
-	for (size_t i = 0; i < 7; ++i) {
+	for (size_t i = 0; i < NJ; ++i) {
 		try {
 			joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
 
@@ -86,47 +63,91 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 			return false;
 		}
 	}
+
+	/* Inizializing the Lambda and R and Kd gains */
 	
-	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics */
+	double gainKd;
+	std::vector<double> gainR(NJ), gainLambda(6);
+	Eigen::MatrixXd Rblock;
+	
+	if (!node_handle.getParam("gainLambda", gainLambda) ||
+		!node_handle.getParam("gainR", gainR) ||
+		!node_handle.getParam("gainKd", gainKd)  ||
+		!node_handle.getParam("update_param", update_param_flag)) {
+	
+		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
+		return false;
+	}
+	Lambda.setIdentity();
+	for(int i=0;i<6;i++){
+		Lambda(i,i) = gainLambda[i];
+	}
+	Kd = gainKd * Eigen::MatrixXd::Identity(NJ, NJ);
+	R.setIdentity();
+	Rinv.setZero();
+	for (int i = 0; i<NJ; i++){
+		Rblock = gainR[i]*R.block(i*PARAM, i*PARAM, PARAM, PARAM) ;
+		if (update_param_flag && Rblock.determinant() != 0){
+			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = Rblock.inverse();
+		}
+	}
 
-	std::vector<Eigen::VectorXd> link_vector(7);
+	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
 
-	for(int i=0; i<7; i++){
-
-		double mass, xx, xy, xz, yy, yz, zz;
-		std::vector<double> distCM;
-		
-		distCM.resize(3);
-		
-		if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/m_origin/xyz", distCM) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xx", xx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xy", xy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/xz", xz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/yy", yy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/yz", yz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"/inertia/zz", zz)){
-				
+	for(int i=0; i<NJ; i++){
+		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_x", cmx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_y", cmy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_z", cmz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Iyy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Iyz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Izz", zz)){
+			
 			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
 			return 1;
 		}
-		param.segment(10*i, 10) << mass,distCM[0],distCM[1],distCM[2],xx,xy,xz,yy,yz,zz;
+		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 	}
 
+	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with standard dynamic equation */
+
+	for(int i=0; i<NJ; i++){
+		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_x", cmx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_y", cmy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_z", cmz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Iyy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Iyz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Izz", zz)){
+			
+			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
+			return 1;
+		}
+		param_dyn.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
+	}
+
+	/* Perturbate nominal value of inertial parameters */
+
 	double p_param;
-	if (!node_handle.getParam("p_param", p_param) ) {
+	if (!node_handle.getParam("p_param", p_param)) {
 		ROS_ERROR("Backstepping: Could not get gain parameter for p_param!");
 		return false;
 	}
 
 	std::random_device rd;
     std::mt19937 gen(rd());
-    // Crea una distribuzione gaussiana con media 0 e deviazione standard 1
     std::normal_distribution<double> dist(0.0, p_param);
-    Eigen::VectorXd gauss_param(70);
+    Eigen::VectorXd gauss_param(NJ*PARAM);
 
-    // Genera numeri casuali con distribuzione gaussiana e riempi il vettore
-    for (int i = 0; i < 70; i++) {
+    for (int i = 0; i < NJ*PARAM; i++) {
         gauss_param(i) = dist(gen)*param[i];
     }
 	param = param + gauss_param/100;
@@ -146,9 +167,9 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	
 	/* Initialize regressor object */
 
-	const int nj = 7;
-	fastRegMat.init(nj);
-
+	fastRegMat.init(NJ);
+	fastRegMat.setInertialParam(param_dyn);
+	
 	return true;
 }
 
@@ -158,15 +179,24 @@ void Backstepping::starting(const ros::Time& time)
 	
 	franka::RobotState robot_state = state_handle_->getRobotState();
 	Eigen::Affine3d T0EE(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
-	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
-	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
+	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
 	
 	/* Secure initialization command */
 
 	ee_pos_cmd = T0EE.translation();
+	ee_ang_cmd = Eigen::Quaterniond(T0EE.linear());
+std::cout<<ee_ang_cmd.coeffs()<<std::endl;
+	//ee_ori_cmd = Eigen::Quaterniond(T0EE.linear());
+
 	ee_vel_cmd.setZero();
 	ee_acc_cmd.setZero();
+
+	ee_ang_vel_cmd.setZero();
+	ee_ang_acc_cmd.setZero();
+	//ee_ang.coeffs() << 0.0, 0.0, 0.0, 1.0;
+	//ee_ang_cmd.coeffs() << 0.0, 0.0, 0.0, 1.0;
 
 	/* Compute error */
 
@@ -177,7 +207,7 @@ void Backstepping::starting(const ros::Time& time)
 	
 	dot_qr.setZero();
 	ddot_qr.setZero();
-	
+
 	/* Update regressor */
 
 	dot_param.setZero();
@@ -190,100 +220,77 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
 	franka::RobotState robot_state = state_handle_->getRobotState();
-
-	Eigen::Matrix<double, 6, 7> jacobian;
-	Eigen::Matrix<double, 7, 1> G;
+	Eigen::Matrix<double, 6, NJ> jacobian;
 	Eigen::Affine3d T0EE;
 	
-	jacobian = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
-	G = Eigen::Map<Eigen::Matrix<double, 7, 1>> (model_handle_->getGravity().data());
+	jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+	rosG = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
 	
 	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
-	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
-	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
+	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
 	/* Update pseudo-inverse of jacobian and its derivative */
 
-	fastRegMat.setArguments(q_curr);
 	fastRegMat.setArguments(q_curr,dot_q_curr);
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
-
-	Eigen::MatrixXd mydot_JacEE = fastRegMat.getDotJac_gen();
 	
-	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
-	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
-	
-	Eigen::MatrixXd mycostSelfMove = fastRegMat.getGradDistq_gen();
-	Eigen::MatrixXd mydot_costSelfMove = fastRegMat.getDotGradDist_gen();
-	
-/* ---------------------------------------------------------------------------- */
-/*Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
-Eigen::MatrixXd myKin = fastRegMat.getKin_gen();
+	//Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
+	//Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJacPos_gen();
+	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJacPos_gen();
 
-std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
-std::cout<<"\n ros jacobian \n"<<jacobian<<std::endl;
-std::cout<<"\n my kinematic \n"<<myKin<<std::endl;
-std::cout<<"\n ros kinematic \n"<<T0EE.matrix()<<std::endl; */
-/* ---------------------------------------------------------------------------- */
-
-	/* Compute error */
+	/* Compute error translation */
 
 	Eigen::Vector3d ee_position = T0EE.translation();
 	Eigen::Vector3d ee_velocity = jacobian.topRows(3)*dot_q_curr;
 
-	error = ee_pos_cmd - ee_position;
-	dot_error = ee_vel_cmd - ee_velocity;
+	error.head(3) = ee_pos_cmd - ee_position;
+	dot_error.head(3) = ee_vel_cmd - ee_velocity;
 
-	/* Compute reference */
+	/* Compute error orientation */
 
-	Eigen::Vector3d tmp_position = ee_vel_cmd + Lambda * error;
-	Eigen::Vector3d tmp_velocity = ee_acc_cmd + Lambda * dot_error;
+  	Eigen::Quaterniond ee_ang(T0EE.linear());
+	Eigen::Vector3d ee_omega = jacobian.bottomRows(3)*dot_q_curr;
 
-	Eigen::MatrixXd myI = Eigen::MatrixXd::Identity(7,7);
-	Eigen::MatrixXd myNullProj = Eigen::MatrixXd::Identity(7,7);
+	// orientation error
+/* 	if (ee_ang_cmd.coeffs().dot(ee_ang.coeffs()) < 0.0) {
+		ee_ang.coeffs() << -ee_ang.coeffs();
+	} */
 	
-	myNullProj = myI-mypJacEE*jacobian;
-	dot_qr = mypJacEE * tmp_position + Kn*myNullProj*mycostSelfMove;
-	ddot_qr = mypJacEE * tmp_velocity + mydot_pJacEE * tmp_position + Kn*(myNullProj*mydot_costSelfMove - (mydot_pJacEE*jacobian + mypJacEE*mydot_JacEE)*mycostSelfMove);
+	Eigen::Quaterniond error_quaternion(ee_ang.inverse() * ee_ang_cmd);
+	error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+	// Transform to base frame
+	error.tail(3) << - T0EE.linear() * error.tail(3);
+	dot_error.tail(3) = ee_ang_vel_cmd - ee_omega;
+	
+	//error.tail(3).setZero();
+	//dot_error.tail(3).setZero();
+	
+	/* Compute reference */
+	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
+	ee_vel_cmd_tot << ee_vel_cmd, ee_ang_vel_cmd;
+	ee_acc_cmd_tot << ee_acc_cmd, ee_ang_acc_cmd;
+	
+	Eigen::VectorXd tmp_position = ee_vel_cmd_tot + Lambda * error;
+	Eigen::VectorXd tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
+
+	int space_ = 3; // operative space dimension
+	dot_qr = mypJacEE * tmp_position.head(space_);
+	ddot_qr = mypJacEE * tmp_velocity.head(space_) + mydot_pJacEE * tmp_position.head(space_);
 	s = dot_qr - dot_q_curr;
 
-/*  	std::cout<<"\n1\n"<<mypJacEE * tmp_position<<std::endl;
-	std::cout<<"\n2\n"<<Kn*myNullProj*mycostSelfMove<<std::endl;
-	std::cout<<"\n3\n"<<mycostSelfMove<<std::endl; */
-
 	/* Update and Compute Regressor */
-
-	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-	fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr);
-
-/* ---------------------------------------------------------------------------- */
-/* Eigen::MatrixXd myMReg = fastRegMat.getMassReg_gen();
-Eigen::MatrixXd myCReg = fastRegMat.getCoriolisReg_gen();
-Eigen::MatrixXd myGReg = fastRegMat.getGravityReg_gen();
-Eigen::Matrix<double, 7, 7> M;
-Eigen::Matrix<double, 7, 1> C;
-
-std::array<double, 49> mass_array = model_handle_->getMass();
-std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
-
-M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
-C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 	
-std::cout<<"\n my mass contribute \n"<<myMReg*param<<std::endl;
-std::cout<<"\n ros mass contribute \n"<<M*ddot_qr<<std::endl;
-std::cout<<"\n my coriolis contribute \n"<<myCReg*param<<std::endl;
-std::cout<<"\n ros coriolis contribute \n"<<C<<std::endl;
-std::cout<<"\n my gravity contribute \n"<<myGReg*param<<std::endl;
-std::cout<<"\n ros gravity contribute \n"<<G<<std::endl; */
-/* ---------------------------------------------------------------------------- */
-
-
+	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	fastRegMat.setArguments(q_curr, dot_q_curr, param_dyn);
+	
 	Yr = fastRegMat.getReg_gen();
 
 	/* tau_J_d is past tau_cmd saturated */
 
-	tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
+	tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
 
 	/* Backstepping control law */
 
@@ -296,30 +303,65 @@ std::cout<<"\n ros gravity contribute \n"<<G<<std::endl; */
 		param = param + dt*dot_param;
 	}
 
-	/* Compute tau command */
-	
-	tau_cmd = Yr*param + Kd*s + jacobian.topRows(3).transpose()*error-G;
-/* 	std::cout<<"\nYr*param-G\n"<<Yr*param-G<<std::endl;
-	std::cout<<"\nKd*s\n"<<Kd*s<<std::endl;
-	std::cout<<"\njac_err\n"<<jacobian.topRows(3).transpose()*error<<std::endl;
-*/
+/* ---------------------------------------------------------------------------- */
+/*Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
+Eigen::MatrixXd myKin = fastRegMat.getKin_gen();
+myM = fastRegMat.getMass_gen();
+myC = fastRegMat.getCoriolis_gen();
+myG = fastRegMat.getGravity_gen();
 
- 	/* Publish tracking errors as joint states */
+std::array<double, NJ*NJ> mass_array = model_handle_->getMass();
+std::array<double, NJ> coriolis_array = model_handle_->getCoriolis();
+rosM = Eigen::Map<Eigen::Matrix<double, NJ, NJ>>(mass_array.data());
+rosC = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(coriolis_array.data());
+
+ std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
+std::cout<<"\n ros jacobian \n"<<jacobian<<std::endl;
+std::cout<<"\n my kinematic \n"<<myKin<<std::endl;
+std::cout<<"\n ros kinematic \n"<<T0EE.matrix()<<std::endl;
+std::cout<<"\n my mass contribute \n"<<myM<<std::endl;
+std::cout<<"\n ros mass contribute \n"<<rosM<<std::endl;
+std::cout<<"\n my coriolis contribute \n"<<myC*dot_q_curr<<std::endl;
+std::cout<<"\n ros coriolis contribute \n"<<rosC<<std::endl;
+std::cout<<"\n my gravity contribute \n"<<myG<<std::endl;
+std::cout<<"\n ros gravity contribute \n"<<rosG<<std::endl;
+/* ---------------------------------------------------------------------------- */
+
+	/* Compute tau command */
+	tau_cmd_dyn = myM*ddot_qr + myC*dot_qr + myG;
+	tau_cmd_reg = Yr*param;
+
+/* ---------------------------------------------------------------------------- */
+/* std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n";
+std::cout<<"\nYr*param-G\n"<<Yr*param-rosG<<std::endl;
+std::cout<<"\nKd*s\n"<<Kd*s<<std::endl;
+std::cout<<"\njac_err\n"<<jacobian.topRows(3).transpose()*error<<std::endl; */
+/* ---------------------------------------------------------------------------- */
+
+	tau_cmd = tau_cmd_reg + Kd*s + jacobian.topRows(space_).transpose()*error.head(space_)-rosG;
+
+	/* Saturate the derivate of tau_cmd */
+	
+	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+
+ 	/* Publish messages */
+
 	time_now = ros::Time::now();
+	
 	msg_log.header.stamp = time_now;
 	fillMsg(msg_log.error_pos_EE, error);
 	fillMsg(msg_log.dot_error_pos_EE, dot_error);
 	fillMsg(msg_log.dot_qr, dot_qr);
 	fillMsg(msg_log.ddot_qr, ddot_qr);
 	fillMsg(msg_log.s, s);
-	fillMsg(msg_log.Link1_param, param.segment(0, 10));
-	fillMsg(msg_log.Link2_param, param.segment(10, 10));
-	fillMsg(msg_log.Link3_param, param.segment(20, 10));
-	fillMsg(msg_log.Link4_param, param.segment(30, 10));
-	fillMsg(msg_log.Link5_param, param.segment(40, 10));
-	fillMsg(msg_log.Link6_param, param.segment(50, 10));
-	fillMsg(msg_log.Link7_param, param.segment(60, 10));
-	fillMsg(msg_log.tau_cmd, tau_cmd);
+	fillMsgLink(msg_log.link1, param.segment(0, PARAM));
+	fillMsgLink(msg_log.link2, param.segment(10, PARAM));
+	fillMsgLink(msg_log.link3, param.segment(20, PARAM));
+	fillMsgLink(msg_log.link4, param.segment(30, PARAM));
+	fillMsgLink(msg_log.link5, param.segment(40, PARAM));
+	fillMsgLink(msg_log.link6, param.segment(50, PARAM));
+	fillMsgLink(msg_log.link7, param.segment(60, PARAM));
+	fillMsg(msg_log.tau_cmd, tau_cmd_reg);
 
 	msg_config.header.stamp  = time_now;
 	msg_config.xyz.x = T0EE.translation()(0);
@@ -328,14 +370,10 @@ std::cout<<"\n ros gravity contribute \n"<<G<<std::endl; */
 
 	this->pub_err_.publish(msg_log);
 	this->pub_config_.publish(msg_config);
-
-	/* Saturate the derivate of tau_cmd */
-	
-	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 	
 	/* Set the command for each joint */
 
-	for (size_t i = 0; i < 7; i++) {
+	for (size_t i = 0; i < NJ; i++) {
 		joint_handles_[i].setCommand(tau_cmd[i]);
 	}
 }
@@ -346,17 +384,21 @@ void Backstepping::stopping(const ros::Time&)
 }
 
 /* Check for the effort commanded */
-Eigen::Matrix<double, 7, 1> Backstepping::saturateTorqueRate( 
-	const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
-	const Eigen::Matrix<double, 7, 1>& tau_J_d)
-{
-	Eigen::Matrix<double, 7, 1> tau_d_saturated {};
-	for (size_t i = 0; i < 7; i++) {
+Eigen::Matrix<double, NJ, 1> Backstepping::saturateTorqueRate( 
+	const Eigen::Matrix<double, NJ, 1>& tau_d_calculated, const Eigen::Matrix<double, NJ, 1>& tau_J_d){
+	
+	Eigen::Matrix<double, NJ, 1> tau_d_saturated {};
+	for (size_t i = 0; i < NJ; i++) {
 
 		double difference = tau_d_calculated[i] - tau_J_d[i];
 		tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, kDeltaTauMax), -kDeltaTauMax);
-
+/* 
+		if(fabs(tau_d_saturated[i])>tau_limit[i]){
+			tau_d_saturated[i] = (tau_d_saturated[i]/fabs(tau_d_saturated[i]))*tau_limit[i];
+		} */
 	}
+	
+
 	return tau_d_saturated;
 }
 
@@ -374,6 +416,20 @@ void Backstepping::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd&
     for (int i = 0; i < dim; i++) {
         msg_[i] = data_[i];
     }
+}
+
+void Backstepping::fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_) {
+    
+    msg_.mass = data_[0];
+	msg_.m_CoM_x = data_[1];
+	msg_.m_CoM_y = data_[2];
+	msg_.m_CoM_z = data_[3];
+	msg_.Ixx = data_[4];
+	msg_.Ixy = data_[5];
+	msg_.Ixz = data_[6];
+	msg_.Iyy = data_[7];
+	msg_.Iyz = data_[8];
+	msg_.Izz = data_[9];
 }
 
 }

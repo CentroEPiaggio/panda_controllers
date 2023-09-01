@@ -1,29 +1,34 @@
 <?xml version="1.0" ?>
 <!-- Launch file per far partire:
-- gazebo (e rviz)
-- il controllore desiderato: backstepping_controller, computed_torque_adaptive_controller
-- la lissajous -->
+	- gazebo e rviz
+	- il controllore desiderato: 
+		- backstepping_controller
+		- computed_torque_controller
+		- computed_torque_adaptive_controller 
+	- la traiettoria su rviz -->
 <launch>
 
-	<!-- <arg name="robot_ip" default="192.168.0.210" /> -->
+	<!-- <arg name="robot_ip" 	default="192.168.0.210" /> -->
 	<arg name="arm_id" 			default="panda" doc="Name of the panda robot to spawn" />
 	<arg name="controller" 		default="backstepping_controller" />
 	<arg name="use_gripper" 	default="false" />
 	<arg name="rviz" 			default="true" />
-	<arg name="trajectory_node" default="true" />
-	
 	<arg name="package" 		default="panda_controllers" />
     
+	<!-- load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_DYN.yaml" />
 	
+	<!-- to load gazebo (and rviz) -->
 	<include file="$(find panda_controllers)/launch/panda.launch">
 		<arg name="rviz_config" value="$(find panda_controllers)/launch/rviz/franka_marker.rviz" />
 		<arg name="rviz" 		value="$(arg rviz)" />
 		<arg name="use_gripper" value="$(arg use_gripper)" />
 		<arg name="controller" 	value="$(arg controller)" />
 	</include>
-
-	<include file="$(find panda_controllers)/launch/panda_rviz.launch" if="$(arg rviz)" />
+	
+	<!-- to draw trajectory on rviz -->
+	<include file="$(find panda_controllers)/launch/panda_trajectory_rviz.launch" if="$(arg rviz)" />
 	
 </launch>

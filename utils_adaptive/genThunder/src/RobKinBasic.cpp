@@ -16,28 +16,60 @@ namespace regrob{
 
     RobKinBasic::RobKinBasic(
         const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame)
-       :_numJoints_(numJoints), _jointsType_(jointsType), _DHtable_(DHtable), lab2L0(base_frame), Ln2EE(ee_frame){
+       :_numJoints_(numJoints), _jointsType_(jointsType), _DHtable_(DHtable), _lab2L0_(base_frame), _Ln2EE_(ee_frame){
 
         initVarsFuns();
         compute();
     }
     
+    RobKinBasic::RobKinBasic(
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame)
+       :_numJoints_(numJoints), _jointsType_(jointsType), _DHtable_(DHtable), _lab2L0_(base_frame){
+
+        FrameOffset no_EE({0,0,0},{0,0,0});
+        _Ln2EE_= no_EE;
+        initVarsFuns();
+        compute();
+    }
+
     void RobKinBasic::init(
-        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame) {
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame) {
         
+        FrameOffset no_EE({0,0,0},{0,0,0});
         _numJoints_ = numJoints;
         _jointsType_ = jointsType;
         _DHtable_ = DHtable;
-        lab2L0 = base_frame;
-        Ln2EE = ee_frame;
+        _lab2L0_ = base_frame;
+        _Ln2EE_= no_EE;
 
         initVarsFuns();
         compute();
     }
  
+     void RobKinBasic::init(
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame) {
+        
+        _numJoints_ = numJoints;
+        _jointsType_ = jointsType;
+        _DHtable_ = DHtable;
+        _lab2L0_ = base_frame;
+        _Ln2EE_ = ee_frame;
+
+        initVarsFuns();
+        compute();
+    }
+
     void RobKinBasic::initVarsFuns(){
         
+        if (_DHtable_.rows() != _numJoints_ || _DHtable_.cols() != 4){
+            throw std::runtime_error("DHTemplate: Error size of DH table");
+        }
+        if ((int)_jointsType_.size()!=_numJoints_){
+            throw std::runtime_error("DHFwkinJoints: Error size of joints string");
+        }
+
         _q_ = casadi::SX::sym("_q_", _numJoints_,1);
+
         q = Eigen::VectorXd::Zero(_numJoints_,1);
         
         args.resize(1);    
@@ -64,9 +96,6 @@ namespace regrob{
         casadi::SX Ti(4,4); // output
         
         // Check
-        if (rowDHTable.cols() != 4) {
-            throw std::runtime_error("DHTemplate: Error size of DH table");
-        }
         if (jointType == 'P') {
             d = rowDHTable(2) + qi;
             theta = rowDHTable(3);
@@ -104,14 +133,6 @@ namespace regrob{
     }
     
     std::tuple<casadi::SXVector,casadi::SXVector> RobKinBasic::DHFwKinJoints() {
-        
-        // Check
-        if (_numJoints_ != (int)_jointsType_.size()) {
-            throw std::runtime_error("DHFwkinJoints: Error size of joints string");
-        }
-        if (_numJoints_ != _DHtable_.rows()) {
-            throw std::runtime_error("DHFwkinJoints: Error size of DH table");
-        }
 
         casadi::SXVector Ti(_numJoints_);    // Output
         casadi::SXVector T0i(_numJoints_);   // Output
@@ -162,7 +183,7 @@ namespace regrob{
 
             // Rest of columns of jacobian
             for (int j = 1; j <= i; j++) {
-                
+
                 // Init variables of column j-th of jacobian each cycle
                 casadi::SX kj_1(3,1);             // versor of joint j-1
                 casadi::SX O_j_1i(3,1);           // distance of joint i from joint j-1
@@ -185,12 +206,12 @@ namespace regrob{
             // Add end-effector transformation
             if(i==(_numJoints_-1)){
                 casadi::SX R0i = T_0i(r_rot_idx,r_rot_idx);
-                Ji_pos = Ji_pos - casadi::SX::mtimes({R0i,hat(Ln2EE.get_translation()),R0i.T(),Ji_or});
+                Ji_pos = Ji_pos - casadi::SX::mtimes({R0i,hat(_Ln2EE_.get_translation()),R0i.T(),Ji_or});
             } 
             
             // Add offset from world-frame transformation
-            Ji_pos = mtimes(lab2L0.get_rotation(),Ji_pos);
-            Ji_or = mtimes(lab2L0.get_rotation(),Ji_or);
+            Ji_pos = mtimes(_lab2L0_.get_rotation(),Ji_pos);
+            Ji_or = mtimes(_lab2L0_.get_rotation(),Ji_or);
             
             Ji_v[i] = Ji_pos;
             Ji_w[i] = Ji_or;
@@ -252,7 +273,7 @@ namespace regrob{
         
         T_tuple = DHFwKinJoints();
         T0i = std::get<0>(T_tuple);
-        T0EE = casadi::SX::mtimes({lab2L0.get_transform(),T0i[nj-1],Ln2EE.get_transform()});
+        T0EE = casadi::SX::mtimes({_lab2L0_.get_transform(),T0i[nj-1],_Ln2EE_.get_transform()});
         
         return T0EE;
     }
@@ -273,7 +294,7 @@ namespace regrob{
 
         jacobian_fun = jac_fun;
     }
-
+    
     void RobKinBasic::init_casadi_functions() {
         
         DHKin();
@@ -293,7 +314,6 @@ namespace regrob{
         for(int i=0;i<_numJoints_;i++){
             args[0](i,0) = q(i);
         }
-
         kinematic_fun.call({args[0]},kinematic_res);
         jacobian_fun.call({args[0]},jacobian_res);       
     }
@@ -308,9 +328,8 @@ namespace regrob{
     }
     
     Eigen::MatrixXd RobKinBasic::getJacobian(){
-        const int nrow = 6;
-        const int ncol = _numJoints_;
-        Eigen::MatrixXd Jacfull(nrow,ncol);
+
+        Eigen::MatrixXd Jacfull(6,_numJoints_);
         std::vector<casadi::SXElem> jac_elements = jacobian_res[0].get_elements();
         std::transform(jac_elements.begin(), jac_elements.end(), Jacfull.data(), mapFunction);
 

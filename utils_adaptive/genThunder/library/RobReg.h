@@ -15,12 +15,12 @@ namespace regrob{
         
         private:
 
-            /* Override pure virtual function */
+            /* Override virtual function */
             virtual void init() override{};
+            /* Override virtual function */
+            virtual void setArguments(const Eigen::VectorXd&) override{};
             /* Initialize and resize variables and function */
             virtual void initVarsFuns();
-            /* Set arguments to update the result of forward kinematic and jacobian */
-            virtual void setArguments(const Eigen::VectorXd&) override{};
             /* Update result of kinematic casadi function */
             virtual void compute();
             /* Create casadi function */
@@ -30,7 +30,7 @@ namespace regrob{
             std::vector<casadi::SX> args;
 
             /* Matrix SX of regressor */
-            casadi::SX SX_Yr, SX_mass, SX_coriolis, SX_gravity;
+            casadi::SX SX_Yr;
             /* Variable for joints to set arguments*/
             Eigen::VectorXd q, dq, dqr, ddqr;
 
@@ -38,20 +38,6 @@ namespace regrob{
 
             /* Variable for joints */
             casadi::SX _dq_, _dqr_, _ddqr_;
-
-            /* Create regressor casadi function */
-            void Regressor();
-            /* Create regressor casadi function */
-            void massReg();
-            /* Create regressor casadi function */
-            void coriolisReg();
-            /* Create regressor casadi function */
-            void gravityReg();
-
-            /* Output of casadi function */
-            std::vector<casadi::SX> regressor_res, massReg_res, coriolisReg_res, gravityReg_res;
-            /* Casadi function */
-            casadi::Function regressor_fun, massReg_fun, coriolisReg_fun, gravityReg_fun;
 
             /* Creation of dq_sel matrix */
             casadi::SX dq_select(const casadi::SX& dq_);
@@ -63,9 +49,17 @@ namespace regrob{
             /* Compute C matrix with Christoffel symbols */
             casadi::SXVector stdCmatrix(const casadi::SX& B, const casadi::SX& q_, const casadi::SX& dq_, const casadi::SX& dq_sel_);
             /* Compute Regressor of Slotine Li from Denavit-Hartenberg parameterization*/
-            casadi::SXVector SXregressor(
+            casadi::SX SXregressor(
                 const casadi::SX& q_, const casadi::SX& dq_, const casadi::SX& dqr_, const casadi::SX& ddqr_, 
                 const std::string jointsType_, const Eigen::MatrixXd& DHtable_, FrameOffset& base_frame,FrameOffset& ee_frame);
+            
+            /* Output of casadi function */
+            std::vector<casadi::SX> regressor_res;
+            /* Casadi function */
+            casadi::Function regressor_fun;
+
+            /* Create regressor casadi function */
+            void Regressor();
 
         public:
 
@@ -73,33 +67,40 @@ namespace regrob{
             RobReg();
             /* Init variables
             numJoints: number of joints
+            jointsType: is string of "R" and "P"
             DHTable: Denavit-Hartenberg table format [a alpha d theta]
-            jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */
             RobReg(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable,
                 FrameOffset& base_frame, FrameOffset& ee_frame);
             /* Init variables
             numJoints: number of joints
+            jointsType: is string of "R" and "P"
             DHTable: Denavit-Hartenberg table format [a alpha d theta]
-            jtsType: is string of "R" and "P"
+            base_frame: is used to set transformation between link0 and world_frame */
+            RobReg(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable, FrameOffset& base_frame);
+            /* Init variables
+            numJoints: number of joints
+            jointsType: is string of "R" and "P"
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */
             virtual void init(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable,
                 FrameOffset& base_frame, FrameOffset& ee_frame);
+            /* Init variables
+            numJoints: number of joints
+            jointsType: is string of "R" and "P"
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
+            base_frame: is used to set transformation between link0 and world_frame*/
+            virtual void init(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable,FrameOffset& base_frame);
             /* Destructor */
             ~RobReg(){};
             
+            /* Set arguments to update the result of casadi functions */
             virtual void setArguments(const Eigen::VectorXd& q_, const Eigen::VectorXd& dq_, const Eigen::VectorXd& dqr_, const Eigen::VectorXd& ddqr_);
 
             /* Get regressor matrix */
             Eigen::MatrixXd getRegressor();
-            /* Get regressor matrix */
-            Eigen::MatrixXd getMassReg();
-            /* Get regressor matrix */
-            Eigen::MatrixXd getCoriolisReg();
-            /* Get regressor matrix */
-            Eigen::MatrixXd getGravityReg();
             /* Generate code for regressor */
             virtual void generate_code(std::string&);
             /* Get function name used to generate code in RobReg */

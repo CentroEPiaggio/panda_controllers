@@ -15,7 +15,7 @@ namespace regrob{
 
             /* Initialize variables */
             virtual void init() = 0;
-            /* Initialize and resize variables and function */
+            /* Initialize and resize variables and function (in particular attributes of class)*/
             virtual void initVarsFuns() = 0;
             /* Update result of casadi function */
             virtual void compute()=0;

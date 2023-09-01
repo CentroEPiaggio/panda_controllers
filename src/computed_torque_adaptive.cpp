@@ -218,13 +218,6 @@ void ComputedTorqueAdaptive::update(const ros::Time&, const ros::Duration& perio
 	
 	time_now = ros::Time::now();
 	msg_log.header.stamp = time_now;
-	fillMsg(msg_log.Link1_param, param.segment(0, 10));
-	fillMsg(msg_log.Link2_param, param.segment(10, 10));
-	fillMsg(msg_log.Link3_param, param.segment(20, 10));
-	fillMsg(msg_log.Link4_param, param.segment(30, 10));
-	fillMsg(msg_log.Link5_param, param.segment(40, 10));
-	fillMsg(msg_log.Link6_param, param.segment(50, 10));
-	fillMsg(msg_log.Link7_param, param.segment(60, 10));
 	fillMsg(msg_log.tau_cmd, tau_cmd);
 
 	msg_config.header.stamp  = time_now;

@@ -15,19 +15,18 @@ namespace regrob{
         
         private:
             
-            /* Override pure virtual function */
+            /* Override virtual function */
             virtual void init() override{};
-            /* Initialize and resize variables and function */
+            /* Initialize and resize atrributes of class (variables and function) */
             virtual void initVarsFuns();
-           /* Create casadi function */
+            /* Create and initialize casadi function */
             virtual void init_casadi_functions();
-            /* Update result of kinematic casadi function */
+            /* Update result of casadi functions */
             virtual void compute();
             
             /* Input of casadi function */
             std::vector<casadi::SX> args;
-
-            /* Variable for joints to set arguments */
+            /* Variable for joints in set arguments */
             Eigen::VectorXd q;
 
         protected:
@@ -42,12 +41,12 @@ namespace regrob{
             /* Denavit-Hartenberg parameterization table */
             Eigen::MatrixXd _DHtable_;
             /* Frame offset between world-frame and link 0*/
-            FrameOffset lab2L0;
+            FrameOffset _lab2L0_;
             /* Frame offset between end-effector and last link */
-            FrameOffset Ln2EE;
+            FrameOffset _Ln2EE_;
                         
-            /* Compute matrix template of transformation from Denavit-Hartenberg parameterization
-            rowDHTable format [a alpha d theta], jtsType is "R" or "P" */
+            /* Compute matrix template of transformation from Denavit-Hartenberg parameterization between link i-1 to link i.
+            rowDHTable format is [a alpha d theta], jtsType is "R" or "P" */
             casadi::SX DHTemplate(const Eigen::MatrixXd& rowDHTable, const casadi::SX qi, char jtsType);
             /* Compute Forward Kinematic of joints from Denavit-Hartenberg parameterization */
             std::tuple<casadi::SXVector,casadi::SXVector> DHFwKinJoints();
@@ -78,20 +77,35 @@ namespace regrob{
             RobKinBasic();
             /* Init variables
             numJoints: number of joints
+            jointsType: is string of "R" and "P"
             DHTable: Denavit-Hartenberg table format [a alpha d theta]
-            jtsType: is string of "R" and "P"
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */
-            RobKinBasic(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable,
-                FrameOffset& base_frame, FrameOffset& ee_frame);
+            RobKinBasic(const int numJoints, const std::string jointsType,
+                const Eigen::MatrixXd& DHtable, FrameOffset& base_frame, FrameOffset& ee_frame);
             /* Init variables
             numJoints: number of joints
+            jointsType: is string of "R" and "P"
             DHTable: Denavit-Hartenberg table format [a alpha d theta]
-            jtsType: is string of "R" and "P"
+            base_frame: is used to set transformation between link0 and world_frame */
+            RobKinBasic(const int numJoints, const std::string jointsType, 
+                const Eigen::MatrixXd& DHtable, FrameOffset& base_frame);
+            /* Init variables
+            numJoints: number of joints
+            jointsType: is string of "R" and "P"
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
             base_frame: is used to set transformation between link0 and world_frame
             ee_frame: is used to set transformation between end-effector and last link */
-            virtual void init(const int numJoints,const std::string jointsType,const Eigen::MatrixXd& DHtable,
-                FrameOffset& base_frame, FrameOffset& ee_frame);
+            virtual void init(const int numJoints,const std::string jointsType,const 
+                Eigen::MatrixXd& DHtable, FrameOffset& base_frame, FrameOffset& ee_frame);
+            /* Init variables
+            numJoints: number of joints
+            jointsType: is string of "R" and "P"
+            DHTable: Denavit-Hartenberg table format [a alpha d theta]
+            base_frame: is used to set transformation between link0 and world_frame */
+            virtual void init(const int numJoints,const std::string jointsType,const 
+                Eigen::MatrixXd& DHtable, FrameOffset& base_frame);
+            
             /* Destructor */
             ~RobKinBasic(){};
 
@@ -103,7 +117,7 @@ namespace regrob{
             /* Get jacobian matrix */
             Eigen::MatrixXd getJacobian();
 
-            /* Generate code for forward kinematic */
+            /* Generate code */
             virtual void generate_code(std::string&);
             /* Get function name used to generate code in RobKinBasic */
             virtual std::vector<std::string> getFunctionsName();

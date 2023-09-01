@@ -20,17 +20,18 @@ namespace regrob{
         dq = Eigen::VectorXd::Zero(num_joints);
         dqr = Eigen::VectorXd::Zero(num_joints);
         ddqr = Eigen::VectorXd::Zero(num_joints);
+        param = Eigen::VectorXd::Zero(10*num_joints);
 
         reg_gen.resize(num_joints,10*num_joints);
-        massReg_gen.resize(num_joints,10*num_joints);
-        coriolisReg_gen.resize(num_joints,10*num_joints);
-        gravityReg_gen.resize(num_joints,10*num_joints);
-        jac_gen.resize(6,7);
-        pinvJac_gen.resize(7,6);
-        dotPinvJac_gen.resize(7,6);
+        jac_gen.resize(6,num_joints);
+        pinvJac_gen.resize(num_joints,6);
+        pinvJacPos_gen.resize(num_joints,3);
+        dotPinvJac_gen.resize(num_joints,6);
+        dotPinvJacPos_gen.resize(num_joints,3);
         kin_gen.resize(4,4);
-        gradDistq_gen.resize(7,1);
-        dotGradDistq_gen.resize(7,1);
+        mass_gen.resize(num_joints,num_joints);
+        coriolis_gen.resize(num_joints,num_joints);
+        gravity_gen.resize(num_joints,1);
     }
     
     void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_,const Eigen::VectorXd& ddqr_){
@@ -42,25 +43,27 @@ namespace regrob{
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-
+        computeKin_gen();
+        computeJac_gen();
         computeReg_gen();
-        computeMassReg_gen();
-        computeCoriolisReg_gen();
-        computeGravityReg_gen();
+        computeMass_gen();
+        computeCoriolis_gen();
+        computeGravity_gen();
     }
     
-    void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_){
-        if(q_.size() == num_joints && dq_.size()== num_joints && dqr_.size()==num_joints){
+    void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& param_){
+        if(q_.size() == num_joints && dq_.size()== num_joints && param_.size()== 10*num_joints){
             q = q_;
             dq = dq_;
-            dqr = dqr_;
+            param = param_;
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-
-        computeCoriolisReg_gen();
+        computeMass_gen();
+        computeCoriolis_gen();
+        computeGravity_gen();
     }
-    
+
     void thunderPanda::setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_){
         if(q_.size() == num_joints && dq_.size()== num_joints){
             q = q_;
@@ -69,12 +72,15 @@ namespace regrob{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
         //computeJac_gen();
-        computeDotJac_gen();
+        //computeDotJac_gen();
         computePinvJac_gen();
         computeDotPinvJac_gen();
+        computePinvJacPos_gen();
+        computeDotPinvJacPos_gen();
         //computeKin_gen();
-        computeGradDistq_gen();
-        computeDotGradDistq_gen();
+        //computeMass_gen();
+        //computeCoriolis_gen();
+        //computeGravity_gen();
     }
     
     void thunderPanda::setArguments(const Eigen::VectorXd& q_){
@@ -86,7 +92,19 @@ namespace regrob{
         computeJac_gen();
         //computePinvJac_gen();
         computeKin_gen();
-        computeGradDistq_gen();
+        //computeMass_gen();
+        //computeGravity_gen();
+    }
+    
+    void thunderPanda::setInertialParam(const Eigen::VectorXd& param_){
+        if(param_.size() == 10*num_joints){
+            param = param_;
+        } else{
+            std::cout<<"in setArguments: invalid dimensions of arguments\n";
+        }
+        computeMass_gen();
+        computeCoriolis_gen();
+        computeGravity_gen();
     }
     
     void thunderPanda::computeReg_gen(){
@@ -101,40 +119,37 @@ namespace regrob{
         
     }
     
-    void thunderPanda::computeMassReg_gen(){
+    void thunderPanda::computeMass_gen(){
         
-        long long p3[massReg_fun_SZ_IW];
-        double p4[massReg_fun_SZ_W];
+        long long p3[mass_fun_SZ_IW];
+        double p4[mass_fun_SZ_W];
 
-        const double* input_[] = {q.data(), ddqr.data()};
-        double* output_[] = {massReg_gen.data()};
+        const double* input_[] = {q.data(), param.data()};
+        double* output_[] = {mass_gen.data()};
         
-        int check = massReg_fun(input_, output_, p3, p4, 0);
+        int check = mass_fun(input_, output_, p3, p4, 0);
         
     }
     
-    void thunderPanda::computeCoriolisReg_gen(){
+    void thunderPanda::computeCoriolis_gen(){
         
-        long long p3[coriolisReg_fun_SZ_IW];
-        double p4[coriolisReg_fun_SZ_W];
+        long long p3[coriolis_fun_SZ_IW];
+        double p4[coriolis_fun_SZ_W];
 
-        const double* input_[] = {q.data(), dq.data(), dqr.data()};
-        double* output_[] = {coriolisReg_gen.data()};
+        const double* input_[] = {q.data(), dq.data(), param.data()};
+        double* output_[] = {coriolis_gen.data()};
         
-        int check = coriolisReg_fun(input_, output_, p3, p4, 0);
-        
+        int check = coriolis_fun(input_, output_, p3, p4, 0);
     }
 
-    void thunderPanda::computeGravityReg_gen(){
+    void thunderPanda::computeGravity_gen(){
         
-        long long p3[gravityReg_fun_SZ_IW];
-        double p4[gravityReg_fun_SZ_W];
+        long long p3[gravity_fun_SZ_IW];
+        double p4[gravity_fun_SZ_W];
 
-        const double* input_[] = {q.data()};
-        double* output_[] = {gravityReg_gen.data()};
-        
-        int check = gravityReg_fun(input_, output_, p3, p4, 0);
-        
+        const double* input_[] = {q.data(), param.data()};
+        double* output_[] = {gravity_gen.data()};
+        int check = gravity_fun(input_, output_, p3, p4, 0);
     }
 
     void thunderPanda::computeJac_gen(){
@@ -146,7 +161,6 @@ namespace regrob{
         double* output_[] = {jac_gen.data()};
 
         int check = jac_fun(input_, output_, p3, p4, 0);
-
     }
 
     void thunderPanda::computeDotJac_gen(){
@@ -158,7 +172,6 @@ namespace regrob{
         double* output_[] = {dotJac_gen.data()};
 
         int check = dotJac_fun(input_, output_, p3, p4, 0);
-
     }
 
     void thunderPanda::computePinvJac_gen(){
@@ -173,6 +186,18 @@ namespace regrob{
 
     }
     
+    void thunderPanda::computePinvJacPos_gen(){
+        
+        long long p3[pinvJacPos_fun_SZ_IW];
+        double p4[pinvJacPos_fun_SZ_W];
+
+        const double* input_[] = {q.data()};
+        double* output_[] = {pinvJacPos_gen.data()};
+
+        int check = pinvJacPos_fun(input_, output_, p3, p4, 0);
+
+    }
+
     void thunderPanda::computeDotPinvJac_gen(){
         
         long long p3[dotPinvJac_fun_SZ_IW];
@@ -184,7 +209,19 @@ namespace regrob{
         int check = dotPinvJac_fun(input_, output_, p3, p4, 0);
 
     }
-    
+
+    void thunderPanda::computeDotPinvJacPos_gen(){
+        
+        long long p3[dotPinvJacPos_fun_SZ_IW];
+        double p4[dotPinvJacPos_fun_SZ_W];
+
+        const double* input_[] = {q.data(),dq.data()};
+        double* output_[] = {dotPinvJacPos_gen.data()};
+
+        int check = dotPinvJacPos_fun(input_, output_, p3, p4, 0);
+
+    }
+
     void thunderPanda::computeKin_gen(){
         
         long long p3[kin_fun_SZ_IW];
@@ -197,28 +234,5 @@ namespace regrob{
 
     }
 
-    void thunderPanda::computeGradDistq_gen(){
-        
-        long long p3[gradDistq_fun_SZ_IW];
-        double p4[gradDistq_fun_SZ_W];
-
-        const double* input_[] = {q.data()};
-        double* output_[] = {gradDistq_gen.data()};
-
-        int check = gradDistq_fun(input_, output_, p3, p4, 0);
-
-    }
-
-    void thunderPanda::computeDotGradDistq_gen(){
-        
-        long long p3[dotGradDistq_fun_SZ_IW];
-        double p4[dotGradDistq_fun_SZ_W];
-
-        const double* input_[] = {q.data(), dq.data()};
-        double* output_[] = {dotGradDistq_gen.data()};
-
-        int check = dotGradDistq_fun(input_, output_, p3, p4, 0);
-
-    }
 
 }

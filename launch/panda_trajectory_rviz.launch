@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<!-- launch trajectory_rviz -->
+<launch>
+
+    <arg name="package" default="panda_controllers" />
+    <arg name="node_name" default="trajectory_rviz" />
+
+    <node name="$(arg node_name)" pkg="$(arg package)" type="trajectory_rviz" output="screen"/>
+
+</launch>

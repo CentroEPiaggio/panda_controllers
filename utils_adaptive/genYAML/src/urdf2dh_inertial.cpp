@@ -20,19 +20,43 @@ namespace regrob{
         OiGi = dist_i + Riu*OuGi;
         d_hat = hat(OiGi);
 
-        IOi_i = Rib*IGi_B*Rib.transpose() + body_urdf.mass*d_hat*d_hat.transpose();
+        IOi_i = Rib*IGi_B*Rib.transpose();
 
-        //--------fake----------------//
-        //IOi_i = Rib.transpose()*(IOi_i - body_urdf.mass*d_hat*d_hat.transpose())*Rib;
-        //OiGi = Riu.transpose()*(OiGi-dist_i);
-        //----------------------------//
-
-        /* assegnamento valori a body */
-        //body.mass = 1;
         body.mass = body_urdf.mass;
-        body.xyz = {body.mass*OiGi(0),body.mass*OiGi(1),body.mass*OiGi(2)};
-        body.parI = {IOi_i(0,0), IOi_i(0,1),IOi_i(0,2),IOi_i(1,1),IOi_i(1,2),IOi_i(2,2)};
+        body.xyz = {OiGi(0),OiGi(1),OiGi(2)};
+        body.parI = {IOi_i(0,0),IOi_i(0,1),IOi_i(0,2),IOi_i(1,1),IOi_i(1,2),IOi_i(2,2)};
         body.name = body_urdf.name;
+    }
+
+    void mergeBodyInertial(const LinkProp body1, const LinkProp body2, LinkProp &newBody){
+
+        Eigen::Vector3d G1Gnew;
+        Eigen::Vector3d G2Gnew;
+        Eigen::Vector3d O1G1;
+        Eigen::Vector3d O2G2;
+        Eigen::Vector3d newCoM;        
+        Eigen::Matrix3d d_hat1;
+        Eigen::Matrix3d d_hat2;
+        Eigen::Matrix3d newI;
+        Eigen::Matrix3d IG1 = createI(body1.parI);
+        Eigen::Matrix3d IG2 = createI(body2.parI);
+        
+        O1G1 << body1.xyz[0], body1.xyz[1], body1.xyz[2]; 
+        O2G2 << body2.xyz[0], body2.xyz[1], body2.xyz[2]; 
+        
+        newCoM = (body1.mass*O1G1 + body2.mass*O2G2)/(body1.mass + body2.mass);
+
+        G1Gnew = newCoM-O1G1;
+        G2Gnew = newCoM-O2G2;
+        
+        d_hat1 = hat(G1Gnew);
+        d_hat2 = hat(G2Gnew);
+
+        newI = IG1 + body1.mass*d_hat1*d_hat1.transpose() + IG2 + body2.mass*d_hat2*d_hat2.transpose();
+
+        newBody.mass = body1.mass + body2.mass;
+        newBody.xyz = {newCoM(0),newCoM(1),newCoM(2)};
+        newBody.parI = {newI(0,0),newI(0,1),newI(0,2),newI(1,1),newI(1,2),newI(2,2)};
     }
 
     Eigen::Matrix3d hat(const Eigen::Vector3d v){
@@ -44,13 +68,13 @@ namespace regrob{
         }
         
         vhat(0,0) = 0;
-        vhat(0,1) = v[2];
+        vhat(0,1) = -v[2];
         vhat(0,2) = v[1];
-        vhat(1,0) = -v[2];
+        vhat(1,0) = v[2];
         vhat(1,1) = 0;
-        vhat(1,2) = v[0];
+        vhat(1,2) = -v[0];
         vhat(2,0) = -v[1];
-        vhat(2,1) = -v[0];
+        vhat(2,1) = v[0];
         vhat(2,2) = 0;
 
         return vhat;
@@ -80,6 +104,7 @@ namespace regrob{
 
         return rotTr;
     }
+    
     Eigen::Matrix3d createI(const std::vector<double> parI){
 
         Eigen::Matrix3d I;
@@ -95,5 +120,6 @@ namespace regrob{
 
         return I;
     }
+
 }
 

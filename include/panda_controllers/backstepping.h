@@ -28,14 +28,17 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
-//#include <geometry_msgs/Point.h>
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
+#include "panda_controllers/link_params.h"
 #include "panda_controllers/log_backstepping.h"
 
 #include "utils/ThunderPanda.h"
 
 #define     DEBUG   0      
+
+# define    NJ 7	// number of joints
+# define    PARAM 10	// number of parameters for each link
 
 namespace panda_controllers
 {
@@ -62,49 +65,62 @@ private:
     
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
-    Eigen::Matrix<double, 7, 1> tau_limit;
-    Eigen::Matrix<double, 7, 1> q_min_limit;
-    Eigen::Matrix<double, 7, 1> q_max_limit;
-    Eigen::Matrix<double, 7, 1> q_dot_limit;
+    Eigen::Matrix<double, NJ, 1> tau_limit;
+    Eigen::Matrix<double, NJ, 1> q_min_limit;
+    Eigen::Matrix<double, NJ, 1> q_max_limit;
+    Eigen::Matrix<double, NJ, 1> q_dot_limit;
     
     /* Gain Matrices */
     
-    Eigen::Matrix3d Lambda; 
-    Eigen::Matrix<double, 7, 7> Kd;
-    Eigen::Matrix<double, 7, 7> Kn;
-    Eigen::Matrix<double, 70, 70> R;
-    Eigen::Matrix<double, 70, 70> Rinv;
+    Eigen::Matrix<double, 6, 6> Lambda; 
+    Eigen::Matrix<double, NJ, NJ> Kd;
+    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
+    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
     bool update_param_flag;
 
     /* Defining q_current, dot_q_current, and tau_cmd */
 
-    Eigen::Matrix<double, 7, 1> q_curr;
-    Eigen::Matrix<double, 7, 1> dot_q_curr;
-    Eigen::Matrix<double, 7, 1> tau_cmd;
+    Eigen::Matrix<double, NJ, 1> q_curr;
+    Eigen::Matrix<double, NJ, 1> dot_q_curr;
+    Eigen::Matrix<double, NJ, 1> tau_cmd;
+    Eigen::Matrix<double, NJ, 1> tau_cmd_dyn;
+    Eigen::Matrix<double, NJ, 1> tau_cmd_reg;
+
     
-    Eigen::Matrix<double, 7, 1> dot_qr;
-    Eigen::Matrix<double, 7, 1> ddot_qr;
-    Eigen::Matrix<double, 7, 1> s;
+    Eigen::Matrix<double, NJ, 1> dot_qr;
+    Eigen::Matrix<double, NJ, 1> ddot_qr;
+    Eigen::Matrix<double, NJ, 1> s;
 
     /* Error and dot error feedback */
     
-    Eigen::Matrix<double, 3, 1> error;
-    Eigen::Matrix<double, 3, 1> dot_error;
+    Eigen::Matrix<double, 6, 1> error;
+    Eigen::Matrix<double, 6, 1> dot_error;
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
     Eigen::Matrix<double, 3, 1> ee_pos_cmd;           // desired command position 
     Eigen::Matrix<double, 3, 1> ee_vel_cmd;           // desired command velocity 
     Eigen::Matrix<double, 3, 1> ee_acc_cmd;           // desired command acceleration 
+    
+    Eigen::Quaterniond ee_ang_cmd;           // desired command position 
+    Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;           // desired command velocity 
+    Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;           // desired command acceleration 
 
     /* Parameter vector */
 
-    Eigen::Matrix<double, 70, 1> param;
-    Eigen::Matrix<double, 70, 1> dot_param;
+    Eigen::Matrix<double, NJ*PARAM, 1> param;
+    Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
 
     /* Regressor Matrix */
     
-    Eigen::Matrix<double, 7, 70> Yr;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_dyn;
+    Eigen::Matrix<double, NJ, NJ*PARAM> Yr;
+    Eigen::Matrix<double, NJ, NJ> myM;
+    Eigen::Matrix<double, NJ, NJ> rosM;
+    Eigen::Matrix<double, NJ, NJ> myC;
+    Eigen::Matrix<double, NJ, 1> rosC;
+    Eigen::Matrix<double, NJ, 1> myG;
+    Eigen::Matrix<double, NJ, 1> rosG;
 	
     /* Object Regressor Slotine Li*/
 
@@ -112,11 +128,11 @@ private:
 
     /* Check the effort limits */
     
-    Eigen::Matrix<double, 7, 1> saturateTorqueRate (
-        const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
-        const Eigen::Matrix<double, 7, 1>& tau_J_d);
+    Eigen::Matrix<double, NJ, 1> saturateTorqueRate (
+        const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,
+        const Eigen::Matrix<double, NJ, 1>& tau_J_d);
 
-    Eigen::Matrix<double, 7, 1> tau_J_d;
+    Eigen::Matrix<double, NJ, 1> tau_J_d;
 
     /* Import parameters */
 
@@ -141,6 +157,8 @@ private:
     
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
+    void fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_);
+    
 	panda_controllers::log_backstepping msg_log;
     panda_controllers::point msg_config;
 

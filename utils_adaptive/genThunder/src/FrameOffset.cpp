@@ -9,7 +9,7 @@ namespace regrob{
         gravity.resize(3);        
     }
     
-    FrameOffset::FrameOffset(const vec3d& ypr_,const vec3d& pos_,const vec3d& g_){
+    FrameOffset::FrameOffset(const std::vector<double>& ypr_,const std::vector<double>& pos_,const std::vector<double>& g_){
         
         ypr.resize(3);
         translation.resize(3);
@@ -25,7 +25,7 @@ namespace regrob{
         }
     };
     
-    FrameOffset::FrameOffset(const vec3d& ypr_,const vec3d& pos_){
+    FrameOffset::FrameOffset(const std::vector<double>& ypr_,const std::vector<double>& pos_){
         
         ypr.resize(3);
         translation.resize(3);
@@ -40,19 +40,7 @@ namespace regrob{
         }
     };
     
-    FrameOffset::FrameOffset(const Eigen::Matrix4d& matrixT) {
-            
-            Eigen::Matrix3d rot = matrixT.block<3, 3>(0, 0);
-            Eigen::Vector3d yprVector = rot.eulerAngles(2, 1, 0); // Roll, Pitch, Yaw
-
-            Eigen::Vector3d translVec = matrixT.block<3, 1>(0, 3);
-
-            ypr = { yprVector(0), yprVector(1), yprVector(2) };
-            translation = { translVec(0), translVec(1), translVec(2) };
-            gravity = { 0, 0, -9.81 };
-        }
-    
-    vec3d FrameOffset::get_ypr(){return ypr;}
+    std::vector<double> FrameOffset::get_ypr(){return ypr;}
     
     casadi::SX FrameOffset::get_rotation(){
         
@@ -129,23 +117,13 @@ namespace regrob{
         return SXg;
     }
     
-    void FrameOffset::set_gravity(const vec3d& g_){gravity = g_;}
+    void FrameOffset::set_gravity(const std::vector<double>& g_){gravity = g_;}
     
-    void FrameOffset::set_translation(const vec3d& pos_){translation = pos_;}
+    void FrameOffset::set_translation(const std::vector<double>& pos_){translation = pos_;}
     
-    void FrameOffset::set_ypr(const vec3d& ypr_){ypr = ypr_;}
+    void FrameOffset::set_ypr(const std::vector<double>& ypr_){ypr = ypr_;}
     
-    void FrameOffset::set_homogenousT(const Eigen::Matrix4d& matrixT){
-            Eigen::Matrix3d rot = matrixT.block<3, 3>(0, 0);
-            Eigen::Vector3d yprVector = rot.eulerAngles(2, 1, 0); // Roll, Pitch, Yaw
-
-            Eigen::Vector3d translVec = matrixT.block<3, 1>(0, 3);
-
-            ypr = { yprVector(0), yprVector(1), yprVector(2) };
-            translation = { translVec(0), translVec(1), translVec(2) };
-    }
-    
-    casadi::SX FrameOffset::hat(const vec3d& v){
+    casadi::SX FrameOffset::hat(const std::vector<double>& v){
         
         // chech
         if(v.size() != 3 ){
@@ -154,13 +132,13 @@ namespace regrob{
         
         casadi::SX vhat(3,3);
         vhat(0,0) = 0;
-        vhat(0,1) = v[2];
+        vhat(0,1) = -v[2];
         vhat(0,2) = v[1];
-        vhat(1,0) = -v[2];
+        vhat(1,0) = v[2];
         vhat(1,1) = 0;
-        vhat(1,2) = v[0];
+        vhat(1,2) = -v[0];
         vhat(2,0) = -v[1];
-        vhat(2,1) = -v[0];
+        vhat(2,1) = v[0];
         vhat(2,2) = 0;
 
         return vhat;

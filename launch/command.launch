@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<!-- Launch command_node -->
+<launch>
+
+    <arg name="package" default="panda_controllers" />
+    <arg name="node_name" default="command_node" />
+
+    <!-- load yaml -->
+    <arg name="yaml_file" default="$(find panda_controllers)/config/trajectory_param.yaml" />
+    <rosparam command="load" file="$(arg yaml_file)" />
+
+    <node name="$(arg node_name)" pkg="$(arg package)" type="$(arg node_name)" output="screen"/>
+    
+</launch>

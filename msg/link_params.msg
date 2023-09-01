@@ -1,0 +1,10 @@
+float64 mass
+float64 m_CoM_x
+float64 m_CoM_y
+float64 m_CoM_z
+float64 Ixx
+float64 Ixy
+float64 Ixz
+float64 Iyy
+float64 Iyz
+float64 Izz

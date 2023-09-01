@@ -3,13 +3,15 @@
 /* Function name used to generate code */
 #define DOT_JAC_STRING "dotJac_fun"
 #define PINV_JAC_STRING "pinvJac_fun"
+#define PINV_JAC_POS_STRING "pinvJacPos_fun"
 #define DOT_PINV_JAC_STRING "dotPinvJac_fun"
+#define DOT_PINV_JAC_POS_STRING "dotPinvJacPos_fun"
 
 /* File name of generated code */
 #define GENERATED_FILE "kinematics_fun.cpp"
 
 /* Define number of function generable */
-#define NUMBER_FUNCTIONS 5
+#define NUMBER_FUNCTIONS 7
 
 namespace regrob{
     
@@ -17,16 +19,37 @@ namespace regrob{
 
     RobKinAdv::RobKinAdv(
         const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame, const double mu)
-        : RobKinBasic(numJoints,jointsType,DHtable,base_frame,ee_frame), _mu_(mu){
+        : RobKinBasic(numJoints,jointsType,DHtable,base_frame,ee_frame), _mu_(mu){}
+    
+    RobKinAdv::RobKinAdv(
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame, const double mu)
+        : RobKinBasic(numJoints,jointsType,DHtable,base_frame), _mu_(mu){}
+
+    void RobKinAdv::init(
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame, const double mu) {
+        
+        _numJoints_ = numJoints;
+        _jointsType_ = jointsType;
+        _DHtable_ = DHtable;
+        _lab2L0_ = base_frame;
+        _Ln2EE_ = ee_frame;
+
+        _mu_ = mu;
 
         initVarsFuns();
         compute();
     }
-    
+
     void RobKinAdv::init(
-        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame,FrameOffset& ee_frame, const double mu) {
+        const int numJoints, const std::string jointsType, const Eigen::MatrixXd& DHtable, FrameOffset& base_frame, const double mu) {
         
-        RobKinBasic::init(numJoints,jointsType,DHtable,base_frame,ee_frame);
+        FrameOffset no_EE({0,0,0},{0,0,0});
+        _numJoints_ = numJoints;
+        _jointsType_ = jointsType;
+        _DHtable_ = DHtable;
+        _lab2L0_ = base_frame;
+        _Ln2EE_= no_EE;
+
         _mu_ = mu;
 
         initVarsFuns();
@@ -51,8 +74,10 @@ namespace regrob{
         jacobian_res.resize(1);
         dotJacobian_res.resize(1);
         pinvJacobian_res.resize(1);
+        pinvJacobianPos_res.resize(1);
         dotPinvJacobian_res.resize(1);
-        
+        dotPinvJacobianPos_res.resize(1);
+
         init_casadi_functions();
     }
 
@@ -77,6 +102,21 @@ namespace regrob{
 
         pinvJacobian_fun = pinvJac_fun;
     }
+
+    void RobKinAdv::DHPinvJacPos() {
+        
+        casadi::Slice rows_3(0, 3);      // select k versor of T()
+        casadi::Slice all_c;      // select k versor of T()
+
+        casadi::SX Jn = DHJacEE();
+        casadi::SX Jn3 = Jn(rows_3,all_c);
+        casadi::SX invJn_dumped = casadi::SX::inv(casadi::SX::mtimes({Jn3,Jn3.T()}) + casadi::SX::eye(3)*_mu_);
+        casadi::SX pinvJn = casadi::SX::mtimes({Jn3.T(),invJn_dumped});      
+
+        casadi::Function pinvJacPos_fun(PINV_JAC_POS_STRING,{_q_},{densify(pinvJn)});
+
+        pinvJacobianPos_fun = pinvJacPos_fun;
+    }
    
     void RobKinAdv::DHDotPinvJac() {
         
@@ -91,13 +131,31 @@ namespace regrob{
         dotPinvJacobian_fun = dotPinvJac_fun;
     }
 
+    void RobKinAdv::DHDotPinvJacPos() {
+        
+        casadi::Slice rows_3(0, 3);      // select k versor of T()
+        casadi::Slice all_c;      // select k versor of T()
+
+        casadi::SX Jn = DHJacEE();
+        casadi::SX Jn3 = Jn(rows_3,all_c);
+        casadi::SX invJn_dumped = casadi::SX::inv(casadi::SX::mtimes({Jn3,Jn3.T()}) + casadi::SX::eye(3)*_mu_);
+        casadi::SX pinvJn = casadi::SX::mtimes({Jn3.T(),invJn_dumped});
+        casadi::SX dot_pinvJn = casadi::SX::jtimes(pinvJn,_q_,_dq_);        
+
+        casadi::Function dotPinvJac_fun(DOT_PINV_JAC_POS_STRING,{_q_,_dq_},{densify(dot_pinvJn)});
+
+        dotPinvJacobianPos_fun = dotPinvJac_fun;
+    }
+
     void RobKinAdv::init_casadi_functions() {
         
         DHKin();
         DHJac();
         DHDotJac();
         DHPinvJac();
+        DHPinvJacPos();
         DHDotPinvJac();
+        DHDotPinvJacPos();
     }
   
     void RobKinAdv::setArguments(const Eigen::VectorXd& q_){
@@ -129,7 +187,9 @@ namespace regrob{
         jacobian_fun.call({args[0]},jacobian_res);
         dotJacobian_fun.call({args[0],args[1]},dotJacobian_res);
         pinvJacobian_fun.call({args[0]},pinvJacobian_res);
-        dotPinvJacobian_fun.call({args[0],args[1]},dotPinvJacobian_res);        
+        pinvJacobianPos_fun.call({args[0]},pinvJacobianPos_res);
+        dotPinvJacobian_fun.call({args[0],args[1]},dotPinvJacobian_res);
+        dotPinvJacobianPos_fun.call({args[0],args[1]},dotPinvJacobianPos_res);       
     }
 
     Eigen::MatrixXd RobKinAdv::getDotJacobian(){
@@ -152,11 +212,32 @@ namespace regrob{
         return pinvJacfull;
     }
     
+    Eigen::MatrixXd RobKinAdv::getPinvJacobianPos(){
+        const int nrow = _numJoints_;
+        const int ncol = 3;
+        Eigen::MatrixXd pinvJacfull(nrow,ncol);
+        std::vector<casadi::SXElem> pinvjac_elements = pinvJacobianPos_res[0].get_elements();
+        std::transform(pinvjac_elements.begin(), pinvjac_elements.end(), pinvJacfull.data(), mapFunction);
+    
+        return pinvJacfull;
+    }
+
     Eigen::MatrixXd RobKinAdv::getDotPinvJacobian(){
         const int nrow = _numJoints_;
         const int ncol = 6;
         Eigen::MatrixXd dotPinvJacfull(nrow,ncol);
         std::vector<casadi::SXElem> dotpinvjac_elements = dotPinvJacobian_res[0].get_elements();
+        
+        std::transform(dotpinvjac_elements.begin(), dotpinvjac_elements.end(), dotPinvJacfull.data(), mapFunction);
+    
+        return dotPinvJacfull;
+    }
+
+    Eigen::MatrixXd RobKinAdv::getDotPinvJacobianPos(){
+        const int nrow = _numJoints_;
+        const int ncol = 3;
+        Eigen::MatrixXd dotPinvJacfull(nrow,ncol);
+        std::vector<casadi::SXElem> dotpinvjac_elements = dotPinvJacobianPos_res[0].get_elements();
         
         std::transform(dotpinvjac_elements.begin(), dotpinvjac_elements.end(), dotPinvJacfull.data(), mapFunction);
     
@@ -177,7 +258,9 @@ namespace regrob{
         myCodeGen.add(jacobian_fun);
         myCodeGen.add(dotJacobian_fun);
         myCodeGen.add(pinvJacobian_fun);
+        myCodeGen.add(pinvJacobianPos_fun);
         myCodeGen.add(dotPinvJacobian_fun);
+        myCodeGen.add(dotPinvJacobianPos_fun);
 
         myCodeGen.generate(savePath);
     }
@@ -198,7 +281,9 @@ namespace regrob{
         }
         all_name_funs[dim_orig_funs] = DOT_JAC_STRING; 
         all_name_funs[dim_orig_funs+1] = PINV_JAC_STRING;
-        all_name_funs[dim_orig_funs+2] = DOT_PINV_JAC_STRING;
+        all_name_funs[dim_orig_funs+2] = PINV_JAC_POS_STRING;
+        all_name_funs[dim_orig_funs+3] = DOT_PINV_JAC_STRING;
+        all_name_funs[dim_orig_funs+4] = DOT_PINV_JAC_POS_STRING;
 
         return all_name_funs;
     }
@@ -213,7 +298,9 @@ namespace regrob{
         casadi_funs[1] = jacobian_fun;
         casadi_funs[2] = dotJacobian_fun; 
         casadi_funs[3] = pinvJacobian_fun;
-        casadi_funs[4] = dotPinvJacobian_fun;
+        casadi_funs[4] = pinvJacobianPos_fun;
+        casadi_funs[5] = dotPinvJacobian_fun;
+        casadi_funs[6] = dotPinvJacobianPos_fun;
 
         return casadi_funs;
     }

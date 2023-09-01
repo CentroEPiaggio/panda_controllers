@@ -25,6 +25,8 @@ namespace regrob{
     };
 
     void trasformBodyInertial(std::vector<double> d_i, std::vector<double> rpy_i, const LinkProp body_urdf, LinkProp &body);
+    void mergeBodyInertial(const LinkProp body1, const LinkProp body2, LinkProp &newBody);
+
     Eigen::Matrix3d rpyRot(const std::vector<double> rpy);
     Eigen::Matrix3d createI(const std::vector<double> parI);
     Eigen::Matrix3d hat(const Eigen::Vector3d v);

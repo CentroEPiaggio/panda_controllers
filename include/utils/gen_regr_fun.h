@@ -53,6 +53,26 @@ extern "C" int pinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_i
 #define pinvJac_fun_SZ_RES 1
 #define pinvJac_fun_SZ_IW 0
 #define pinvJac_fun_SZ_W 97
+extern "C" int pinvJacPos_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int pinvJacPos_fun_alloc_mem(void);
+extern "C" int pinvJacPos_fun_init_mem(int mem);
+extern "C" void pinvJacPos_fun_free_mem(int mem);
+extern "C" int pinvJacPos_fun_checkout(void);
+extern "C" void pinvJacPos_fun_release(int mem);
+extern "C" void pinvJacPos_fun_incref(void);
+extern "C" void pinvJacPos_fun_decref(void);
+extern "C" casadi_int pinvJacPos_fun_n_in(void);
+extern "C" casadi_int pinvJacPos_fun_n_out(void);
+extern "C" casadi_real pinvJacPos_fun_default_in(casadi_int i);
+extern "C" const char* pinvJacPos_fun_name_in(casadi_int i);
+extern "C" const char* pinvJacPos_fun_name_out(casadi_int i);
+extern "C" const casadi_int* pinvJacPos_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* pinvJacPos_fun_sparsity_out(casadi_int i);
+extern "C" int pinvJacPos_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define pinvJacPos_fun_SZ_ARG 1
+#define pinvJacPos_fun_SZ_RES 1
+#define pinvJacPos_fun_SZ_IW 0
+#define pinvJacPos_fun_SZ_W 54
 extern "C" int dotPinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotPinvJac_fun_alloc_mem(void);
 extern "C" int dotPinvJac_fun_init_mem(int mem);
@@ -73,6 +93,26 @@ extern "C" int dotPinvJac_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define dotPinvJac_fun_SZ_RES 1
 #define dotPinvJac_fun_SZ_IW 0
 #define dotPinvJac_fun_SZ_W 325
+extern "C" int dotPinvJacPos_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int dotPinvJacPos_fun_alloc_mem(void);
+extern "C" int dotPinvJacPos_fun_init_mem(int mem);
+extern "C" void dotPinvJacPos_fun_free_mem(int mem);
+extern "C" int dotPinvJacPos_fun_checkout(void);
+extern "C" void dotPinvJacPos_fun_release(int mem);
+extern "C" void dotPinvJacPos_fun_incref(void);
+extern "C" void dotPinvJacPos_fun_decref(void);
+extern "C" casadi_int dotPinvJacPos_fun_n_in(void);
+extern "C" casadi_int dotPinvJacPos_fun_n_out(void);
+extern "C" casadi_real dotPinvJacPos_fun_default_in(casadi_int i);
+extern "C" const char* dotPinvJacPos_fun_name_in(casadi_int i);
+extern "C" const char* dotPinvJacPos_fun_name_out(casadi_int i);
+extern "C" const casadi_int* dotPinvJacPos_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* dotPinvJacPos_fun_sparsity_out(casadi_int i);
+extern "C" int dotPinvJacPos_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define dotPinvJacPos_fun_SZ_ARG 2
+#define dotPinvJacPos_fun_SZ_RES 1
+#define dotPinvJacPos_fun_SZ_IW 0
+#define dotPinvJacPos_fun_SZ_W 157
 extern "C" int kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int kin_fun_alloc_mem(void);
 extern "C" int kin_fun_init_mem(int mem);
@@ -132,104 +172,64 @@ extern "C" int regr_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int 
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 748
-extern "C" int massReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int massReg_fun_alloc_mem(void);
-extern "C" int massReg_fun_init_mem(int mem);
-extern "C" void massReg_fun_free_mem(int mem);
-extern "C" int massReg_fun_checkout(void);
-extern "C" void massReg_fun_release(int mem);
-extern "C" void massReg_fun_incref(void);
-extern "C" void massReg_fun_decref(void);
-extern "C" casadi_int massReg_fun_n_in(void);
-extern "C" casadi_int massReg_fun_n_out(void);
-extern "C" casadi_real massReg_fun_default_in(casadi_int i);
-extern "C" const char* massReg_fun_name_in(casadi_int i);
-extern "C" const char* massReg_fun_name_out(casadi_int i);
-extern "C" const casadi_int* massReg_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* massReg_fun_sparsity_out(casadi_int i);
-extern "C" int massReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define massReg_fun_SZ_ARG 2
-#define massReg_fun_SZ_RES 1
-#define massReg_fun_SZ_IW 0
-#define massReg_fun_SZ_W 75
-extern "C" int coriolisReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int coriolisReg_fun_alloc_mem(void);
-extern "C" int coriolisReg_fun_init_mem(int mem);
-extern "C" void coriolisReg_fun_free_mem(int mem);
-extern "C" int coriolisReg_fun_checkout(void);
-extern "C" void coriolisReg_fun_release(int mem);
-extern "C" void coriolisReg_fun_incref(void);
-extern "C" void coriolisReg_fun_decref(void);
-extern "C" casadi_int coriolisReg_fun_n_in(void);
-extern "C" casadi_int coriolisReg_fun_n_out(void);
-extern "C" casadi_real coriolisReg_fun_default_in(casadi_int i);
-extern "C" const char* coriolisReg_fun_name_in(casadi_int i);
-extern "C" const char* coriolisReg_fun_name_out(casadi_int i);
-extern "C" const casadi_int* coriolisReg_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* coriolisReg_fun_sparsity_out(casadi_int i);
-extern "C" int coriolisReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define coriolisReg_fun_SZ_ARG 3
-#define coriolisReg_fun_SZ_RES 1
-#define coriolisReg_fun_SZ_IW 0
-#define coriolisReg_fun_SZ_W 716
-extern "C" int gravityReg_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int gravityReg_fun_alloc_mem(void);
-extern "C" int gravityReg_fun_init_mem(int mem);
-extern "C" void gravityReg_fun_free_mem(int mem);
-extern "C" int gravityReg_fun_checkout(void);
-extern "C" void gravityReg_fun_release(int mem);
-extern "C" void gravityReg_fun_incref(void);
-extern "C" void gravityReg_fun_decref(void);
-extern "C" casadi_int gravityReg_fun_n_in(void);
-extern "C" casadi_int gravityReg_fun_n_out(void);
-extern "C" casadi_real gravityReg_fun_default_in(casadi_int i);
-extern "C" const char* gravityReg_fun_name_in(casadi_int i);
-extern "C" const char* gravityReg_fun_name_out(casadi_int i);
-extern "C" const casadi_int* gravityReg_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* gravityReg_fun_sparsity_out(casadi_int i);
-extern "C" int gravityReg_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define gravityReg_fun_SZ_ARG 1
-#define gravityReg_fun_SZ_RES 1
-#define gravityReg_fun_SZ_IW 0
-#define gravityReg_fun_SZ_W 79
-extern "C" int gradDistq_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int gradDistq_fun_alloc_mem(void);
-extern "C" int gradDistq_fun_init_mem(int mem);
-extern "C" void gradDistq_fun_free_mem(int mem);
-extern "C" int gradDistq_fun_checkout(void);
-extern "C" void gradDistq_fun_release(int mem);
-extern "C" void gradDistq_fun_incref(void);
-extern "C" void gradDistq_fun_decref(void);
-extern "C" casadi_int gradDistq_fun_n_in(void);
-extern "C" casadi_int gradDistq_fun_n_out(void);
-extern "C" casadi_real gradDistq_fun_default_in(casadi_int i);
-extern "C" const char* gradDistq_fun_name_in(casadi_int i);
-extern "C" const char* gradDistq_fun_name_out(casadi_int i);
-extern "C" const casadi_int* gradDistq_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* gradDistq_fun_sparsity_out(casadi_int i);
-extern "C" int gradDistq_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define gradDistq_fun_SZ_ARG 1
-#define gradDistq_fun_SZ_RES 1
-#define gradDistq_fun_SZ_IW 0
-#define gradDistq_fun_SZ_W 4
-extern "C" int dotGradDistq_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
-extern "C" int dotGradDistq_fun_alloc_mem(void);
-extern "C" int dotGradDistq_fun_init_mem(int mem);
-extern "C" void dotGradDistq_fun_free_mem(int mem);
-extern "C" int dotGradDistq_fun_checkout(void);
-extern "C" void dotGradDistq_fun_release(int mem);
-extern "C" void dotGradDistq_fun_incref(void);
-extern "C" void dotGradDistq_fun_decref(void);
-extern "C" casadi_int dotGradDistq_fun_n_in(void);
-extern "C" casadi_int dotGradDistq_fun_n_out(void);
-extern "C" casadi_real dotGradDistq_fun_default_in(casadi_int i);
-extern "C" const char* dotGradDistq_fun_name_in(casadi_int i);
-extern "C" const char* dotGradDistq_fun_name_out(casadi_int i);
-extern "C" const casadi_int* dotGradDistq_fun_sparsity_in(casadi_int i);
-extern "C" const casadi_int* dotGradDistq_fun_sparsity_out(casadi_int i);
-extern "C" int dotGradDistq_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
-#define dotGradDistq_fun_SZ_ARG 2
-#define dotGradDistq_fun_SZ_RES 1
-#define dotGradDistq_fun_SZ_IW 0
-#define dotGradDistq_fun_SZ_W 4
+#define regr_fun_SZ_W 518
+extern "C" int mass_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int mass_fun_alloc_mem(void);
+extern "C" int mass_fun_init_mem(int mem);
+extern "C" void mass_fun_free_mem(int mem);
+extern "C" int mass_fun_checkout(void);
+extern "C" void mass_fun_release(int mem);
+extern "C" void mass_fun_incref(void);
+extern "C" void mass_fun_decref(void);
+extern "C" casadi_int mass_fun_n_in(void);
+extern "C" casadi_int mass_fun_n_out(void);
+extern "C" casadi_real mass_fun_default_in(casadi_int i);
+extern "C" const char* mass_fun_name_in(casadi_int i);
+extern "C" const char* mass_fun_name_out(casadi_int i);
+extern "C" const casadi_int* mass_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* mass_fun_sparsity_out(casadi_int i);
+extern "C" int mass_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define mass_fun_SZ_ARG 2
+#define mass_fun_SZ_RES 1
+#define mass_fun_SZ_IW 0
+#define mass_fun_SZ_W 239
+extern "C" int coriolis_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int coriolis_fun_alloc_mem(void);
+extern "C" int coriolis_fun_init_mem(int mem);
+extern "C" void coriolis_fun_free_mem(int mem);
+extern "C" int coriolis_fun_checkout(void);
+extern "C" void coriolis_fun_release(int mem);
+extern "C" void coriolis_fun_incref(void);
+extern "C" void coriolis_fun_decref(void);
+extern "C" casadi_int coriolis_fun_n_in(void);
+extern "C" casadi_int coriolis_fun_n_out(void);
+extern "C" casadi_real coriolis_fun_default_in(casadi_int i);
+extern "C" const char* coriolis_fun_name_in(casadi_int i);
+extern "C" const char* coriolis_fun_name_out(casadi_int i);
+extern "C" const casadi_int* coriolis_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* coriolis_fun_sparsity_out(casadi_int i);
+extern "C" int coriolis_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define coriolis_fun_SZ_ARG 3
+#define coriolis_fun_SZ_RES 1
+#define coriolis_fun_SZ_IW 0
+#define coriolis_fun_SZ_W 1338
+extern "C" int gravity_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
+extern "C" int gravity_fun_alloc_mem(void);
+extern "C" int gravity_fun_init_mem(int mem);
+extern "C" void gravity_fun_free_mem(int mem);
+extern "C" int gravity_fun_checkout(void);
+extern "C" void gravity_fun_release(int mem);
+extern "C" void gravity_fun_incref(void);
+extern "C" void gravity_fun_decref(void);
+extern "C" casadi_int gravity_fun_n_in(void);
+extern "C" casadi_int gravity_fun_n_out(void);
+extern "C" casadi_real gravity_fun_default_in(casadi_int i);
+extern "C" const char* gravity_fun_name_in(casadi_int i);
+extern "C" const char* gravity_fun_name_out(casadi_int i);
+extern "C" const casadi_int* gravity_fun_sparsity_in(casadi_int i);
+extern "C" const casadi_int* gravity_fun_sparsity_out(casadi_int i);
+extern "C" int gravity_fun_work(casadi_int *sz_arg, casadi_int* sz_res, casadi_int *sz_iw, casadi_int *sz_w);
+#define gravity_fun_SZ_ARG 2
+#define gravity_fun_SZ_RES 1
+#define gravity_fun_SZ_IW 0
+#define gravity_fun_SZ_W 47

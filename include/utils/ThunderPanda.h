@@ -18,17 +18,13 @@ namespace regrob{
             /* Number of joints */
             int num_joints;
             /* Joints' variables */
-            Eigen::VectorXd q,dq,dqr,ddqr;
+            Eigen::VectorXd q, dq, dqr, ddqr, param;
             /* Output of generated code */
-            Eigen::MatrixXd reg_gen, jac_gen, dotJac_gen, pinvJac_gen, dotPinvJac_gen, 
-                kin_gen, gradDistq_gen, dotGradDistq_gen, massReg_gen, coriolisReg_gen, gravityReg_gen;
+            Eigen::MatrixXd kin_gen, jac_gen, dotJac_gen, pinvJac_gen, pinvJacPos_gen, dotPinvJac_gen, dotPinvJacPos_gen,
+                reg_gen, mass_gen, coriolis_gen, gravity_gen;
             /* Compute generated code */
-            void computeReg_gen(), computeJac_gen(), computeDotJac_gen(), computePinvJac_gen(), 
-                computeDotPinvJac_gen(), computeKin_gen(), computeGradDistq_gen(), computeDotGradDistq_gen(),
-                computeMassReg_gen(), computeCoriolisReg_gen(), computeGravityReg_gen();
-            
-            //long long regr_p3[regr_fun_SZ_IW];
-            //double regr_p4[regr_fun_SZ_W];
+            void computeKin_gen(), computeJac_gen(), computeDotJac_gen(), computePinvJac_gen(), computeDotPinvJac_gen(), 
+                computeReg_gen(), computeMass_gen(), computeCoriolis_gen(), computeGravity_gen(), computePinvJacPos_gen(), computeDotPinvJacPos_gen();
 
         public:
             
@@ -46,36 +42,36 @@ namespace regrob{
             /* Set q, dq, dqr, ddqr, to compute Regressor */
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&,const Eigen::VectorXd&);
             
-            void setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& dqr_);
-
+            /* Set q, dq, param, to compute M C G */
+            void setArguments(const Eigen::VectorXd& q_,const Eigen::VectorXd& dq_,const Eigen::VectorXd& param_);
             /* Set q, dq, to compute pseudo-inverse of jacobian and derivate of pseudo-inverse jacobian */
             void setArguments(const Eigen::VectorXd&,const Eigen::VectorXd&);
             /* Set q to compute forward kinematic */
             void setArguments(const Eigen::VectorXd&);
             
+            void setInertialParam(const Eigen::VectorXd& param_);
             /* Get regressor matrix */
             Eigen::MatrixXd getReg_gen(){return reg_gen;};
             /* Get regressor matrix */
-            Eigen::MatrixXd getMassReg_gen(){return massReg_gen;};
+            Eigen::MatrixXd getMass_gen(){return mass_gen;};
             /* Get regressor matrix */
-            Eigen::MatrixXd getCoriolisReg_gen(){return coriolisReg_gen;};
+            Eigen::MatrixXd getCoriolis_gen(){return coriolis_gen;};
             /* Get regressor matrix */
-            Eigen::MatrixXd getGravityReg_gen(){return gravityReg_gen;};
+            Eigen::MatrixXd getGravity_gen(){return gravity_gen;};
             /* Get jacobian matrix */
             Eigen::MatrixXd getJac_gen(){return jac_gen;};
             /* Get derivative of jacobian matrix */
             Eigen::MatrixXd getDotJac_gen(){return dotJac_gen;};
             /* Get pseudo-inverse jacobian matrix */
             Eigen::MatrixXd getPinvJac_gen(){return pinvJac_gen;};
+            /* Get derivative of pseudo-inverse jacobian matrix only position */
+            Eigen::MatrixXd getPinvJacPos_gen(){return pinvJacPos_gen;};
             /* Get derivative of pseudo-inverse jacobian matrix */
             Eigen::MatrixXd getDotPinvJac_gen(){return dotPinvJac_gen;};
+            /* Get derivative of pseudo-inverse jacobian matrix only position */
+            Eigen::MatrixXd getDotPinvJacPos_gen(){return dotPinvJacPos_gen;};
             /* Get regressor matrix */
             Eigen::MatrixXd getKin_gen(){return kin_gen;};
-            /* Get matrix */
-            Eigen::MatrixXd getGradDistq_gen(){return gradDistq_gen;};
-            /* Get matrix */
-            Eigen::MatrixXd getDotGradDist_gen(){return dotGradDistq_gen;};
     };
-
 }
 #endif
