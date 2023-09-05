@@ -32,7 +32,7 @@ find_package(Franka 0.5.0 REQUIRED)
 ## to add custom msg
 add_message_files(FILES
 	desTrajEE.msg
-	log_backstepping.msg
+	log_adaptive_cartesian.msg
 	point.msg
 	link_params.msg
 )
@@ -83,14 +83,14 @@ add_dependencies(${PROJECT_NAME}
 	panda_controllers ${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(command_node
-	src/command_node.cpp
-	src/gen_traj_fun.cpp
+add_executable(command_cartesian
+	src/command_cartesian.cpp
+	#src/gen_traj_fun.cpp
 )
-target_link_libraries(command_node
+target_link_libraries(command_cartesian
 	${catkin_LIBRARIES}
 )
-add_dependencies(command_node
+add_dependencies(command_cartesian
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )

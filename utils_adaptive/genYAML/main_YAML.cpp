@@ -24,9 +24,9 @@ Generate two yaml files of inertial parameters (only for arm + hand) to use stan
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <random>
 
 #include <yaml-cpp/yaml.h>
-
 #include "library/urdf2dh_inertial.h"
 
 #define NUMLINKS 7 // 7 links + hand
@@ -37,17 +37,37 @@ using std::cout;
 using std::endl;
 
 bool use_gripper = false;
-bool copy_flag = true;
-
+bool copy_flag = false;
 std::string path_yaml_DH = "../generatedFiles/inertial_DH.yaml";
-std::string path_yaml_DH_REG = "../generatedFiles/inertial_DH_reg.yaml";
-std::string path_yaml_DH_DYN = "../generatedFiles/inertial_DH_dyn.yaml";
-//std::string path_copy_DH = "../../config/inertial_DH.yaml";
+std::string path_yaml_DH_REG = "../generatedFiles/inertial_DH_REG";
+std::string path_yaml_DH_DYN = "../generatedFiles/inertial_DH_DYN";
 std::string path_copy_DH_REG = "../../config/inertial_DH_REG.yaml";
 std::string path_copy_DH_DYN = "../../config/inertial_DH_DYN.yaml";
+std::string common_comment =             
+        "Obtained with transformation of URDF files from:\n"
+        "   - $(find franka_gazebo)/test/launch/panda-gazebo.urdf\n"
+        "   - $(find franka_description)/robots/common/franka_robot.xacro\n"
+        "   - $(find franka_description)/robots/common/inertial.yaml \n"
+        "Considering Denavit-Hartenberg parametrization of table:\n"
+        "DH_table << 0,      -M_PI_2,  0.3330, 0,\n"
+        "            0,      M_PI_2,   0,      0,\n"
+        "            0.0825, M_PI_2,   0.3160, 0,\n"
+        "            -0.0825,-M_PI_2,  0,      0,\n"
+        "            0,      M_PI_2,   0.384,  0,\n"
+        "            0.088,  M_PI_2,   0,      0,\n"
+        "            0,      0,        0.107,  0;";
+
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag=true, double pert_p=0.0);
 
 int main(){
 
+    std::vector<std::string> keys_dyn;
+    std::vector<std::string> keys_reg;
+    keys_dyn.resize(5);
+    keys_reg.resize(5);
+    keys_dyn[0] = "mass"; keys_dyn[1] = "CoM_"; keys_dyn[2] = "I"; keys_dyn[3] = "DYN", keys_dyn[4] = "standard equation of dynamic";
+    keys_reg[0] = "mass"; keys_reg[1] = "m_CoM_"; keys_reg[2] = "I"; keys_reg[3] = "REG"; keys_reg[4] = "regressor";
+    
     std::vector<LinkProp> links_prop;
     std::vector<LinkProp> links_prop_DH;
     std::vector<LinkProp> links_prop_DH2REG;
@@ -162,52 +182,13 @@ int main(){
     try {
 
         YAML::Emitter emitter;
-        emitter.SetIndent(2);
-        emitter.SetSeqFormat(YAML::Flow);
-        emitter << YAML::Comment(
-            "Inertial parameters referred to Denavit-Hartenberg parametrization to use standard equation of dynamic.\n"
-            "Obtained with transformation of URDF files from:\n"
-            "   - $(find franka_gazebo)/test/launch/panda-gazebo.urdf\n"
-            "   - $(find franka_description)/robots/common/franka_robot.xacro\n"
-            "   - $(find franka_description)/robots/common/inertial.yaml \n"
-            "Considering Denavit-Hartenberg parametrization of table:\n"
-            "DH_table << 0,      -M_PI_2,  0.3330, 0,\n"
-            "            0,      M_PI_2,   0,      0,\n"
-            "            0.0825, M_PI_2,   0.3160, 0,\n"
-            "            -0.0825,-M_PI_2,  0,      0,\n"
-            "            0,      M_PI_2,   0.384,  0,\n"
-            "            0.088,  M_PI_2,   0,      0,\n"
-            "            0,      0,        0.107,  0;"  );
-        emitter << YAML::Newline;
-        
-        for (int i=0; i<7; i++) {
-            LinkProp link = links_prop_DH[i];
-                
-            YAML::Node linkNode;
-
-            linkNode["mass"] = link.mass;
-            linkNode["CoM_x"] = link.xyz[0];
-            linkNode["CoM_y"] = link.xyz[1];
-            linkNode["CoM_z"] = link.xyz[2];
-            linkNode["Ixx"] = link.parI[0];
-            linkNode["Ixy"] = link.parI[1];
-            linkNode["Ixz"] = link.parI[2];
-            linkNode["Iyy"] = link.parI[3];
-            linkNode["Iyz"] = link.parI[4];
-            linkNode["Izz"] = link.parI[5];
-
-            std::string nodeName = link.name;
-
-            emitter << YAML::BeginMap;
-            emitter << YAML::Key << nodeName;
-            emitter << linkNode;
-            emitter << YAML::EndMap << YAML::Newline;
-        }
+        fillInertialYaml(emitter, links_prop_DH, keys_dyn, false);
         std::ofstream fout(path_yaml_DH);
         fout << emitter.c_str();
         fout.close();
 
-        std::cout << "Successfully generated YAML file of inertial parameter for DH parametrization, \n path: " << path_yaml_DH << std::endl;
+        std::cout << "Successfully generated YAML file of inertial parameter for DH parametrization"<<std::endl;
+        std::cout<< " path: " << path_yaml_DH << std::endl;
 
     } catch (const YAML::Exception& e) {
         std::cerr << "Error while generating YAML: " << e.what() << std::endl;
@@ -218,75 +199,13 @@ int main(){
     try {
 
         YAML::Emitter emitter;
-        emitter.SetIndent(2);
-        emitter.SetSeqFormat(YAML::Flow);
-        emitter << YAML::Comment(
-            "Inertial parameters referred to joints' frame(!) of DH parametrization to use regressor.\n"
-            "Obtained with transformation of URDF file from:\n"
-            "   - $(find franka_gazebo)/test/launch/panda-gazebo.urdf\n"
-            "   - $(find franka_description)/robots/common/franka_robot.xacro\n"
-            "   - $(find franka_description)/robots/common/inertial.yaml \n"
-            "Considering Denavit-Hartenberg parametrization of table:\n"
-            "DH_table << 0,      -M_PI_2,  0.3330, 0,\n"
-            "            0,      M_PI_2,   0,      0,\n"
-            "            0.0825, M_PI_2,   0.3160, 0,\n"
-            "            -0.0825,-M_PI_2,  0,      0,\n"
-            "            0,      M_PI_2,   0.384,  0,\n"
-            "            0.088,  M_PI_2,   0,      0,\n"
-            "            0,      0,        0.107,  0;"  );
-        emitter << YAML::Newline;
-        
-        for (int i=0; i<NUMLINKS; i++) {
-            LinkProp link = links_prop_DH[i];
-                
-            YAML::Node linkNode;
-
-            linkNode["mass"] = link.mass;
-            linkNode["CoM_x"] = link.xyz[0];
-            linkNode["CoM_y"] = link.xyz[1];
-            linkNode["CoM_z"] = link.xyz[2];
-            linkNode["Ixx"] = link.parI[0];
-            linkNode["Ixy"] = link.parI[1];
-            linkNode["Ixz"] = link.parI[2];
-            linkNode["Iyy"] = link.parI[3];
-            linkNode["Iyz"] = link.parI[4];
-            linkNode["Izz"] = link.parI[5];
-
-            std::string nodeName = link.name + "_params";
-
-            emitter << YAML::BeginMap;
-            emitter << YAML::Key << nodeName;
-            emitter << YAML::Anchor(link.name);
-            emitter << linkNode;
-            emitter << YAML::EndMap << YAML::Newline;
-        }
-
-        YAML::Node control;
-        std::string contName;
-        contName = "default_controller";
-
-        emitter << YAML::BeginMap;
-        emitter << YAML::Key << contName << YAML::Anchor("default");
-        emitter << YAML::BeginMap;            
-
-        for (int i=0; i<7; i++) {
-            LinkProp link = links_prop_DH[i];
-            emitter << YAML::Key << link.name+"_DYN" << YAML::Value << YAML::Alias(link.name);
-        } 
-        
-        emitter << YAML::EndMap << YAML::EndMap <<YAML::Newline;
-
-        /* Backstepping controller */
-
-        emitter << YAML::BeginMap;
-        emitter << YAML::Key << "backstepping_controller" << YAML::Value << YAML::Alias("default");
-        emitter << YAML::EndMap <<YAML::Newline;
-
-        std::ofstream fout(path_yaml_DH_DYN);
+        fillInertialYaml(emitter, links_prop_DH, keys_dyn);
+        std::ofstream fout(path_yaml_DH_DYN + ".yaml");
         fout << emitter.c_str();
         fout.close();
-
-        std::cout << "Successfully generated YAML file of inertial parameters for regressor,\n path: " << path_yaml_DH_DYN << std::endl;
+        
+        std::cout << "Successfully generated YAML file of inertial parameters for dynamics"<<std::endl;
+        std::cout<< " path: " << path_yaml_DH_DYN + ".yaml" << std::endl;
 
     } catch (const YAML::Exception& e) {
         std::cerr << "Error while generating YAML: " << e.what() << std::endl;
@@ -318,79 +237,25 @@ int main(){
         links_prop_DH2REG[i].parI[4] = I0(1,2);
         links_prop_DH2REG[i].parI[5] = I0(2,2);
     }
-    
+
     try {
 
-        YAML::Emitter emitter;
-        emitter.SetIndent(2);
-        emitter.SetSeqFormat(YAML::Flow);
-        emitter << YAML::Comment(
-            "Inertial parameters referred to joints' frame(!) of DH parametrization to use regressor.\n"
-            "Obtained with transformation of URDF file from:\n"
-            "   - $(find franka_gazebo)/test/launch/panda-gazebo.urdf\n"
-            "   - $(find franka_description)/robots/common/franka_robot.xacro\n"
-            "   - $(find franka_description)/robots/common/inertial.yaml \n"
-            "Considering Denavit-Hartenberg parametrization of table:\n"
-            "DH_table << 0,      -M_PI_2,  0.3330, 0,\n"
-            "            0,      M_PI_2,   0,      0,\n"
-            "            0.0825, M_PI_2,   0.3160, 0,\n"
-            "            -0.0825,-M_PI_2,  0,      0,\n"
-            "            0,      M_PI_2,   0.384,  0,\n"
-            "            0.088,  M_PI_2,   0,      0,\n"
-            "            0,      0,        0.107,  0;"  );
-        emitter << YAML::Newline;
-        
-        for (int i=0; i<NUMLINKS; i++) {
-            LinkProp link = links_prop_DH2REG[i];
-                
-            YAML::Node linkNode;
+        Eigen::VectorXd coeff_p(8);
+        coeff_p << 0, 2, 5, 10, 20, 30, 40, 50;
+        for(int idxp = 0; idxp<8; idxp++){
 
-            linkNode["mass"] = link.mass;
-            linkNode["m_CoM_x"] = link.xyz[0];
-            linkNode["m_CoM_y"] = link.xyz[1];
-            linkNode["m_CoM_z"] = link.xyz[2];
-            linkNode["Ixx"] = link.parI[0];
-            linkNode["Ixy"] = link.parI[1];
-            linkNode["Ixz"] = link.parI[2];
-            linkNode["Iyy"] = link.parI[3];
-            linkNode["Iyz"] = link.parI[4];
-            linkNode["Izz"] = link.parI[5];
+            YAML::Emitter emitter;
+            fillInertialYaml(emitter, links_prop_DH2REG, keys_reg, true, coeff_p[idxp]);
+            std::string pp;
+            if((int)coeff_p[idxp]==0) pp="";
+            else pp = "_p" + std::to_string((int)coeff_p[idxp]);
+            std::ofstream fout(path_yaml_DH_REG + pp + ".yaml");
+            fout << emitter.c_str();
+            fout.close();
 
-            std::string nodeName = link.name + "_params";
-
-            emitter << YAML::BeginMap;
-            emitter << YAML::Key << nodeName;
-            emitter << YAML::Anchor(link.name);
-            emitter << linkNode;
-            emitter << YAML::EndMap << YAML::Newline;
+            std::cout << "Successfully generated YAML file of inertial parameters for regressor"<<std::endl;
+            std::cout<< " path: " << path_yaml_DH_REG + "_p" + std::to_string((int)coeff_p[idxp]) + ".yaml"<< std::endl;
         }
-
-        YAML::Node control;
-        std::string contName;
-        contName = "default_controller";
-
-        emitter << YAML::BeginMap;
-        emitter << YAML::Key << contName << YAML::Anchor("default");
-        emitter << YAML::BeginMap;            
-
-        for (int i=0; i<7; i++) {
-            LinkProp link = links_prop_DH[i];
-            emitter << YAML::Key << link.name+"_REG" << YAML::Value << YAML::Alias(link.name);
-        } 
-        
-        emitter << YAML::EndMap << YAML::EndMap <<YAML::Newline;
-
-        /* Backstepping controller */
-
-        emitter << YAML::BeginMap;
-        emitter << YAML::Key << "backstepping_controller" << YAML::Value << YAML::Alias("default");
-        emitter << YAML::EndMap <<YAML::Newline;
-
-        std::ofstream fout(path_yaml_DH_REG);
-        fout << emitter.c_str();
-        fout.close();
-
-        std::cout << "Successfully generated YAML file of inertial parameters for regressor,\n path: " << path_yaml_DH_REG << std::endl;
 
     } catch (const YAML::Exception& e) {
         std::cerr << "Error while generating YAML: " << e.what() << std::endl;
@@ -401,17 +266,74 @@ int main(){
         std::filesystem::path sourcePath;
         std::filesystem::path sourceDestPath;
         absolutePath = std::filesystem::current_path();
-        /* sourcePath = absolutePath + "/" + path_yaml_DH;
-        sourceDestPath = path_copy_DH;
-        std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing); */
-        sourcePath = absolutePath + "/" + path_yaml_DH_REG;
+        sourcePath = absolutePath + "/" + path_yaml_DH_REG + ".yaml";
         sourceDestPath = path_copy_DH_REG;
         std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
-        sourcePath = absolutePath + "/" + path_yaml_DH_DYN;
+        sourcePath = absolutePath + "/" + path_yaml_DH_DYN + ".yaml";
         sourceDestPath = path_copy_DH_DYN;
         std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
         std::cout<<"Files yaml copied"<<std::endl;
     }   
 
     return 0;
+}
+
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag, double pert_p){
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<double> dist(0.0, pert_p/100);
+
+    YAML::Node control;
+    std::string contName = "default_controller";
+
+    emitter_.SetIndent(2);
+    emitter_.SetSeqFormat(YAML::Flow);
+    emitter_ << YAML::Comment(
+        "Inertial parameters referred to Denavit-Hartenberg parametrization to use " + keys_[4] + "\n" + common_comment);
+    emitter_ << YAML::Newline;
+
+    for (int i=0; i<NUMLINKS; i++) {
+
+        LinkProp link = links_prop_[i];    
+        YAML::Node linkNode;
+        std::string nodeName;
+        if (flag) nodeName = link.name + "_params";
+        else nodeName = link.name;
+        linkNode[keys_[0]] = link.mass*(1+dist(gen));
+        linkNode[keys_[1]+"x"] = link.xyz[0]*(1+dist(gen));
+        linkNode[keys_[1]+"y"] = link.xyz[1]*(1+dist(gen));
+        linkNode[keys_[1]+"z"] = link.xyz[2]*(1+dist(gen));
+        linkNode[keys_[2]+"xx"] = link.parI[0]*(1+dist(gen));
+        linkNode[keys_[2]+"xy"] = link.parI[1]*(1+dist(gen));
+        linkNode[keys_[2]+"xz"] = link.parI[2]*(1+dist(gen));
+        linkNode[keys_[2]+"yy"] = link.parI[3]*(1+dist(gen));
+        linkNode[keys_[2]+"yz"] = link.parI[4]*(1+dist(gen));
+        linkNode[keys_[2]+"zz"] = link.parI[5]*(1+dist(gen));
+
+        emitter_ << YAML::BeginMap;
+        emitter_ << YAML::Key << nodeName;
+        if (flag) emitter_ << YAML::Anchor(link.name);
+        emitter_ << linkNode;
+        emitter_ << YAML::EndMap << YAML::Newline;
+    }
+
+    if (flag){
+        emitter_ << YAML::BeginMap;
+        emitter_ << YAML::Key << contName << YAML::Anchor("default");
+        emitter_ << YAML::BeginMap;            
+
+        for (int i=0; i<NUMLINKS; i++) {
+            LinkProp link = links_prop_[i];
+            emitter_ << YAML::Key << link.name+keys_[3] << YAML::Value << YAML::Alias(link.name);
+        } 
+        emitter_ << YAML::EndMap << YAML::EndMap <<YAML::Newline;
+
+        // Backstepping controller
+        emitter_ << YAML::BeginMap;
+        emitter_ << YAML::Key << "backstepping_controller" << YAML::Value << YAML::Alias("default");
+        emitter_ << YAML::EndMap <<YAML::Newline;
+    }
+
+
 }

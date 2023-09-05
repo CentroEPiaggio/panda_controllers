@@ -1,0 +1,108 @@
+# Inertial parameters referred to Denavit-Hartenberg parametrization to use regressor
+# Obtained with transformation of URDF files from:
+#    - $(find franka_gazebo)/test/launch/panda-gazebo.urdf
+#    - $(find franka_description)/robots/common/franka_robot.xacro
+#    - $(find franka_description)/robots/common/inertial.yaml 
+# Considering Denavit-Hartenberg parametrization of table:
+# DH_table << 0,      -M_PI_2,  0.3330, 0,
+#             0,      M_PI_2,   0,      0,
+#             0.0825, M_PI_2,   0.3160, 0,
+#             -0.0825,-M_PI_2,  0,      0,
+#             0,      M_PI_2,   0.384,  0,
+#             0.088,  M_PI_2,   0,      0,
+#             0,      0,        0.107,  0;
+
+link1_params: &link1
+  mass: 5.6285323300284453
+  m_CoM_x: 0.022427154904159117
+  m_CoM_y: 0.18033556764351139
+  m_CoM_z: 0.0092426456905004336
+  Ixx: 0.90559241872553908
+  Ixy: -0.0078093188079169738
+  Ixz: -0.0001154061048938919
+  Iyy: 0.0085392229963307496
+  Iyz: -0.019494491702039884
+  Izz: 0.96107299643121091
+
+link2_params: &link2
+  mass: 0.5904297563116867
+  m_CoM_x: -0.0019121137208684446
+  m_CoM_y: 0.0025400485317225918
+  m_CoM_z: 0.011611360838428536
+  Ixx: 0.0073132518829724623
+  Ixy: 0.0087922835363868929
+  Ixz: 0.0034735604505826902
+  Iyy: 0.034069990891727374
+  Iyz: -0.00062207642765289123
+  Izz: 0.027600588508740243
+
+link3_params: &link3
+  mass: 2.424478320125206
+  m_CoM_x: -0.23201137337739697
+  m_CoM_y: -0.2603769237723923
+  m_CoM_z: -0.11341075965996961
+  Ixx: 0.046292981111480593
+  Ixy: -0.030896190673260233
+  Ixz: -0.0029767034402666983
+  Iyy: 0.021874619889944245
+  Iyz: 0.0040389995470410875
+  Izz: 0.056321987667604524
+
+link4_params: &link4
+  mass: 3.7086492667117703
+  m_CoM_x: 0.10875548972543789
+  m_CoM_y: -0.10416465922207804
+  m_CoM_z: 0.35787221544425901
+  Ixx: 0.06197350397640948
+  Ixy: 0.0040554288140088194
+  Ixz: -0.0033660883328049383
+  Iyy: 0.077234956628818324
+  Iyz: 0.0014086982560702788
+  Izz: 0.021657783020497007
+
+link5_params: &link5
+  mass: 1.6223746562926762
+  m_CoM_x: -0.0086176757441182601
+  m_CoM_y: -0.053269428026909843
+  m_CoM_z: -0.032571475677095882
+  Ixx: 0.029622604180316633
+  Ixy: -0.0049016318422318225
+  Ixz: 0.0013738528079361896
+  Iyy: 0.012537135051623457
+  Iyz: -0.0020181055339958277
+  Izz: 0.041240473185357146
+
+link6_params: &link6
+  mass: 2.1490338065262535
+  m_CoM_x: -0.048390418936031611
+  m_CoM_y: -0.01550898681494063
+  m_CoM_z: 0.024762729315627296
+  Ixx: 0.0023276605996997374
+  Ixy: -0.0017945303710975938
+  Ixz: 0.00078455033703741031
+  Iyy: 0.008237910170666005
+  Iyz: -8.6254270604794463e-05
+  Izz: 0.0062763258544031022
+
+link7_params: &link7
+  mass: 0.75321874167262381
+  m_CoM_x: 0.0074680217145636999
+  m_CoM_y: -0.0027219128704832098
+  m_CoM_z: -0.021467501561270551
+  Ixx: 0.014771426342817804
+  Ixy: -0.00044235874874518598
+  Ixz: -0.00083294689257860954
+  Iyy: 0.014005981872960951
+  Iyz: -0.00082244959625052589
+  Izz: 0.0048774096525494538
+
+default_controller: &default
+  link1REG: *link1
+  link2REG: *link2
+  link3REG: *link3
+  link4REG: *link4
+  link5REG: *link5
+  link6REG: *link6
+  link7REG: *link7
+
+backstepping_controller: *default

@@ -31,9 +31,10 @@
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
-#include "panda_controllers/log_backstepping.h"
+#include "panda_controllers/log_adaptive_cartesian.h"
 
 #include "utils/ThunderPanda.h"
+#include "utils/utils_cartesian.h"
 
 #define     DEBUG   0      
 
@@ -98,13 +99,14 @@ private:
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
-    Eigen::Matrix<double, 3, 1> ee_pos_cmd;           // desired command position 
-    Eigen::Matrix<double, 3, 1> ee_vel_cmd;           // desired command velocity 
-    Eigen::Matrix<double, 3, 1> ee_acc_cmd;           // desired command acceleration 
+    Eigen::Matrix<double, 3, 1> ee_pos_cmd;             // desired command position 
+    Eigen::Matrix<double, 3, 1> ee_vel_cmd;             // desired command velocity 
+    Eigen::Matrix<double, 3, 1> ee_acc_cmd;             // desired command acceleration 
     
-    Eigen::Quaterniond ee_ang_cmd;           // desired command position 
-    Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;           // desired command velocity 
-    Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;           // desired command acceleration 
+    //Eigen::Matrix<double, 3, 1> ee_ang_cmd;             // desired command position
+    Eigen::Matrix<double, 3, 3> ee_rot_cmd;             // desired command position
+    Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;         // desired command velocity 
+    Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
     /* Parameter vector */
 
@@ -158,8 +160,8 @@ private:
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
     void fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_);
-    
-	panda_controllers::log_backstepping msg_log;
+
+	panda_controllers::log_adaptive_cartesian msg_log;
     panda_controllers::point msg_config;
 
 };

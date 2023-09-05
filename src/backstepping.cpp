@@ -1,7 +1,6 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/backstepping.h> //library of the Backstepping
-#include <random>
 
 namespace panda_controllers{
 
@@ -134,24 +133,6 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		param_dyn.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 	}
 
-	/* Perturbate nominal value of inertial parameters */
-
-	double p_param;
-	if (!node_handle.getParam("p_param", p_param)) {
-		ROS_ERROR("Backstepping: Could not get gain parameter for p_param!");
-		return false;
-	}
-
-	std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<double> dist(0.0, p_param);
-    Eigen::VectorXd gauss_param(NJ*PARAM);
-
-    for (int i = 0; i < NJ*PARAM; i++) {
-        gauss_param(i) = dist(gen)*param[i];
-    }
-	param = param + gauss_param/100;
-
 	/* Initialize joint (torque,velocity) limits */
 
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
@@ -162,7 +143,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/*Start command subscriber and advertise */
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
-	this->pub_err_ = node_handle.advertise<panda_controllers::log_backstepping> ("logging", 1);
+	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
 	
 	/* Initialize regressor object */
@@ -182,21 +163,15 @@ void Backstepping::starting(const ros::Time& time)
 	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
-	
 	/* Secure initialization command */
-
 	ee_pos_cmd = T0EE.translation();
-	ee_ang_cmd = Eigen::Quaterniond(T0EE.linear());
-std::cout<<ee_ang_cmd.coeffs()<<std::endl;
-	//ee_ori_cmd = Eigen::Quaterniond(T0EE.linear());
+	ee_rot_cmd = T0EE.linear();
 
 	ee_vel_cmd.setZero();
 	ee_acc_cmd.setZero();
 
 	ee_ang_vel_cmd.setZero();
 	ee_ang_acc_cmd.setZero();
-	//ee_ang.coeffs() << 0.0, 0.0, 0.0, 1.0;
-	//ee_ang_cmd.coeffs() << 0.0, 0.0, 0.0, 1.0;
 
 	/* Compute error */
 
@@ -236,10 +211,8 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
 	
-	//Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
-	//Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
-	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJacPos_gen();
-	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJacPos_gen();
+	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
+	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
 
 	/* Compute error translation */
 
@@ -251,36 +224,41 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute error orientation */
 
-  	Eigen::Quaterniond ee_ang(T0EE.linear());
+  	Eigen::MatrixXd ee_rot = T0EE.linear();
 	Eigen::Vector3d ee_omega = jacobian.bottomRows(3)*dot_q_curr;
 
-	// orientation error
-/* 	if (ee_ang_cmd.coeffs().dot(ee_ang.coeffs()) < 0.0) {
-		ee_ang.coeffs() << -ee_ang.coeffs();
-	} */
+  	Eigen::MatrixXd Rs_tilde;
+  	Eigen::Matrix<double,3,3> L;
+  	Eigen::Matrix<double,3,3> dotL;
+	Rs_tilde = ee_rot_cmd*ee_rot.transpose();
+	L = createL(ee_rot_cmd, ee_rot);
+	dotL = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
 	
-	Eigen::Quaterniond error_quaternion(ee_ang.inverse() * ee_ang_cmd);
-	error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
-	// Transform to base frame
-	error.tail(3) << - T0EE.linear() * error.tail(3);
-	dot_error.tail(3) = ee_ang_vel_cmd - ee_omega;
-	
-	//error.tail(3).setZero();
-	//dot_error.tail(3).setZero();
-	
+	error.tail(3) = vect(Rs_tilde);
+	dot_error.tail(3) = L.transpose()*ee_ang_vel_cmd-L*ee_omega;
+
 	/* Compute reference */
+
 	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
-	ee_vel_cmd_tot << ee_vel_cmd, ee_ang_vel_cmd;
-	ee_acc_cmd_tot << ee_acc_cmd, ee_ang_acc_cmd;
+	ee_vel_cmd_tot << ee_vel_cmd, L.transpose()*ee_ang_vel_cmd;
+	ee_acc_cmd_tot << ee_acc_cmd, dotL.transpose()*ee_ang_vel_cmd + L.transpose()*ee_ang_acc_cmd;
 	
 	Eigen::VectorXd tmp_position = ee_vel_cmd_tot + Lambda * error;
 	Eigen::VectorXd tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
+	Eigen::Matrix<double,6,6> tmp_conversion0,tmp_conversion1,tmp_conversion2;
 
-	int space_ = 3; // operative space dimension
-	dot_qr = mypJacEE * tmp_position.head(space_);
-	ddot_qr = mypJacEE * tmp_velocity.head(space_) + mydot_pJacEE * tmp_position.head(space_);
+	tmp_conversion0.setIdentity();
+	tmp_conversion0.block(3, 3, 3, 3) = L;
+	tmp_conversion1.setIdentity();
+	tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
+	tmp_conversion2.setZero();
+	tmp_conversion2.block(3, 3, 3, 3) = L.inverse() * dotL *L.inverse();
+
+	dot_qr = mypJacEE*tmp_conversion1*tmp_position;
+	ddot_qr = mypJacEE*tmp_conversion1*tmp_velocity + mypJacEE*tmp_conversion2*tmp_position +mydot_pJacEE*tmp_conversion1*tmp_position;
+
 	s = dot_qr - dot_q_curr;
-
+	
 	/* Update and Compute Regressor */
 	
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
@@ -304,7 +282,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	}
 
 /* ---------------------------------------------------------------------------- */
-/*Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
+/* Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
 Eigen::MatrixXd myKin = fastRegMat.getKin_gen();
 myM = fastRegMat.getMass_gen();
 myC = fastRegMat.getCoriolis_gen();
@@ -315,7 +293,7 @@ std::array<double, NJ> coriolis_array = model_handle_->getCoriolis();
 rosM = Eigen::Map<Eigen::Matrix<double, NJ, NJ>>(mass_array.data());
 rosC = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(coriolis_array.data());
 
- std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
+std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
 std::cout<<"\n ros jacobian \n"<<jacobian<<std::endl;
 std::cout<<"\n my kinematic \n"<<myKin<<std::endl;
 std::cout<<"\n ros kinematic \n"<<T0EE.matrix()<<std::endl;
@@ -324,26 +302,29 @@ std::cout<<"\n ros mass contribute \n"<<rosM<<std::endl;
 std::cout<<"\n my coriolis contribute \n"<<myC*dot_q_curr<<std::endl;
 std::cout<<"\n ros coriolis contribute \n"<<rosC<<std::endl;
 std::cout<<"\n my gravity contribute \n"<<myG<<std::endl;
-std::cout<<"\n ros gravity contribute \n"<<rosG<<std::endl;
+std::cout<<"\n ros gravity contribute \n"<<rosG<<std::endl; */
 /* ---------------------------------------------------------------------------- */
 
 	/* Compute tau command */
+
 	tau_cmd_dyn = myM*ddot_qr + myC*dot_qr + myG;
 	tau_cmd_reg = Yr*param;
 
 /* ---------------------------------------------------------------------------- */
-/* std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n";
-std::cout<<"\nYr*param-G\n"<<Yr*param-rosG<<std::endl;
-std::cout<<"\nKd*s\n"<<Kd*s<<std::endl;
-std::cout<<"\njac_err\n"<<jacobian.topRows(3).transpose()*error<<std::endl; */
+//std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n";
 /* ---------------------------------------------------------------------------- */
 
-	tau_cmd = tau_cmd_reg + Kd*s + jacobian.topRows(space_).transpose()*error.head(space_)-rosG;
+	//tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*error-rosG;
+	tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
+	//tau_cmd.setZero();
+/* 
+std::cout<<"\njacobian\n"<<jacobian.transpose()<<"\n";
+std::cout<<"\njacobian.topRows(space_).transpose():\n"<<jacobian.topRows(space_).transpose()<<"\n"; */
 
 	/* Saturate the derivate of tau_cmd */
 	
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
-
+//std::cout<<"\ntau_cmd saturated \n"<<tau_cmd<<std::endl;
  	/* Publish messages */
 
 	time_now = ros::Time::now();
@@ -361,7 +342,7 @@ std::cout<<"\njac_err\n"<<jacobian.topRows(3).transpose()*error<<std::endl; */
 	fillMsgLink(msg_log.link5, param.segment(40, PARAM));
 	fillMsgLink(msg_log.link6, param.segment(50, PARAM));
 	fillMsgLink(msg_log.link7, param.segment(60, PARAM));
-	fillMsg(msg_log.tau_cmd, tau_cmd_reg);
+	fillMsg(msg_log.tau_cmd, tau_cmd);
 
 	msg_config.header.stamp  = time_now;
 	msg_config.xyz.x = T0EE.translation()(0);
@@ -392,8 +373,8 @@ Eigen::Matrix<double, NJ, 1> Backstepping::saturateTorqueRate(
 
 		double difference = tau_d_calculated[i] - tau_J_d[i];
 		tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, kDeltaTauMax), -kDeltaTauMax);
-/* 
-		if(fabs(tau_d_saturated[i])>tau_limit[i]){
+
+/* 		if(fabs(tau_d_saturated[i])>tau_limit[i]){
 			tau_d_saturated[i] = (tau_d_saturated[i]/fabs(tau_d_saturated[i]))*tau_limit[i];
 		} */
 	}

@@ -1,4 +1,4 @@
-# Inertial parameters referred to Denavit-Hartenberg parametrization to use standard equation of dynamic.
+# Inertial parameters referred to Denavit-Hartenberg parametrization to use standard equation of dynamic
 # Obtained with transformation of URDF files from:
 #    - $(find franka_gazebo)/test/launch/panda-gazebo.urdf
 #    - $(find franka_description)/robots/common/franka_robot.xacro

@@ -46,9 +46,8 @@ backstepping_controller:
     joint_names: *jointNames
     
     # --- Controller parameters --- #
-    gainLambda: [2.0, 2.0, 2.0, 0.1, 0.1, 0.1]       # gain for Lambda matrix
-    gainR: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]            # gain for R matrix
-    gainKd: 11           # gain for Kd matrix
-    p_param: 0
+    gainLambda: [1.0, 1.0, 1.0, 0.01, 0.01, 0.01]       # gain for Lambda matrix
+    gainR: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]            # gain for R matrix
+    gainKd: 10           # gain for Kd matrix
     update_param: true  # bool to update inertial parameters
     

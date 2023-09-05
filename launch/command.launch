@@ -3,7 +3,7 @@
 <launch>
 
     <arg name="package" default="panda_controllers" />
-    <arg name="node_name" default="command_node" />
+    <arg name="node_name" default="command_cartesian" />
 
     <!-- load yaml -->
     <arg name="yaml_file" default="$(find panda_controllers)/config/trajectory_param.yaml" />

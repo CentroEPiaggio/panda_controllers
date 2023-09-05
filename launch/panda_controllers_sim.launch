@@ -14,10 +14,11 @@
 	<arg name="use_gripper" 	default="false" />
 	<arg name="rviz" 			default="true" />
 	<arg name="package" 		default="panda_controllers" />
+  	<arg name="rosbag" 			default="false" />
     
 	<!-- load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG_p20.yaml" />
 	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_DYN.yaml" />
 	
 	<!-- to load gazebo (and rviz) -->
@@ -30,5 +31,6 @@
 	
 	<!-- to draw trajectory on rviz -->
 	<include file="$(find panda_controllers)/launch/panda_trajectory_rviz.launch" if="$(arg rviz)" />
+	<include file="$(find panda_controllers)/launch/rosbag.launch" if="$(arg rosbag)" />
 	
 </launch>

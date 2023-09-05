@@ -73,7 +73,7 @@ int main(){
     RobReg regrobot;
     RobDyn dynrobot;
     
-    kinrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE, 0.001);
+    kinrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE, 0.0);
     regrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE);
     dynrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE);
 
