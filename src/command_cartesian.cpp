@@ -150,7 +150,7 @@ int main(int argc, char **argv)
             end_motion = true;
         }
         
-        //cout<<"\nend_motion: "<<end_motion<<"\npos_E_start: \n"<<pose_EE_start<<endl; 
+        //cout<<"\nend_motion: "<<end_motion<<"\npos_E_start: \n"<<pose_EE_start<<endl;
         (*traj_ptr)(dt,pose_EE_start,msg_cartesian);
         msg_cartesian.header.stamp = t;
 
@@ -180,30 +180,30 @@ void poseCallback(const panda_controllers::point& msg){
 
 void lissajous(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
         
-    double x0,y0,z0;
+    double x0,y0,z0,dt;
 
     double A = ampX, B = ampY, C = ampZ;
     double a = freqX, b = freqY, c = freqZ;
     double dx = phiX, dz = phiZ;
-    double t0 = 1/(4*b);
-
+    double t0 = 1.0/(4*b);
+    //std::cout<<t0<<std::endl;
+    dt = dt_;
     x0 = p0(0) + offX;
     y0 = p0(1) + offY;
     z0 = p0(2) + offZ;
 
     position_t << 
-        x0 + A * std::sin(M_2_PI * a * (dt_-t0) + dx),
-        y0 + B * std::cos(M_2_PI * b * (dt_-t0)),
-        z0 + C * std::sin(M_2_PI * c * (dt_-t0) + dz);
+        x0 + A * std::sin(2*M_PI * a * (dt-t0) + dx),
+        y0 + B * std::cos(2*M_PI * b * (dt-t0)),
+        z0 + C * std::sin(2*M_PI * c * (dt-t0) + dz);
     velocity_t << 
-        M_2_PI *A * a * std::cos(M_2_PI * a * (dt_-t0) + dx),
-        -M_2_PI *B * b * std::sin(M_2_PI * b * (dt_-t0)),
-        M_2_PI *C * c * std::cos(M_2_PI * c * (dt_-t0) + dz);
+        2*M_PI *A * a * std::cos(2*M_PI * a * (dt-t0) + dx),
+        -2*M_PI *B * b * std::sin(2*M_PI * b * (dt-t0)),
+        2*M_PI *C * c * std::cos(2*M_PI * c * (dt-t0) + dz);
     acceleration_t << 
-        -M_2_PI *M_2_PI *A * a * a * std::sin(M_2_PI * a * (dt_-t0) + dx),
-        -M_2_PI *M_2_PI *B * b * b * std::cos(M_2_PI * b * (dt_-t0)), 
-        -M_2_PI *M_2_PI *C * c * c * std::sin(M_2_PI * c * (dt_-t0) + dz);
-
+        -2*M_PI *2*M_PI *A * a * a * std::sin(2*M_PI * a * (dt-t0) + dx),
+        -2*M_PI *2*M_PI *B * b * b * std::cos(2*M_PI * b * (dt-t0)), 
+        -2*M_PI *2*M_PI *C * c * c * std::sin(2*M_PI * c * (dt-t0) + dz);
 
     /* UPDATE MESSAGE */
     msg.position.x = position_t(0);
