@@ -10,7 +10,7 @@
 //#include <geometry_msgs/Point.h>
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
-//#include "utils/gen_traj_fun.h"
+#include "utils/gen_traj_fun.h"
 
 typedef Eigen::Vector3d vec3d;
 
@@ -48,11 +48,11 @@ vec3d position_t, velocity_t, acceleration_t;
 void poseCallback(const panda_controllers::point& msg);
 
 /* prototipi traiettorie */
-void lissajous  (const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg);
-void line       (const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg);
-void minjerk    (const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg);
-void stay_in_p0 (const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg);
-//void trajFun    (const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg);
+void lissajous  (const double dt_, const vec3d p0);
+void line       (const double dt_, const vec3d p0);
+void minjerk    (const double dt_, const vec3d p0);
+void stay_in_p0 (const double dt_, const vec3d p0);
+void trajFun    (const double dt_, const vec3d p0);
 
 int main(int argc, char **argv)
 {
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 	}
 
     /* initialize trajectory pointer */
-    void (*traj_ptr)(const double, const vec3d, panda_controllers::desTrajEE&);
+    void (*traj_ptr)(const double, const vec3d);
     
     switch (flag_traj)
     {
@@ -113,16 +113,15 @@ int main(int argc, char **argv)
         traj_ptr = minjerk;
         duration = minjerk_T;
         break;
-    /* case 4:
+    case 4:
         traj_ptr = trajFun;
         duration = 50.0;
-        break; */
+        break;
     default:
         traj_ptr = stay_in_p0;
         break;
     }
     
-
     bool start = false;
 	double t_start;
     double period = 1/frequency;
@@ -151,8 +150,21 @@ int main(int argc, char **argv)
         }
         
         //cout<<"\nend_motion: "<<end_motion<<"\npos_E_start: \n"<<pose_EE_start<<endl;
-        (*traj_ptr)(dt,pose_EE_start,msg_cartesian);
+        (*traj_ptr)(dt,pose_EE_start);
         msg_cartesian.header.stamp = t;
+
+        /* UPDATE MESSAGE */
+        msg_cartesian.position.x = position_t(0);
+        msg_cartesian.position.y = position_t(1);
+        msg_cartesian.position.z = position_t(2);
+
+        msg_cartesian.velocity.x = velocity_t(0);
+        msg_cartesian.velocity.y = velocity_t(1);
+        msg_cartesian.velocity.z = velocity_t(2);
+
+        msg_cartesian.acceleration.x = acceleration_t(0);
+        msg_cartesian.acceleration.y = acceleration_t(1);
+        msg_cartesian.acceleration.z = acceleration_t(2);
 
         pub_cmd_cartesian.publish(msg_cartesian);  
 
@@ -178,7 +190,7 @@ void poseCallback(const panda_controllers::point& msg){
 	}
 }
 
-void lissajous(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
+void lissajous(const double dt_, const vec3d p0){
         
     double x0,y0,z0,dt;
 
@@ -204,22 +216,9 @@ void lissajous(const double dt_, const vec3d p0, panda_controllers::desTrajEE &m
         -2*M_PI *2*M_PI *A * a * a * std::sin(2*M_PI * a * (dt-t0) + dx),
         -2*M_PI *2*M_PI *B * b * b * std::cos(2*M_PI * b * (dt-t0)), 
         -2*M_PI *2*M_PI *C * c * c * std::sin(2*M_PI * c * (dt-t0) + dz);
-
-    /* UPDATE MESSAGE */
-    msg.position.x = position_t(0);
-    msg.position.y = position_t(1);
-    msg.position.z = position_t(2);
-
-    msg.velocity.x = velocity_t(0);
-    msg.velocity.y = velocity_t(1);
-    msg.velocity.z = velocity_t(2);
-
-    msg.acceleration.x = acceleration_t(0);
-    msg.acceleration.y = acceleration_t(1);
-    msg.acceleration.z = acceleration_t(2);
 }
 
-void line(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
+void line(const double dt_, const vec3d p0){
         
     vec3d start, end, lambda;
     double d, Delta_t;
@@ -237,22 +236,9 @@ void line(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
     position_t = start + vel* dt_ * lambda;
     velocity_t = vel * lambda;
     acceleration_t.Zero();
-
-    /* UPDATE MESSAGE */
-    msg.position.x = position_t(0);
-    msg.position.y = position_t(1);
-    msg.position.z = position_t(2);
-
-    msg.velocity.x = velocity_t(0);
-    msg.velocity.y = velocity_t(1);
-    msg.velocity.z = velocity_t(2);
-
-    msg.acceleration.x = acceleration_t(0);
-    msg.acceleration.y = acceleration_t(1);
-    msg.acceleration.z = acceleration_t(2);
 }
 
-void minjerk(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
+void minjerk(const double dt_, const vec3d p0){
         
     vec3d start, end;
 
@@ -262,43 +248,17 @@ void minjerk(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg
     position_t << start + (start - end)*(15*pow((dt_/duration),4) - 6*pow((dt_/duration),5) -10*pow((dt_/duration),3));
 	velocity_t << (start - end)*(60*(pow(dt_,3)/pow(duration,4)) - 30*(pow(dt_,4)/pow(duration,5)) -30*(pow(dt_,2)/pow(duration,3)));
 	acceleration_t << (start - end)*(180*(pow(dt_,2)/pow(duration,4)) - 120*(pow(dt_,3)/pow(duration,5)) -60*(dt_/pow(duration,3)));
-
-    /* UPDATE MESSAGE */
-    msg.position.x = position_t(0);
-    msg.position.y = position_t(1);
-    msg.position.z = position_t(2);
-
-    msg.velocity.x = velocity_t(0);
-    msg.velocity.y = velocity_t(1);
-    msg.velocity.z = velocity_t(2);
-
-    msg.acceleration.x = acceleration_t(0);
-    msg.acceleration.y = acceleration_t(1);
-    msg.acceleration.z = acceleration_t(2);
 }
 
-void stay_in_p0(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
+void stay_in_p0(const double dt_, const vec3d p0){
 
     position_t<< p0(0), p0(1), p0(2);
     
     velocity_t.setZero();
     acceleration_t.setZero();
-
-    /* UPDATE MESSAGE */
-    msg.position.x = position_t(0);
-    msg.position.y = position_t(1);
-    msg.position.z = position_t(2);
-
-    msg.velocity.x = velocity_t(0);
-    msg.velocity.y = velocity_t(1);
-    msg.velocity.z = velocity_t(2);
-
-    msg.acceleration.x = acceleration_t(0);
-    msg.acceleration.y = acceleration_t(1);
-    msg.acceleration.z = acceleration_t(2);
 }
 
-/* void trajFun(const double dt_, const vec3d p0, panda_controllers::desTrajEE &msg){
+void trajFun(const double dt_, const vec3d p0){
     
     long long p3_p[traj_pos_SZ_IW];
     double p4_p[traj_pos_SZ_W];
@@ -317,18 +277,7 @@ void stay_in_p0(const double dt_, const vec3d p0, panda_controllers::desTrajEE &
     check = traj_vel(input_, output_vel, p3_v, p4_v, 0);
     check = traj_acc(input_, output_acc, p3_a, p4_a, 0);
 
-    // std::cout<<position_t<<std::endl;
-
-    // UPDATE MESSAGE 
-    msg.position.x = position_t(0)+p0[0];
-    msg.position.y = position_t(1)+p0[1];
-    msg.position.z = position_t(2)+p0[2];
-
-    msg.velocity.x = velocity_t(0);
-    msg.velocity.y = velocity_t(1);
-    msg.velocity.z = velocity_t(2);
-
-    msg.acceleration.x = acceleration_t(0);
-    msg.acceleration.y = acceleration_t(1);
-    msg.acceleration.z = acceleration_t(2);
-} */
+    position_t[0] = position_t[0]+p0[0];
+    position_t[1] = position_t[1]+p0[1];
+    position_t[2] = position_t[2]+p0[2];
+}

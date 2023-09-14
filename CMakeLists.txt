@@ -70,10 +70,10 @@ catkin_package(
 )
 
 add_library(${PROJECT_NAME}   
-	src/computed_torque.cpp #Computed Torque controller
-	src/computed_torque_adaptive.cpp #Computed Torque controller
+	#src/computed_torque.cpp #Computed Torque controller
+	#src/computed_torque_adaptive.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
-	src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
+	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	src/gen_regr_fun.cpp
 	src/ThunderPanda.cpp
 )
@@ -85,7 +85,7 @@ add_dependencies(${PROJECT_NAME}
 
 add_executable(command_cartesian
 	src/command_cartesian.cpp
-	#src/gen_traj_fun.cpp
+	src/gen_traj_fun.cpp
 )
 target_link_libraries(command_cartesian
 	${catkin_LIBRARIES}

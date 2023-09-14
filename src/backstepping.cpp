@@ -166,7 +166,7 @@ void Backstepping::starting(const ros::Time& time)
 	/* Secure initialization command */
 	ee_pos_cmd = T0EE.translation();
 	ee_rot_cmd = T0EE.linear();
-
+	
 	ee_vel_cmd.setZero();
 	ee_acc_cmd.setZero();
 
@@ -252,7 +252,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	tmp_conversion1.setIdentity();
 	tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
 	tmp_conversion2.setZero();
-	tmp_conversion2.block(3, 3, 3, 3) = L.inverse() * dotL *L.inverse();
+	tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
 
 	dot_qr = mypJacEE*tmp_conversion1*tmp_position;
 	ddot_qr = mypJacEE*tmp_conversion1*tmp_velocity + mypJacEE*tmp_conversion2*tmp_position +mydot_pJacEE*tmp_conversion1*tmp_position;
@@ -311,20 +311,21 @@ std::cout<<"\n ros gravity contribute \n"<<rosG<<std::endl; */
 	tau_cmd_reg = Yr*param;
 
 /* ---------------------------------------------------------------------------- */
-//std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n";
+/* std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n"; */
 /* ---------------------------------------------------------------------------- */
 
 	//tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*error-rosG;
 	tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
-	//tau_cmd.setZero();
-/* 
-std::cout<<"\njacobian\n"<<jacobian.transpose()<<"\n";
-std::cout<<"\njacobian.topRows(space_).transpose():\n"<<jacobian.topRows(space_).transpose()<<"\n"; */
 
+/* ---------------------------------------------------------------------------- */
+//tau_cmd.setZero();
+/* ---------------------------------------------------------------------------- */
+	
 	/* Saturate the derivate of tau_cmd */
 	
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
-//std::cout<<"\ntau_cmd saturated \n"<<tau_cmd<<std::endl;
+	//std::cout<<"\ntau_cmd saturated \n"<<tau_cmd<<std::endl;
+
  	/* Publish messages */
 
 	time_now = ros::Time::now();
@@ -374,7 +375,7 @@ Eigen::Matrix<double, NJ, 1> Backstepping::saturateTorqueRate(
 		double difference = tau_d_calculated[i] - tau_J_d[i];
 		tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, kDeltaTauMax), -kDeltaTauMax);
 
-/* 		if(fabs(tau_d_saturated[i])>tau_limit[i]){
+	/* if(fabs(tau_d_saturated[i])>tau_limit[i]){
 			tau_d_saturated[i] = (tau_d_saturated[i]/fabs(tau_d_saturated[i]))*tau_limit[i];
 		} */
 	}

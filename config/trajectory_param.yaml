@@ -1,6 +1,6 @@
 # Trajectory parameters for command_node
 
-duration: &time 10
+duration: &time 60
 
 liss_default: &liss_default
   ampX: 0.2
@@ -52,13 +52,20 @@ line:
   zf: 0.4
   duration: *time
 
-minjerk:
-  xf: 0.3069
-  yf: 0.5
-  zf: 0.5903
-  duration: *time
+#minjerk:
+#  xf: 0.3069
+#  yf: -0.5
+#  zf: 0.5903
+#  duration: 15
 
-lissajous: *circ1
+minjerk:
+  #xf: 0.326
+  xf: 0.4
+  yf: -0.3
+  zf: 0.785
+  duration: 15
+
+lissajous: *liss2
 
 flag:
-  type: 3 # 1: lissajous, 2: line, 3: minjerk
+  type: 1 # 1: lissajous, 2: line, 3: minjerk, 4: script
