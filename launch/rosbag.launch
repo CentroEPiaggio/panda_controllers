@@ -6,17 +6,17 @@
     <arg name="trajectory_node" default="true" />
 
     <!-- rosbag -->
-    <arg name="topics"      default="/backstepping_controller/current_config /backstepping_controller/logging /joint_states /clock /backstepping_controller/command"/>
-    <arg name="bag_path"    default="/home/yurs/Documents/MATLAB/Robotica/rosbag/bag"/>
+    <arg name="topics"      default="/backstepping_controller/current_config /backstepping_controller/logging /joint_states /backstepping_controller/command"/>
+    <arg name="bag_path"    default="$(find panda_controllers)/bags"/>
     <arg name="bag_name"    default="$(arg bag_path)/real"/>
-    <arg name="duration"    default="60"/>
+    <arg name="duration"    default="30"/>
     
     <!-- rosbag file name -->
     <arg name="gainLambda"  default="(1.0_0.01)"/>
     <arg name="gainR"       default="0.1"/>
     <arg name="gainKd"      default="10.0"/>
     <arg name="adapt"       default="false"/>
-    <arg name="traj_type"   default="script"/> <!-- liss0/1/2/3 - circ1/2 - minjerk -->
+    <arg name="traj_type"   default="lab3"/> <!-- liss0/1/2/3 - circ1/2 - minjerk -->
     <arg name="param_off"   default="p10"/>
     <arg name="gain"        default="$(arg gainLambda)_$(arg gainR)_$(arg gainKd)"/>
     

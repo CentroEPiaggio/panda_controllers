@@ -67,7 +67,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	
 	double gainKd;
 	std::vector<double> gainR(NJ), gainLambda(6);
-	Eigen::MatrixXd Rblock;
+	Eigen::Matrix<double,10,10> Rblock;
 	
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
 		!node_handle.getParam("gainR", gainR) ||
@@ -82,10 +82,23 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		Lambda(i,i) = gainLambda[i];
 	}
 	Kd = gainKd * Eigen::MatrixXd::Identity(NJ, NJ);
+	Eigen::Matrix<double,10,10> Rtemp;
+	Rtemp.setZero();
+	Rtemp(0,0) = 10;
+	Rtemp(1,1) = 100;
+	Rtemp(2,2) = 100;
+	Rtemp(3,3) = 100;
+	Rtemp(4,4) = 1000;
+	Rtemp(5,5) = 1000;
+	Rtemp(6,6) = 1000;
+	Rtemp(7,7) = 1000;
+	Rtemp(8,8) = 1000;
+	Rtemp(9,9) = 1000;
 	R.setIdentity();
 	Rinv.setZero();
+
 	for (int i = 0; i<NJ; i++){
-		Rblock = gainR[i]*R.block(i*PARAM, i*PARAM, PARAM, PARAM) ;
+		Rblock= gainR[i]*Rtemp;
 		if (update_param_flag && Rblock.determinant() != 0){
 			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = Rblock.inverse();
 		}
