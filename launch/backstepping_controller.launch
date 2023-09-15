@@ -11,7 +11,6 @@
   
   <!-- load initial guess parameters -->
   <rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG.yaml" />
-	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_DYN.yaml" />
 
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="backstepping_controller"/>

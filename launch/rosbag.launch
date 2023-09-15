@@ -1,23 +1,24 @@
 <?xml version="1.0"?>
+<!-- launch rosbag and command -->
 <launch>
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
  
-    <!-- trajectory -->
-    <arg name="trajectory_node" default="true" />
+    <!-- command -->
+    <arg name="command_node" default="true" />
 
     <!-- rosbag -->
     <arg name="topics"      default="/backstepping_controller/current_config /backstepping_controller/logging /joint_states /backstepping_controller/command"/>
     <arg name="bag_path"    default="$(find panda_controllers)/bags"/>
-    <arg name="bag_name"    default="$(arg bag_path)/real"/>
-    <arg name="duration"    default="30"/>
+    <arg name="bag_name"    default="$(arg bag_path)/sim"/>
+    <arg name="duration"    default="125"/>
     
     <!-- rosbag file name -->
-    <arg name="gainLambda"  default="(1.0_0.01)"/>
-    <arg name="gainR"       default="0.1"/>
-    <arg name="gainKd"      default="10.0"/>
+    <arg name="gainLambda"  default="L(1.0_0.01)"/>
+    <arg name="gainR"       default="Ri1(1_0.1_0.01)"/>
+    <arg name="gainKd"      default="Kd(10.0)"/>
     <arg name="adapt"       default="false"/>
-    <arg name="traj_type"   default="lab3"/> <!-- liss0/1/2/3 - circ1/2 - minjerk -->
-    <arg name="param_off"   default="p10"/>
+    <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
+    <arg name="param_off"   default="p20"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gain"        default="$(arg gainLambda)_$(arg gainR)_$(arg gainKd)"/>
     
    
@@ -25,6 +26,6 @@
         args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
     </node>
 
-    <include file="$(find panda_controllers)/launch/command.launch" if="$(arg trajectory_node)" />
+    <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_node)" />
 
 </launch>

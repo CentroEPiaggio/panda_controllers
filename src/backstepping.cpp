@@ -63,14 +63,37 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		}
 	}
 
+	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
+
+	for(int i=0; i<NJ; i++){
+		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_x", cmx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_y", cmy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_z", cmz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Izz", zz)){
+			
+			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
+			return 1;
+		}
+		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
+	}
+
+
 	/* Inizializing the Lambda and R and Kd gains */
 	
 	double gainKd;
-	std::vector<double> gainR(NJ), gainLambda(6);
-	Eigen::Matrix<double,10,10> Rblock;
-	
+	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6);
+	Eigen::Matrix<double,PARAM,PARAM> Rlink;
+
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
-		!node_handle.getParam("gainR", gainR) ||
+		!node_handle.getParam("gainRlinks", gainRlinks) ||
+		!node_handle.getParam("gainRparam", gainRparam) ||
 		!node_handle.getParam("gainKd", gainKd)  ||
 		!node_handle.getParam("update_param", update_param_flag)) {
 	
@@ -82,70 +105,26 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		Lambda(i,i) = gainLambda[i];
 	}
 	Kd = gainKd * Eigen::MatrixXd::Identity(NJ, NJ);
-	Eigen::Matrix<double,10,10> Rtemp;
-	Rtemp.setZero();
-	Rtemp(0,0) = 10;
-	Rtemp(1,1) = 100;
-	Rtemp(2,2) = 100;
-	Rtemp(3,3) = 100;
-	Rtemp(4,4) = 1000;
-	Rtemp(5,5) = 1000;
-	Rtemp(6,6) = 1000;
-	Rtemp(7,7) = 1000;
-	Rtemp(8,8) = 1000;
-	Rtemp(9,9) = 1000;
-	R.setIdentity();
+
+	Rlink.setZero();
+	Rlink(0,0) = gainRparam[0];
+	Rlink(1,1) = gainRparam[1];
+	Rlink(2,2) = Rlink(1,1);
+	Rlink(3,3) = Rlink(1,1);
+	Rlink(4,4) = gainRparam[2];
+	Rlink(5,5) = Rlink(4,4);
+	Rlink(6,6) = Rlink(4,4);
+	Rlink(7,7) = Rlink(4,4);
+	Rlink(8,8) = Rlink(4,4);
+	Rlink(9,9) = Rlink(4,4);
+
 	Rinv.setZero();
 
-	for (int i = 0; i<NJ; i++){
-		Rblock= gainR[i]*Rtemp;
-		if (update_param_flag && Rblock.determinant() != 0){
-			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = Rblock.inverse();
+	if (update_param_flag){
+		for (int i = 0; i<NJ; i++){	
+			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
 		}
 	}
-
-	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
-
-	for(int i=0; i<NJ; i++){
-		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-		if (!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/mass", mass) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_x", cmx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_y", cmy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/m_CoM_z", cmz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixx", xx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixy", xy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Ixz", xz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Iyy", yy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Iyz", yz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_REG"+"/Izz", zz)){
-			
-			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
-			return 1;
-		}
-		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
-	}
-
-	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with standard dynamic equation */
-
-	for(int i=0; i<NJ; i++){
-		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-		if (!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/mass", mass) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_x", cmx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_y", cmy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/CoM_z", cmz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixx", xx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixy", xy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Ixz", xz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Iyy", yy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Iyz", yz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"_DYN"+"/Izz", zz)){
-			
-			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
-			return 1;
-		}
-		param_dyn.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
-	}
-
 	/* Initialize joint (torque,velocity) limits */
 
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
@@ -162,7 +141,6 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/* Initialize regressor object */
 
 	fastRegMat.init(NJ);
-	fastRegMat.setInertialParam(param_dyn);
 	
 	return true;
 }
@@ -171,8 +149,8 @@ void Backstepping::starting(const ros::Time& time)
 {	
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
-	franka::RobotState robot_state = state_handle_->getRobotState();
-	Eigen::Affine3d T0EE(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));
+	robot_state = state_handle_->getRobotState();
+	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
@@ -207,9 +185,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
-	franka::RobotState robot_state = state_handle_->getRobotState();
-	Eigen::Matrix<double, 6, NJ> jacobian;
-	Eigen::Affine3d T0EE;
+	robot_state = state_handle_->getRobotState();
 	
 	jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 	rosG = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
@@ -218,31 +194,39 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
+	Eigen::Vector3d ee_position, ee_velocity;
+	Eigen::Vector3d ee_omega;
+	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
+	Eigen::VectorXd tmp_position(6), tmp_velocity(6);
+	
+  	Eigen::Matrix<double,3,3> ee_rot;
+  	Eigen::Matrix<double,3,3> Rs_tilde;
+  	Eigen::Matrix<double,3,3> L, dotL;
+
+	Eigen::Matrix<double,6,6> tmp_conversion0, tmp_conversion1, tmp_conversion2;
+
 	/* Update pseudo-inverse of jacobian and its derivative */
 
 	fastRegMat.setArguments(q_curr,dot_q_curr);
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
 	
-	Eigen::MatrixXd mypJacEE = fastRegMat.getPinvJac_gen();
-	Eigen::MatrixXd mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+	mypJacEE = fastRegMat.getPinvJac_gen();
+	mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
 
 	/* Compute error translation */
 
-	Eigen::Vector3d ee_position = T0EE.translation();
-	Eigen::Vector3d ee_velocity = jacobian.topRows(3)*dot_q_curr;
+	ee_position = T0EE.translation();
+	ee_velocity = jacobian.topRows(3)*dot_q_curr;
 
 	error.head(3) = ee_pos_cmd - ee_position;
 	dot_error.head(3) = ee_vel_cmd - ee_velocity;
 
 	/* Compute error orientation */
 
-  	Eigen::MatrixXd ee_rot = T0EE.linear();
-	Eigen::Vector3d ee_omega = jacobian.bottomRows(3)*dot_q_curr;
+  	ee_rot = T0EE.linear();
+	ee_omega = jacobian.bottomRows(3)*dot_q_curr;
 
-  	Eigen::MatrixXd Rs_tilde;
-  	Eigen::Matrix<double,3,3> L;
-  	Eigen::Matrix<double,3,3> dotL;
 	Rs_tilde = ee_rot_cmd*ee_rot.transpose();
 	L = createL(ee_rot_cmd, ee_rot);
 	dotL = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
@@ -252,14 +236,12 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute reference */
 
-	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
 	ee_vel_cmd_tot << ee_vel_cmd, L.transpose()*ee_ang_vel_cmd;
 	ee_acc_cmd_tot << ee_acc_cmd, dotL.transpose()*ee_ang_vel_cmd + L.transpose()*ee_ang_acc_cmd;
 	
-	Eigen::VectorXd tmp_position = ee_vel_cmd_tot + Lambda * error;
-	Eigen::VectorXd tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
-	Eigen::Matrix<double,6,6> tmp_conversion0,tmp_conversion1,tmp_conversion2;
-
+	tmp_position = ee_vel_cmd_tot + Lambda * error;
+	tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
+	
 	tmp_conversion0.setIdentity();
 	tmp_conversion0.block(3, 3, 3, 3) = L;
 	tmp_conversion1.setIdentity();
@@ -275,8 +257,6 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	/* Update and Compute Regressor */
 	
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-	fastRegMat.setArguments(q_curr, dot_q_curr, param_dyn);
-	
 	Yr = fastRegMat.getReg_gen();
 
 	/* tau_J_d is past tau_cmd saturated */
@@ -294,50 +274,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 		param = param + dt*dot_param;
 	}
 
-/* ---------------------------------------------------------------------------- */
-/* Eigen::MatrixXd myJacEE = fastRegMat.getJac_gen();
-Eigen::MatrixXd myKin = fastRegMat.getKin_gen();
-myM = fastRegMat.getMass_gen();
-myC = fastRegMat.getCoriolis_gen();
-myG = fastRegMat.getGravity_gen();
-
-std::array<double, NJ*NJ> mass_array = model_handle_->getMass();
-std::array<double, NJ> coriolis_array = model_handle_->getCoriolis();
-rosM = Eigen::Map<Eigen::Matrix<double, NJ, NJ>>(mass_array.data());
-rosC = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(coriolis_array.data());
-
-std::cout<<"\n my jacobian \n"<<myJacEE<<std::endl;
-std::cout<<"\n ros jacobian \n"<<jacobian<<std::endl;
-std::cout<<"\n my kinematic \n"<<myKin<<std::endl;
-std::cout<<"\n ros kinematic \n"<<T0EE.matrix()<<std::endl;
-std::cout<<"\n my mass contribute \n"<<myM<<std::endl;
-std::cout<<"\n ros mass contribute \n"<<rosM<<std::endl;
-std::cout<<"\n my coriolis contribute \n"<<myC*dot_q_curr<<std::endl;
-std::cout<<"\n ros coriolis contribute \n"<<rosC<<std::endl;
-std::cout<<"\n my gravity contribute \n"<<myG<<std::endl;
-std::cout<<"\n ros gravity contribute \n"<<rosG<<std::endl; */
-/* ---------------------------------------------------------------------------- */
-
 	/* Compute tau command */
 
-	tau_cmd_dyn = myM*ddot_qr + myC*dot_qr + myG;
-	tau_cmd_reg = Yr*param;
-
-/* ---------------------------------------------------------------------------- */
-/* std::cout<<"\nfunzoina!:\n"<<tau_cmd_dyn - tau_cmd_reg<<"\n========\n"; */
-/* ---------------------------------------------------------------------------- */
-
-	//tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*error-rosG;
-	tau_cmd = tau_cmd_reg + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
-
-/* ---------------------------------------------------------------------------- */
-//tau_cmd.setZero();
-/* ---------------------------------------------------------------------------- */
+	tau_cmd = Yr*param + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
+	//tau_cmd.setZero(); // gravity compensation check (spoiler: it is not perfect)
 	
 	/* Saturate the derivate of tau_cmd */
 	
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
-	//std::cout<<"\ntau_cmd saturated \n"<<tau_cmd<<std::endl;
 
  	/* Publish messages */
 

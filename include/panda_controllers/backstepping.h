@@ -28,6 +28,7 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
@@ -63,7 +64,17 @@ private:
     
     double dt;
     ros::Time time_now;
+
+    /* Robot state handle */
+
+    franka::RobotState robot_state;
     
+    /* Franka ROS matrices */
+
+    Eigen::Matrix<double, 6, NJ> jacobian;
+	Eigen::Affine3d T0EE;
+    Eigen::Matrix<double, NJ, 1> rosG;
+
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
     Eigen::Matrix<double, NJ, 1> tau_limit;
@@ -75,23 +86,19 @@ private:
     
     Eigen::Matrix<double, 6, 6> Lambda; 
     Eigen::Matrix<double, NJ, NJ> Kd;
-    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
+    //Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
     bool update_param_flag;
 
-    /* Defining q_current, dot_q_current, and tau_cmd */
+    /* Defining q_current, dot_q_current, s and tau_cmd */
 
     Eigen::Matrix<double, NJ, 1> q_curr;
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
-    Eigen::Matrix<double, NJ, 1> tau_cmd;
-    Eigen::Matrix<double, NJ, 1> tau_cmd_dyn;
-    Eigen::Matrix<double, NJ, 1> tau_cmd_reg;
-
-    
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> s;
-
+    Eigen::Matrix<double, NJ, 1> tau_cmd;
+    
     /* Error and dot error feedback */
     
     Eigen::Matrix<double, 6, 1> error;
@@ -115,15 +122,13 @@ private:
 
     /* Regressor Matrix */
     
-    Eigen::Matrix<double, NJ*PARAM, 1> param_dyn;
     Eigen::Matrix<double, NJ, NJ*PARAM> Yr;
-    Eigen::Matrix<double, NJ, NJ> myM;
-    Eigen::Matrix<double, NJ, NJ> rosM;
-    Eigen::Matrix<double, NJ, NJ> myC;
-    Eigen::Matrix<double, NJ, 1> rosC;
-    Eigen::Matrix<double, NJ, 1> myG;
-    Eigen::Matrix<double, NJ, 1> rosG;
 	
+	/* Pseudo-inverse of jacobian and its derivative matrices */
+	
+	Eigen::Matrix<double,NJ,6> mypJacEE;
+	Eigen::Matrix<double,NJ,6> mydot_pJacEE;
+
     /* Object Regressor Slotine Li*/
 
     regrob::thunderPanda fastRegMat;

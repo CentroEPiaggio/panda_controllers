@@ -1,10 +1,10 @@
 # Trajectory parameters for command_node
 
-duration: &time 25
+duration: &time 120
 
 liss_default: &liss_default
   ampX: 0.15
-  ampY: 0.20
+  ampY: 0.15
   ampZ: 0.2
   freqX: 0.2
   freqY: 0.1 # must be different from 0
@@ -16,56 +16,25 @@ liss_default: &liss_default
   offZ : 0.0
   duration: *time
 
-liss0: &liss0 
-  <<: *liss_default
-
-liss1: &liss1
-  <<: *liss_default  # Copia tutti i valori da liss1 usando l'anchor
-  ampZ: 0.2
-  ampX: 0.0
-  freqX: 0.0
-  freqY: 0.1
-  freqZ: 0.2
-  
-liss2: &liss2
+liss: &liss
   <<: *liss_default  # Copia tutti i valori da liss1 usando l'anchor
   ampZ: 0.0
   freqZ: 0.0
 
-circ1: &circ1
+circ: &circ
   <<: *liss_default  # Copia tutti i valori da liss1 usando l'anchor
   ampZ: 0.0
   freqX: 0.05
   freqY: 0.05 
   freqZ: 0.0
 
-circ2: &circ2
-  <<: *liss_default  # Copia tutti i valori da liss1 usando l'anchor
-  ampX: 0.0
-  freqX: 0.0
-  freqY: 0.05 
-  freqZ: 0.05
-
-line:
-  xf: 0.3
-  yf: 0.3
-  zf: 0.4
-  duration: *time
-
-#minjerk:
-#  xf: 0.3069
-#  yf: -0.5
-#  zf: 0.5903
-#  duration: 15
-
 minjerk:
-  #xf: 0.326
   xf: 0.4
   yf: 0.3
   zf: 0.5
   duration: 15
 
-lissajous: *liss2
+lissajous: *liss
 
 flag:
-  type: 1 # 1: lissajous, 2: line, 3: minjerk, 4: script
+  type: 1 # 1: lissajous, 2: minjerk, 3: script

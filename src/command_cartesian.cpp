@@ -30,26 +30,21 @@ int flag_traj;
 /* Define lissajous parameters */
 double ampX, ampY, ampZ, freqX, freqY, freqZ, phiX, phiZ, offX, offY, offZ,liss_T;
 
-/* Define line parameters */
-double line_T;
-double xf, yf, zf;
-
 /* Define minjerk parameters */
 double minjerk_T;
 double minjerk_xf, minjerk_yf, minjerk_zf;
 
-/* command duration */
-double duration, break_time;
+/* Command duration */
+double duration
 
-
+/* variables for message */ ;
 vec3d position_t, velocity_t, acceleration_t;
 
-/* Obatain end-effector pose */
+/* Obtain end-effector pose */
 void poseCallback(const panda_controllers::point& msg);
 
-/* prototipi traiettorie */
+/* Trajectories */
 void lissajous  (const double dt_, const vec3d p0);
-void line       (const double dt_, const vec3d p0);
 void minjerk    (const double dt_, const vec3d p0);
 void stay_in_p0 (const double dt_, const vec3d p0);
 void trajFun    (const double dt_, const vec3d p0);
@@ -82,10 +77,6 @@ int main(int argc, char **argv)
         !node_handle.getParam("lissajous/offY", offY) ||
         !node_handle.getParam("lissajous/offZ", offZ) ||
         !node_handle.getParam("lissajous/duration", liss_T) ||
-        !node_handle.getParam("line/xf", xf) ||
-        !node_handle.getParam("line/yf", yf) ||
-        !node_handle.getParam("line/zf", zf) ||
-        !node_handle.getParam("line/duration", line_T) ||
         !node_handle.getParam("lissajous/offZ", offZ) ||
         !node_handle.getParam("minjerk/xf", minjerk_xf) ||
         !node_handle.getParam("minjerk/yf", minjerk_yf) ||
@@ -106,14 +97,10 @@ int main(int argc, char **argv)
         duration = liss_T;
         break;
     case 2:
-        traj_ptr = line;
-        duration = line_T;
-        break;
-    case 3:
         traj_ptr = minjerk;
         duration = minjerk_T;
         break;
-    case 4:
+    case 3:
         traj_ptr = trajFun;
         duration = 50.0;
         break;
@@ -216,26 +203,6 @@ void lissajous(const double dt_, const vec3d p0){
         -2*M_PI *2*M_PI *A * a * a * std::sin(2*M_PI * a * (dt-t0) + dx),
         -2*M_PI *2*M_PI *B * b * b * std::cos(2*M_PI * b * (dt-t0)), 
         -2*M_PI *2*M_PI *C * c * c * std::sin(2*M_PI * c * (dt-t0) + dz);
-}
-
-void line(const double dt_, const vec3d p0){
-        
-    vec3d start, end, lambda;
-    double d, Delta_t;
-    double pos, vel, acc, A;
-
-    start << p0(0), p0(1), p0(2);
-    end << xf, yf, zf;
-    Delta_t = duration;
-
-    lambda = end-start; 
-    d = lambda.norm(); // distance between points 
-    lambda = lambda/d; // direction of motion
-    vel = d/Delta_t;   // velocity of motion
-
-    position_t = start + vel* dt_ * lambda;
-    velocity_t = vel * lambda;
-    acceleration_t.Zero();
 }
 
 void minjerk(const double dt_, const vec3d p0){

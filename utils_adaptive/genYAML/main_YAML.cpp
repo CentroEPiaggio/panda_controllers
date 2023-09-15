@@ -37,12 +37,13 @@ using std::cout;
 using std::endl;
 
 bool use_gripper = false;
-bool copy_flag = false;
+bool copy_flag = true;
 std::string path_yaml_DH = "../generatedFiles/inertial_DH.yaml";
 std::string path_yaml_DH_REG = "../generatedFiles/inertial_DH_REG";
 std::string path_yaml_DH_DYN = "../generatedFiles/inertial_DH_DYN";
 std::string path_copy_DH_REG = "../../config/inertial_DH_REG.yaml";
 std::string path_copy_DH_DYN = "../../config/inertial_DH_DYN.yaml";
+
 std::string common_comment =             
         "Obtained with transformation of URDF files from:\n"
         "   - $(find franka_gazebo)/test/launch/panda-gazebo.urdf\n"
@@ -57,7 +58,9 @@ std::string common_comment =
         "            0.088,  M_PI_2,   0,      0,\n"
         "            0,      0,        0.107,  0;";
 
-void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag=true, double pert_p=0.0);
+void perturbateLinkProp(LinkProp original, LinkProp &perturbate, double percent);
+
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag=true);
 
 int main(){
 
@@ -214,76 +217,97 @@ int main(){
     //------------------Generate YAML of inertial parameters for regressor---------------------//
     
     LinkProp tmp_link;
+    LinkProp tmp_DH_gauss;
     Eigen::Matrix3d I0,IG;
     Eigen::Vector3d dOG;
     double m;
-    for(int i=0;i<NUMLINKS;i++){
 
-        tmp_link = links_prop_DH[i];
+    // Percentage of perturbation
+    Eigen::VectorXd coeff_p(5);
+    coeff_p << 0, 2, 5, 10, 20;
 
-        m = links_prop_DH[i].mass;
-        dOG << tmp_link.xyz[0], tmp_link.xyz[1], tmp_link.xyz[2];
-        IG = createI(tmp_link.parI);
-        I0 = IG + m * hat(dOG) * hat(dOG).transpose();
-        dOG = m*dOG;
+    for (int w=0;w<5;w++){
 
-        links_prop_DH2REG[i].name = tmp_link.name;
-        links_prop_DH2REG[i].mass = tmp_link.mass;
-        links_prop_DH2REG[i].xyz = {dOG[0],dOG[1],dOG[2]};
-        links_prop_DH2REG[i].parI[0] = I0(0,0);
-        links_prop_DH2REG[i].parI[1] = I0(0,1);
-        links_prop_DH2REG[i].parI[2] = I0(0,2);
-        links_prop_DH2REG[i].parI[3] = I0(1,1);
-        links_prop_DH2REG[i].parI[4] = I0(1,2);
-        links_prop_DH2REG[i].parI[5] = I0(2,2);
-    }
+        for(int i=0;i<NUMLINKS;i++){
 
-    try {
+            tmp_link = links_prop_DH[i];
+            perturbateLinkProp(tmp_link,tmp_DH_gauss,coeff_p[w]);
 
-        Eigen::VectorXd coeff_p(8);
-        coeff_p << 0, 2, 5, 10, 20, 30, 40, 50;
-        for(int idxp = 0; idxp<8; idxp++){
+            m = tmp_DH_gauss.mass;
+            dOG << tmp_DH_gauss.xyz[0], tmp_DH_gauss.xyz[1], tmp_DH_gauss.xyz[2];
+            IG = createI(tmp_DH_gauss.parI);
+            I0 = IG + m * hat(dOG) * hat(dOG).transpose();
+            dOG = m*dOG;
+
+            links_prop_DH2REG[i].name = tmp_DH_gauss.name;
+            links_prop_DH2REG[i].mass = tmp_DH_gauss.mass;
+            links_prop_DH2REG[i].xyz = {dOG[0],dOG[1],dOG[2]};
+            links_prop_DH2REG[i].parI[0] = I0(0,0);
+            links_prop_DH2REG[i].parI[1] = I0(0,1);
+            links_prop_DH2REG[i].parI[2] = I0(0,2);
+            links_prop_DH2REG[i].parI[3] = I0(1,1);
+            links_prop_DH2REG[i].parI[4] = I0(1,2);
+            links_prop_DH2REG[i].parI[5] = I0(2,2);
+        }
+
+        try {
 
             YAML::Emitter emitter;
-            fillInertialYaml(emitter, links_prop_DH2REG, keys_reg, true, coeff_p[idxp]);
+            fillInertialYaml(emitter, links_prop_DH2REG, keys_reg, true);
             std::string pp;
-            if((int)coeff_p[idxp]==0) pp="";
-            else pp = "_p" + std::to_string((int)coeff_p[idxp]);
+            if((int)coeff_p[w]==0) pp="";
+            else pp = "_p" + std::to_string((int)coeff_p[w]);
             std::ofstream fout(path_yaml_DH_REG + pp + ".yaml");
             fout << emitter.c_str();
             fout.close();
 
             std::cout << "Successfully generated YAML file of inertial parameters for regressor"<<std::endl;
-            std::cout<< " path: " << path_yaml_DH_REG + "_p" + std::to_string((int)coeff_p[idxp]) + ".yaml"<< std::endl;
+            std::cout<< " path: " << path_yaml_DH_REG + "_p" + std::to_string((int)coeff_p[w]) + ".yaml"<< std::endl;
+
+        } catch (const YAML::Exception& e) {
+            std::cerr << "Error while generating YAML: " << e.what() << std::endl;
         }
 
-    } catch (const YAML::Exception& e) {
-        std::cerr << "Error while generating YAML: " << e.what() << std::endl;
+        if (copy_flag){
+            std::string absolutePath;
+            std::filesystem::path sourcePath;
+            std::filesystem::path sourceDestPath;
+            absolutePath = std::filesystem::current_path();
+            sourcePath = absolutePath + "/" + path_yaml_DH_REG + ".yaml";
+            sourceDestPath = path_copy_DH_REG;
+            std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
+            sourcePath = absolutePath + "/" + path_yaml_DH_DYN + ".yaml";
+            sourceDestPath = path_copy_DH_DYN;
+            std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
+            std::cout<<"Files yaml copied"<<std::endl;
+        }   
     }
-
-    if (copy_flag){
-        std::string absolutePath;
-        std::filesystem::path sourcePath;
-        std::filesystem::path sourceDestPath;
-        absolutePath = std::filesystem::current_path();
-        sourcePath = absolutePath + "/" + path_yaml_DH_REG + ".yaml";
-        sourceDestPath = path_copy_DH_REG;
-        std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
-        sourcePath = absolutePath + "/" + path_yaml_DH_DYN + ".yaml";
-        sourceDestPath = path_copy_DH_DYN;
-        std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
-        std::cout<<"Files yaml copied"<<std::endl;
-    }   
 
     return 0;
 }
 
-void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag, double pert_p){
+void perturbateLinkProp(LinkProp original, LinkProp &perturbate, double percent){
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<double> dist(0.0, pert_p/100);
+    std::normal_distribution<double> dist(0.0, percent/100);
 
+    perturbate.name = original.name;
+    perturbate.mass = original.mass*(1+dist(gen));
+    perturbate.xyz[0] = original.xyz[0]*(1+dist(gen));
+    perturbate.xyz[1] = original.xyz[1]*(1+dist(gen));
+    perturbate.xyz[2] = original.xyz[2]*(1+dist(gen));
+    perturbate.parI[0] = original.parI[0]*(1+dist(gen));
+    perturbate.parI[1] = original.parI[1]*(1+dist(gen));
+    perturbate.parI[2] = original.parI[2]*(1+dist(gen));
+    perturbate.parI[3] = original.parI[3]*(1+dist(gen));
+    perturbate.parI[4] = original.parI[4]*(1+dist(gen));
+    perturbate.parI[5] = original.parI[5]*(1+dist(gen));
+}
+
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag){
+
+    
     YAML::Node control;
     std::string contName = "default_controller";
 
@@ -300,16 +324,16 @@ void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop
         std::string nodeName;
         if (flag) nodeName = link.name + "_params";
         else nodeName = link.name;
-        linkNode[keys_[0]] = link.mass*(1+dist(gen));
-        linkNode[keys_[1]+"x"] = link.xyz[0]*(1+dist(gen));
-        linkNode[keys_[1]+"y"] = link.xyz[1]*(1+dist(gen));
-        linkNode[keys_[1]+"z"] = link.xyz[2]*(1+dist(gen));
-        linkNode[keys_[2]+"xx"] = link.parI[0]*(1+dist(gen));
-        linkNode[keys_[2]+"xy"] = link.parI[1]*(1+dist(gen));
-        linkNode[keys_[2]+"xz"] = link.parI[2]*(1+dist(gen));
-        linkNode[keys_[2]+"yy"] = link.parI[3]*(1+dist(gen));
-        linkNode[keys_[2]+"yz"] = link.parI[4]*(1+dist(gen));
-        linkNode[keys_[2]+"zz"] = link.parI[5]*(1+dist(gen));
+        linkNode[keys_[0]] = link.mass;
+        linkNode[keys_[1]+"x"] = link.xyz[0];
+        linkNode[keys_[1]+"y"] = link.xyz[1];
+        linkNode[keys_[1]+"z"] = link.xyz[2];
+        linkNode[keys_[2]+"xx"] = link.parI[0];
+        linkNode[keys_[2]+"xy"] = link.parI[1];
+        linkNode[keys_[2]+"xz"] = link.parI[2];
+        linkNode[keys_[2]+"yy"] = link.parI[3];
+        linkNode[keys_[2]+"yz"] = link.parI[4];
+        linkNode[keys_[2]+"zz"] = link.parI[5];
 
         emitter_ << YAML::BeginMap;
         emitter_ << YAML::Key << nodeName;

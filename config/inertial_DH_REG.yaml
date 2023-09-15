@@ -1,5 +1,5 @@
-# Inertial parameters referred to joints' frame(!) of DH parametrization to use regressor.
-# Obtained with transformation of URDF file from:
+# Inertial parameters referred to Denavit-Hartenberg parametrization to use regressor
+# Obtained with transformation of URDF files from:
 #    - $(find franka_gazebo)/test/launch/panda-gazebo.urdf
 #    - $(find franka_description)/robots/common/franka_robot.xacro
 #    - $(find franka_description)/robots/common/inertial.yaml 
@@ -97,12 +97,12 @@ link7_params: &link7
   Izz: 0.0049096519673609458
 
 default_controller: &default
-  link1_REG: *link1
-  link2_REG: *link2
-  link3_REG: *link3
-  link4_REG: *link4
-  link5_REG: *link5
-  link6_REG: *link6
-  link7_REG: *link7
+  link1REG: *link1
+  link2REG: *link2
+  link3REG: *link3
+  link4REG: *link4
+  link5REG: *link5
+  link6REG: *link6
+  link7REG: *link7
 
 backstepping_controller: *default
