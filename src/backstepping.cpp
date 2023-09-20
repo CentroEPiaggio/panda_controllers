@@ -83,7 +83,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		}
 		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 	}
-
+	param_init = param;
 
 	/* Inizializing the Lambda and R and Kd gains */
 	
@@ -276,7 +276,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	}
 
 	/* Compute tau command */
-
+	tau_tilde = Yr*(param_init-param);
 	tau_cmd = Yr*param + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
 	//tau_cmd.setZero(); // gravity compensation check (spoiler: it is not perfect)
 	
@@ -289,6 +289,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	time_now = ros::Time::now();
 	
 	msg_log.header.stamp = time_now;
+	
 	fillMsg(msg_log.error_pos_EE, error);
 	fillMsg(msg_log.dot_error_pos_EE, dot_error);
 	fillMsg(msg_log.dot_qr, dot_qr);
@@ -302,6 +303,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fillMsgLink(msg_log.link6, param.segment(50, PARAM));
 	fillMsgLink(msg_log.link7, param.segment(60, PARAM));
 	fillMsg(msg_log.tau_cmd, tau_cmd);
+	fillMsg(msg_log.tau_tilde, tau_tilde);
 
 	msg_config.header.stamp  = time_now;
 	msg_config.xyz.x = T0EE.translation()(0);

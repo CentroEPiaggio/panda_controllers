@@ -99,6 +99,7 @@ private:
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> s;
     Eigen::Matrix<double, NJ, 1> tau_cmd;
+    Eigen::Matrix<double, NJ, 1> tau_tilde;
     
     /* Error and dot error feedback */
     
@@ -119,6 +120,8 @@ private:
     /* Parameter vector */
 
     Eigen::Matrix<double, NJ*PARAM, 1> param;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_init;
+    
     Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
 
     /* Regressor Matrix */

@@ -13,6 +13,7 @@ link_params link6
 link_params link7
 
 float64[7] tau_cmd
+float64[7] tau_dyn
 
 float64[6] error_pos_EE
 float64[6] dot_error_pos_EE
