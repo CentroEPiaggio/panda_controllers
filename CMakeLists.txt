@@ -35,6 +35,7 @@ add_message_files(FILES
 	log_adaptive_cartesian.msg
 	point.msg
 	link_params.msg
+	flag.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -70,7 +71,7 @@ catkin_package(
 )
 
 add_library(${PROJECT_NAME}   
-	#src/computed_torque.cpp #Computed Torque controller
+	src/computed_torque.cpp #Computed Torque controller
 	#src/computed_torque_adaptive.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
@@ -95,6 +96,40 @@ add_dependencies(command_cartesian
 	${catkin_EXPORTED_TARGETS}
 )
 
+add_executable(CLIK_node
+	src/CLIK_node.cpp
+	src/ThunderPanda.cpp
+	src/gen_regr_fun.cpp
+)
+target_link_libraries(CLIK_node
+	${catkin_LIBRARIES}
+)
+add_dependencies(CLIK_node
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+add_executable(adaptiveFlag_node
+	src/adaptiveFlag_node.cpp
+
+)
+target_link_libraries(adaptiveFlag_node
+	${catkin_LIBRARIES}
+)
+add_dependencies(adaptiveFlag_node
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+
+#add_executable(command_joints_node
+#	src/command_joints.cpp
+#)
+#target_link_libraries(command_joints_node
+#	${catkin_LIBRARIES}
+#)
+#add_dependencies(command_joints_node
+#	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+#	${catkin_EXPORTED_TARGETS}
+#)
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
 )

@@ -120,11 +120,11 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	Rinv.setZero();
 
-	if (update_param_flag){
-		for (int i = 0; i<NJ; i++){	
-			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
-		}
+
+	for (int i = 0; i<NJ; i++){	
+		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
 	}
+
 	/* Initialize joint (torque,velocity) limits */
 
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
@@ -135,6 +135,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	/*Start command subscriber and advertise */
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
+	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &Backstepping::setFlagUpdate, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
 	
@@ -346,6 +347,10 @@ void Backstepping::setCommandCB(const panda_controllers::desTrajEE::ConstPtr& ms
  	ee_pos_cmd << msg->position.x, msg->position.y, msg->position.z;
 	ee_vel_cmd << msg->velocity.x, msg->velocity.y, msg->velocity.z;
 	ee_acc_cmd << msg->acceleration.x, msg->acceleration.y, msg->acceleration.z;
+}
+
+void Backstepping::setFlagUpdate(const panda_controllers::flag::ConstPtr& msg){
+	update_param_flag = msg->flag;
 }
 
 template <size_t N>

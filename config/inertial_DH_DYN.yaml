@@ -105,4 +105,6 @@ default_controller: &default
   link6DYN: *link6
   link7DYN: *link7
 
+computed_torque_controller: *default
+
 backstepping_controller: *default

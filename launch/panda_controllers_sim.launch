@@ -10,16 +10,16 @@
 
 	<!-- <arg name="robot_ip" 	default="192.168.0.210" /> -->
 	<arg name="arm_id" 			default="panda" doc="Name of the panda robot to spawn" />
-	<arg name="controller" 		default="backstepping_controller" />
+	<arg name="controller" 		default="backstepping_controller" /> <!-- backstepping_controller --> <!-- computed_torque_controller -->
 	<arg name="use_gripper" 	default="false" />
 	<arg name="rviz" 			default="true" />
 	<arg name="package" 		default="panda_controllers" />
-  	<arg name="rosbag" 			default="true" />
+  	<arg name="rosbag" 			default="false" />
     
 	<!-- load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG_p20.yaml" />
-	
+	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG_p2.yaml" />
+	<!-- <rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_DYN.yaml" /> -->
 	<!-- to load gazebo (and rviz) -->
 	<include file="$(find panda_controllers)/launch/panda.launch">
 		<arg name="rviz_config" value="$(find panda_controllers)/launch/rviz/franka_marker.rviz" />

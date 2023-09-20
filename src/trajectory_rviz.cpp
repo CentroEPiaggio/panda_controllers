@@ -27,7 +27,8 @@ int main(int argc, char** argv) {
     ros::Publisher marker_pub = node_handle.advertise<visualization_msgs::Marker>("trajectory_marker", 1);
     
     ros::Subscriber config_sub = node_handle.subscribe("/backstepping_controller/current_config", 1, &configCallback);   
-
+    //ros::Subscriber config_sub = node_handle.subscribe("/computed_torque_controller/current_config", 1, &configCallback);
+    
     visualization_msgs::Marker total_traj;
     total_traj.header.frame_id = "panda_link0";
     total_traj.ns = "trajectory_markers";

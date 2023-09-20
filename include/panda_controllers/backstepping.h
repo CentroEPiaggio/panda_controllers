@@ -33,6 +33,7 @@
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
 #include "panda_controllers/log_adaptive_cartesian.h"
+#include "panda_controllers/flag.h"
 
 #include "utils/ThunderPanda.h"
 #include "utils/utils_cartesian.h"
@@ -149,12 +150,16 @@ private:
     
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
+    ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
 
     /* Setting Command Callback*/
     
     void setCommandCB(const desTrajEE::ConstPtr& msg);
+
+    /*Setting Flag Callback*/
+    void setFlagUpdate(const flag::ConstPtr& msg);
 
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
@@ -168,6 +173,7 @@ private:
 
 	panda_controllers::log_adaptive_cartesian msg_log;
     panda_controllers::point msg_config;
+
 
 };
 

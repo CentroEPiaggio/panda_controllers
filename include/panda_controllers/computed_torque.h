@@ -22,8 +22,20 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+#include "panda_controllers/point.h"
 
-#define     DEBUG   0      
+#include "utils/ThunderPanda.h"
+#include "utils/utils_param.h"
+
+#define     DEBUG   0
+
+#ifndef     NJ
+#define     NJ 7	    // number of joints
+#endif
+
+#ifndef     PARAM
+#define     PARAM 10	// number of parameters for each link
+#endif
 
 namespace panda_controllers
 {
@@ -46,6 +58,7 @@ private:
     /* Definig the timing */
     
     double dt;
+    Eigen::Affine3d T0EE;
     
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
@@ -59,17 +72,28 @@ private:
     
     Eigen::Matrix<double, 7, 7> Kp_apix; 
     Eigen::Matrix<double, 7, 7> Kv_apix;
+
+    /* Gain for parameters */
+
+    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
+    Eigen::Matrix<double, 14 ,7> B;
+    Eigen::Matrix<double, 14, 14> P;
+    bool update_param_flag;
  
     /* Defining q_current, dot_q_current, and tau_cmd */
 
     Eigen::Matrix<double, 7, 1> q_curr;
     Eigen::Matrix<double, 7, 1> dot_q_curr;
+    Eigen::Matrix<double, 7, 1> dot_q_curr_old;
+    Eigen::Matrix<double, 7, 1> ddot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
     
     /* Error and dot error feedback */
     
     Eigen::Matrix<double, 7, 1> error;
     Eigen::Matrix<double, 7, 1> dot_error;
+    Eigen::Matrix<double, 14, 1> x;
+
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
@@ -85,7 +109,24 @@ private:
     
     Eigen::Matrix<double, 7, 7> M;
     Eigen::Matrix<double, 7, 1> C;
-    //Eigen::Matrix<double, 7, 70> Y;
+    Eigen::Matrix<double, 7, 1> G;
+    Eigen::Matrix<double, 7, 7> Mest;
+    Eigen::Matrix<double, 7, 7> Cest;
+    Eigen::Matrix<double, 7, 1> Gest;
+    
+    /* Parameter vector */
+
+    Eigen::Matrix<double, NJ*PARAM, 1> param;    // usfull for calculate an estimate of M, C, G 
+    Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_dyn; 
+
+    /* Regressor Matrix */
+    
+    Eigen::Matrix<double, NJ, NJ*PARAM> Y;
+
+    /* Object Regressor Slotine Li*/
+
+    regrob::thunderPanda fastRegMat;
 
     /* Check the effort limits */
     
@@ -102,6 +143,7 @@ private:
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Publisher pub_err_;
+    ros::Publisher pub_config_;
     
     /* Setting Command Callback*/
     
@@ -110,6 +152,8 @@ private:
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
+
+    panda_controllers::point msg_config;
 };
 
 }

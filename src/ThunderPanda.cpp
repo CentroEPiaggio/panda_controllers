@@ -71,13 +71,13 @@ namespace regrob{
         } else{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
-        //computeJac_gen();
+        computeJac_gen();
         //computeDotJac_gen();
         computePinvJac_gen();
         computeDotPinvJac_gen();
         computePinvJacPos_gen();
         computeDotPinvJacPos_gen();
-        //computeKin_gen();
+        computeKin_gen();
         //computeMass_gen();
         //computeCoriolis_gen();
         //computeGravity_gen();

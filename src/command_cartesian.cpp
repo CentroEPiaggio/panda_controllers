@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 	
 	/* Subscriber */
 	ros::Subscriber sub_pose = node_handle.subscribe("/backstepping_controller/current_config", 1, &poseCallback);
-
+    //ros::Subscriber sub_pose = node_handle.subscribe("/computed_torque_controller/current_config", 1, &poseCallback);
 	/* Message for /backstepping_controller/command */
 	panda_controllers::desTrajEE msg_cartesian;
 
@@ -174,6 +174,7 @@ void poseCallback(const panda_controllers::point& msg){
 	if (!init_start){
 		pose_EE_start = pose_EE;
 		init_start = true;
+        std::cout<<"\n==============\n"<<"pose_EE_start:"<<"\n==============\n"<<pose_EE_start<<"\n==============\n";
 	}
 }
 

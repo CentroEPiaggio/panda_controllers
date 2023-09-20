@@ -3,8 +3,8 @@
 duration: &time 120
 
 liss_default: &liss_default
-  ampX: 0.15
-  ampY: 0.15
+  ampX: 0.10
+  ampY: 0.20
   ampZ: 0.2
   freqX: 0.2
   freqY: 0.1 # must be different from 0
@@ -29,10 +29,10 @@ circ: &circ
   freqZ: 0.0
 
 minjerk:
-  xf: 0.4
-  yf: 0.3
-  zf: 0.5
-  duration: 15
+  xf: 0.311613
+  yf: 0.0
+  zf: 0.588755
+  duration: 10
 
 lissajous: *liss
 
