@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<!-- Launch adaptiveFlag_node -->
+<launch>
+    
+    <group ns="computed_torque_controller"> <!-- backstepping_controller, computed_torque_controller -->
+        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" />
+    </group>
+
+</launch>
+    

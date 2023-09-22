@@ -37,12 +37,11 @@ using std::cout;
 using std::endl;
 
 bool use_gripper = false;
-bool copy_flag = true;
+bool copy_flag = false;
 std::string path_yaml_DH = "../generatedFiles/inertial_DH.yaml";
 std::string path_yaml_DH_REG = "../generatedFiles/inertial_DH_REG";
 std::string path_yaml_DH_DYN = "../generatedFiles/inertial_DH_DYN";
 std::string path_copy_DH_REG = "../../config/inertial_DH_REG.yaml";
-std::string path_copy_DH_DYN = "../../config/inertial_DH_DYN.yaml";
 
 std::string common_comment =             
         "Obtained with transformation of URDF files from:\n"
@@ -60,7 +59,7 @@ std::string common_comment =
 
 void perturbateLinkProp(LinkProp original, LinkProp &perturbate, double percent);
 
-void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag=true);
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_);
 
 int main(){
 
@@ -185,7 +184,7 @@ int main(){
     try {
 
         YAML::Emitter emitter;
-        fillInertialYaml(emitter, links_prop_DH, keys_dyn, false);
+        fillInertialYaml(emitter, links_prop_DH, keys_dyn);
         std::ofstream fout(path_yaml_DH);
         fout << emitter.c_str();
         fout.close();
@@ -253,7 +252,7 @@ int main(){
         try {
 
             YAML::Emitter emitter;
-            fillInertialYaml(emitter, links_prop_DH2REG, keys_reg, true);
+            fillInertialYaml(emitter, links_prop_DH2REG, keys_reg);
             std::string pp;
             if((int)coeff_p[w]==0) pp="";
             else pp = "_p" + std::to_string((int)coeff_p[w]);
@@ -275,9 +274,6 @@ int main(){
             absolutePath = std::filesystem::current_path();
             sourcePath = absolutePath + "/" + path_yaml_DH_REG + ".yaml";
             sourceDestPath = path_copy_DH_REG;
-            std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
-            sourcePath = absolutePath + "/" + path_yaml_DH_DYN + ".yaml";
-            sourceDestPath = path_copy_DH_DYN;
             std::filesystem::copy_file(sourcePath, sourceDestPath, std::filesystem::copy_options::update_existing);
             std::cout<<"Files yaml copied"<<std::endl;
         }   
@@ -305,11 +301,9 @@ void perturbateLinkProp(LinkProp original, LinkProp &perturbate, double percent)
     perturbate.parI[5] = original.parI[5]*(1+dist(gen));
 }
 
-void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_, bool flag){
+void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_){
 
-    
     YAML::Node control;
-    std::string contName = "default_controller";
 
     emitter_.SetIndent(2);
     emitter_.SetSeqFormat(YAML::Flow);
@@ -322,8 +316,8 @@ void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop
         LinkProp link = links_prop_[i];    
         YAML::Node linkNode;
         std::string nodeName;
-        if (flag) nodeName = link.name + "_params";
-        else nodeName = link.name;
+
+        nodeName = link.name;
         linkNode[keys_[0]] = link.mass;
         linkNode[keys_[1]+"x"] = link.xyz[0];
         linkNode[keys_[1]+"y"] = link.xyz[1];
@@ -337,27 +331,7 @@ void fillInertialYaml(YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop
 
         emitter_ << YAML::BeginMap;
         emitter_ << YAML::Key << nodeName;
-        if (flag) emitter_ << YAML::Anchor(link.name);
         emitter_ << linkNode;
         emitter_ << YAML::EndMap << YAML::Newline;
     }
-
-    if (flag){
-        emitter_ << YAML::BeginMap;
-        emitter_ << YAML::Key << contName << YAML::Anchor("default");
-        emitter_ << YAML::BeginMap;            
-
-        for (int i=0; i<NUMLINKS; i++) {
-            LinkProp link = links_prop_[i];
-            emitter_ << YAML::Key << link.name+keys_[3] << YAML::Value << YAML::Alias(link.name);
-        } 
-        emitter_ << YAML::EndMap << YAML::EndMap <<YAML::Newline;
-
-        // Backstepping controller
-        emitter_ << YAML::BeginMap;
-        emitter_ << YAML::Key << "backstepping_controller" << YAML::Value << YAML::Alias("default");
-        emitter_ << YAML::EndMap <<YAML::Newline;
-    }
-
-
 }

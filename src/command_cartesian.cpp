@@ -41,7 +41,7 @@ double duration
 vec3d position_t, velocity_t, acceleration_t;
 
 /* Obtain end-effector pose */
-void poseCallback(const panda_controllers::point& msg);
+void poseCallback(const panda_controllers::pointConstPtr& msg);
 
 /* Trajectories */
 void lissajous  (const double dt_, const vec3d p0);
@@ -57,11 +57,11 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 	
 	/* Publisher */
-	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/backstepping_controller/command", 1);
+	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1);
 	
 	/* Subscriber */
-	ros::Subscriber sub_pose = node_handle.subscribe("/backstepping_controller/current_config", 1, &poseCallback);
-    //ros::Subscriber sub_pose = node_handle.subscribe("/computed_torque_controller/current_config", 1, &poseCallback);
+	ros::Subscriber sub_pose = node_handle.subscribe<panda_controllers::point>("current_config", 1, &poseCallback);
+
 	/* Message for /backstepping_controller/command */
 	panda_controllers::desTrajEE msg_cartesian;
 
@@ -112,7 +112,6 @@ int main(int argc, char **argv)
     bool start = false;
 	double t_start;
     double period = 1/frequency;
-    // cout<<"period: "<<period<<endl;
 	ros::Time t;
     double dt = 0.0;
 
@@ -121,7 +120,6 @@ int main(int argc, char **argv)
 	while (ros::ok()){
     
         ros::spinOnce();
-
         t = ros::Time::now();
 
         if (!start){
@@ -161,13 +159,13 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void poseCallback(const panda_controllers::point& msg){
+void poseCallback(const panda_controllers::pointConstPtr& msg){
 
 	double EE_x, EE_y, EE_z;
 	
-	EE_x = msg.xyz.x;
-	EE_y = msg.xyz.y;
-	EE_z = msg.xyz.z;
+	EE_x = msg->xyz.x;
+	EE_y = msg->xyz.y;
+	EE_z = msg->xyz.z;
 
 	pose_EE << EE_x, EE_y, EE_z;
 

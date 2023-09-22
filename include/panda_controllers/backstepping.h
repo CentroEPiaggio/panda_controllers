@@ -5,12 +5,6 @@
 #include <vector>
 #include <math.h>
 #include <Eigen/Dense>
-#include <Eigen/Geometry>
-
-#include <boost/filesystem.hpp>
-#include <fstream>
-#include <sstream>
-#include <string>
 
 #include <controller_interface/multi_interface_controller.h>
 
@@ -28,7 +22,6 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
-
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
@@ -40,8 +33,13 @@
 
 #define     DEBUG   0      
 
+#ifndef     NJ
 # define    NJ 7	// number of joints
+#endif
+
+#ifndef     PARAM
 # define    PARAM 10	// number of parameters for each link
+#endif
 
 namespace panda_controllers
 {

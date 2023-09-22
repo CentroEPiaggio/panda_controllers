@@ -141,9 +141,9 @@ namespace regrob{
             param_dyn(i*np+7,0) = IOi(1,1);
             param_dyn(i*np+8,0) = IOi(1,2);
             param_dyn(i*np+9,0) = IOi(2,2);
-            std::cout<<"\nmi "<<i<<" = "<<mi<<"\n";
+/*             std::cout<<"\nmi "<<i<<" = "<<mi<<"\n";
             std::cout<<"\nOiGi "<<i<<" = \n"<<OiGi<<"\n";
-            std::cout<<"\n ============================== \n";
+            std::cout<<"\n ============================== \n"; */
 
         }
     }

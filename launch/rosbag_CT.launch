@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<!-- launch rosbag and command -->
+<launch>
+
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+
+    <!-- flag -->
+    <arg name="command_node"    default="false" />
+    <arg name="flag_node"       default="false" />
+    <arg name="clik"            default="false" />
+    <arg name="homing"           default="true" />
+
+    <!-- rosbag -->
+    <arg name="t1"      value="/computed_torque_controller/current_config"/>
+    <arg name="t2"      value="/joint_states"/>
+    <arg name="t3"      value="/computed_torque_controller/command_joints"/>
+    <arg name="t4"      value="/computed_torque_controller/logging"/>
+    <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
+    
+   
+    <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
+    <arg name="bag_name"    default="$(arg bag_path)/simCT"/>
+    <arg name="duration"    default="30"/>
+    
+    <!-- rosbag file name -->
+    <arg name="gainR"       default="Ri1(1_0.1_0.01)"/>
+    <arg name="adapt"       default="true"/>
+    <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
+    <arg name="param_off"   default="p2"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="gain"        default="$(arg gainR)"/>
+    
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
+        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
+    </node>
+
+    <group ns="computed_torque_controller">
+        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
+        <node pkg="panda_controllers" type="homing_node" name="homing_node" output="screen" if="$(arg homing)" />
+    </group>
+
+    <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_node)" >
+        <arg name="controller_name" value="computed_torque_controller" />
+        <arg name="clik"            value="$(arg clik)" />
+    </include>
+
+</launch>

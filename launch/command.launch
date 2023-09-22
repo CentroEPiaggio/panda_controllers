@@ -1,14 +1,27 @@
 <?xml version="1.0" ?>
-<!-- Launch command_node -->
+<!-- Launch command_node for backstepping or computed_torque-->
 <launch>
 
-    <arg name="package" default="panda_controllers" />
-    <arg name="node_name" default="command_cartesian" />
-
-    <!-- load yaml -->
-    <arg name="yaml_file" default="$(find panda_controllers)/config/trajectory_param.yaml" />
-    <rosparam command="load" file="$(arg yaml_file)" />
-
-    <node name="$(arg node_name)" pkg="$(arg package)" type="$(arg node_name)" output="screen"/>
+    <arg name="package"         default="panda_controllers" />
+    <arg name="controller_name" default="computed_torque_controller" /> <!-- backstepping_controller, computed_torque_controller --> 
     
+    <!-- set type of command: cartesian/joints -->
+    <arg name="command_name"       default="command_cartesian" /> <!-- command_cartesian, command_joints -->
+
+    <!-- flag -->
+    <arg name="clik"            default="true" />
+    <arg name="flag_node"       default="true" />
+
+    <group ns="$(arg controller_name)">
+        <!-- load yaml -->
+        <arg name="yaml_file" default="$(find panda_controllers)/config/trajectory_param.yaml" />
+        <rosparam command="load" file="$(arg yaml_file)" />
+        <!-- load command -->
+        <node name="$(arg command_name)" pkg="$(arg package)" type="$(arg command_name)" output="screen"/>
+        <!-- load clik -->
+        <node name="CLIK_node" pkg="$(arg package)" type="CLIK_node" output="screen" if="$(arg clik)"/>
+        <!-- load adaptiveFlag -->
+        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
+    </group>
+
 </launch>

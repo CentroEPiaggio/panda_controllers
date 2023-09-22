@@ -24,24 +24,13 @@ computed_torque_controller:
     kv1: 30.0
     kv2: 15.0
     kv3: 3.0
-    dt: 5
-    gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
+    dt: 0.001
+    gainRlinks: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]                   # gain for R matrix
     gainRparam: [1, 0.1, 0.01]                          # gain proportional to [mass, mass*length, mass*length^2] 
-    update_param: true                                 # bool to update inertial parameters
-
-computed_torque_adaptive_controller:
-    type: panda_controllers/ComputedTorqueAdaptive
-    arm_id: panda
-    joint_names: *jointNames
-    
-    # --- Controller parameters --- #
-    kp1: 300.0   #default: 120.0
-    kp2: 150.0   #default: 70.0
-    kp3: 30.0    #default: 50.0
-    kv1: 30.0
-    kv2: 15.0
-    kv3: 3.0
-    dt: 5
+    update_param: false
+    P11: [0.5349, 0.0667, 0.0667, 0.0667, 0.0836, 0.0836, 0.2222]
+    P22: [0.4703, 5.0167, 5.0167, 5.0167, 5.0333, 5.0333, 5.1667]
+    Pout: [-0.5, -0.5, -0.5, -0.5, -0.5, -0.5, -0.5]
 
 backstepping_controller:
     type: panda_controllers/Backstepping
@@ -49,9 +38,9 @@ backstepping_controller:
     joint_names: *jointNames
     
     # --- Controller parameters --- #
-    gainLambda: [10.0, 10.0, 10.0, 0.1, 0.1, 0.1]       # gain for Lambda matrix
-    gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
+    gainLambda: [1.0, 1.0, 1.0, 0.0, 0.0, 0.0]       # gain for Lambda matrix
+    gainRlinks: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]     # gain for R matrix
     gainRparam: [1, 0.1, 0.01]                          # gain proportional to [mass, mass*length, mass*length^2] 
-    gainKd: 10                                          # gain for Kd matrix
+    gainKd: [10, 10, 10, 10, 5, 5, 1]                   # gain for Kd matrix
     update_param: false                                 # bool to update inertial parameters
     

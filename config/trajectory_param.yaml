@@ -1,6 +1,6 @@
 # Trajectory parameters for command_node
 
-duration: &time 120
+duration: &time 25
 
 liss_default: &liss_default
   ampX: 0.10

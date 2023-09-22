@@ -33,6 +33,7 @@ find_package(Franka 0.5.0 REQUIRED)
 add_message_files(FILES
 	desTrajEE.msg
 	log_adaptive_cartesian.msg
+	log_adaptive_joints.msg
 	point.msg
 	link_params.msg
 	flag.msg
@@ -72,7 +73,6 @@ catkin_package(
 
 add_library(${PROJECT_NAME}   
 	src/computed_torque.cpp #Computed Torque controller
-	#src/computed_torque_adaptive.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	src/gen_regr_fun.cpp
@@ -95,7 +95,6 @@ add_dependencies(command_cartesian
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
-
 add_executable(CLIK_node
 	src/CLIK_node.cpp
 	src/ThunderPanda.cpp
@@ -110,7 +109,6 @@ add_dependencies(CLIK_node
 )
 add_executable(adaptiveFlag_node
 	src/adaptiveFlag_node.cpp
-
 )
 target_link_libraries(adaptiveFlag_node
 	${catkin_LIBRARIES}
@@ -120,16 +118,16 @@ add_dependencies(adaptiveFlag_node
 	${catkin_EXPORTED_TARGETS}
 )
 
-#add_executable(command_joints_node
-#	src/command_joints.cpp
-#)
-#target_link_libraries(command_joints_node
-#	${catkin_LIBRARIES}
-#)
-#add_dependencies(command_joints_node
-#	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-#	${catkin_EXPORTED_TARGETS}
-#)
+add_executable(command_joints_node
+	src/command_joints.cpp
+)
+target_link_libraries(command_joints_node
+	${catkin_LIBRARIES}
+)
+add_dependencies(command_joints_node
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
 )

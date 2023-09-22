@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <signal.h>
 
-//#include <geometry_msgs/Point.h>
 #include <sensor_msgs/JointState.h>
 
 #include "panda_controllers/point.h"
@@ -34,7 +33,7 @@ Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;         // desired command velocity
 Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
 /* Obtain end-effector pose */
-void desPoseCallback(const panda_controllers::desTrajEE& msg);
+void desPoseCallback(const panda_controllers::desTrajEE::ConstPtr& msg);
 
 /* flag */
 bool start = false;
@@ -47,10 +46,10 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 	
 	/* Publisher */
-	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
+	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
 	
 	/* Subscriber */
-	ros::Subscriber sub_des_pose = node_handle.subscribe("/backstepping_controller/command", 1, &desPoseCallback);
+	ros::Subscriber sub_des_pose = node_handle.subscribe<panda_controllers::desTrajEE>("command_cartesian", 1, &desPoseCallback);
 
 	/* Message for /computed_torque_controller/command */
 	sensor_msgs::JointState clik;
@@ -185,9 +184,9 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void desPoseCallback(const panda_controllers::desTrajEE& msg){
+void desPoseCallback(const panda_controllers::desTrajEE::ConstPtr& msg){
 
-    ee_pos_cmd << msg.position.x, msg.position.y, msg.position.z;
-    ee_vel_cmd << msg.velocity.x, msg.velocity.y, msg.velocity.z;
-    ee_acc_cmd << msg.acceleration.x, msg.acceleration.y, msg.acceleration.z;
+    ee_pos_cmd << msg->position.x, msg->position.y, msg->position.z;
+    ee_vel_cmd << msg->velocity.x, msg->velocity.y, msg->velocity.z;
+    ee_acc_cmd << msg->acceleration.x, msg->acceleration.y, msg->acceleration.z;
 }

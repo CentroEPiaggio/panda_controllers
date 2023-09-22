@@ -67,16 +67,16 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	for(int i=0; i<NJ; i++){
 		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-		if (!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/mass", mass) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_x", cmx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_y", cmy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_z", cmz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixx", xx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixy", xy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixz", xz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyy", yy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyz", yz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Izz", zz)){
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_x", cmx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_y", cmy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_z", cmz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Iyy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Iyz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)){
 			
 			ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
 			return 1;
@@ -87,8 +87,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	/* Inizializing the Lambda and R and Kd gains */
 	
-	double gainKd;
-	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6);
+	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6), gainKd(7);
 	Eigen::Matrix<double,PARAM,PARAM> Rlink;
 
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
@@ -104,8 +103,11 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	for(int i=0;i<6;i++){
 		Lambda(i,i) = gainLambda[i];
 	}
-	Kd = gainKd * Eigen::MatrixXd::Identity(NJ, NJ);
-
+	Kd.setIdentity();
+	for(int i=0;i<NJ;i++){
+		Kd(i,i) = gainKd[i];
+	}
+	
 	Rlink.setZero();
 	Rlink(0,0) = gainRparam[0];
 	Rlink(1,1) = gainRparam[1];
@@ -119,8 +121,6 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
-
-
 	for (int i = 0; i<NJ; i++){	
 		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
 	}
@@ -134,7 +134,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	/*Start command subscriber and advertise */
 
-	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
+	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &Backstepping::setFlagUpdate, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
@@ -156,6 +156,7 @@ void Backstepping::starting(const ros::Time& time)
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
 	/* Secure initialization command */
+	
 	ee_pos_cmd = T0EE.translation();
 	ee_rot_cmd = T0EE.linear();
 	

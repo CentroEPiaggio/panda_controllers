@@ -35,7 +35,7 @@
        />
   <arg name="interactive_marker" default="$(eval arg('controller') == 'cartesian_impedance_example_controller')" doc="Should the interactive marker node be started?" />
 
-  <include file="$(find panda_controllers)/launch/robot.launch">
+  <include file="$(find panda_controllers)/launch/gazebo/robot.launch">
     <arg name="gazebo" value="$(arg gazebo)" />
     <arg name="headless" value="$(arg headless)" />
     <arg name="paused" value="$(arg paused)" />

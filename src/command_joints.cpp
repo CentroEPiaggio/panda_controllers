@@ -26,10 +26,10 @@ int flag_traj;
 
 /* Define minjerk parameters */
 double minjerk_T;
-std::vector<double,7> minjerk_qf;
+std::vector<double> minjerk_qf(7);
 
 /* Command duration */
-double duration
+double duration;
 
 /* variables for message */ ;
 vec7d position_t, velocity_t, acceleration_t;
@@ -39,22 +39,26 @@ void jointsCallback( const sensor_msgs::JointStateConstPtr& msg );
 
 /* Trajectories */
 void minjerk    (const double dt_, const vec7d q0);
+void stay_in_q0    (const double dt_, const vec7d q0);
+
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "command_joints_node");
 	ros::NodeHandle node_handle;
-    double frequency = 100;
+    double frequency = 500;
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 
 	/* Publisher */
-	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
+	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
 
 	/* Subscriber */
 	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/joint_states", 1,  &jointsCallback);
 
 	/* Message for /computed_torque_controller/command */
 	sensor_msgs::JointState msg_joints;
+    
+    //minjerk_qf = {0,-0.785398163,0,-2.35619449,0,1.57079632679,0.785398163397};
 
     if (!node_handle.getParam("minjerk/qf", minjerk_qf) ||
 		!node_handle.getParam("minjerk/duration", minjerk_T) ||
@@ -73,14 +77,13 @@ int main(int argc, char **argv)
         duration = minjerk_T;
         break;
     default:
-        traj_ptr = stay_in_p0;
+        traj_ptr = stay_in_q0;
         break;
     }
         
     bool start = false;
 	double t_start;
     double period = 1/frequency;
-    // cout<<"period: "<<period<<endl;
 	ros::Time t;
     double dt = 0.0;
 
@@ -99,16 +102,15 @@ int main(int argc, char **argv)
         }else if(!end_motion){
             cout<<"\n=== tempo terminato ===\n";
             q_start = q_curr;
-            traj_ptr = stay_in_p0;
+            traj_ptr = stay_in_q0;
             end_motion = true;
         }
 
-
-        (*traj_ptr)(dt,q_curr);
+        (*traj_ptr)(dt,q_start);
         msg_joints.header.stamp = t;
 
         /* UPDATE MESSAGE */
-		// resize?????
+		msg_joints.position.resize(7);
         msg_joints.position[0] = position_t(0);
         msg_joints.position[1] = position_t(1);
         msg_joints.position[2] = position_t(2);
@@ -117,6 +119,7 @@ int main(int argc, char **argv)
         msg_joints.position[5] = position_t(5);
         msg_joints.position[6] = position_t(6);
 
+        msg_joints.velocity.resize(7);
         msg_joints.velocity[0] = velocity_t(0);
         msg_joints.velocity[1] = velocity_t(1);
         msg_joints.velocity[2] = velocity_t(2);
@@ -125,6 +128,7 @@ int main(int argc, char **argv)
         msg_joints.velocity[5] = velocity_t(5);
         msg_joints.velocity[6] = velocity_t(6);
 
+        msg_joints.effort.resize(7);
         msg_joints.effort[0] = acceleration_t(0);
         msg_joints.effort[1] = acceleration_t(1);
         msg_joints.effort[2] = acceleration_t(2);
@@ -141,7 +145,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
+void jointsCallback(const sensor_msgs::JointStateConstPtr& msg){
 	vec7d q_tmp(7);
 	
 	q_tmp(0) = msg->position[0];
@@ -160,7 +164,7 @@ void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
 	}
 }
 
-void minjerk(const double dt_, const vec3d q0){
+void minjerk(const double dt_, const vec7d q0){
 	vec7d start, end;
 
     start = q0;
@@ -171,10 +175,9 @@ void minjerk(const double dt_, const vec3d q0){
 	acceleration_t << (start - end)*(180*(pow(dt_,2)/pow(duration,4)) - 120*(pow(dt_,3)/pow(duration,5)) -60*(dt_/pow(duration,3)));
 }
 
-void stay_in_p0(const double dt_, const vec7d q0){
+void stay_in_q0(const double dt_, const vec7d q0){
 
-    position_t<< q0;
-    
+    position_t = q0;
     velocity_t.setZero();
     acceleration_t.setZero();
 }

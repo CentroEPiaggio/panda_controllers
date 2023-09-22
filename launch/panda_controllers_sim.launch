@@ -4,32 +4,44 @@
 	- il controllore desiderato: 
 		- backstepping_controller
 		- computed_torque_controller
-		- computed_torque_adaptive_controller 
 	- la traiettoria su rviz -->
 <launch>
 
-	<!-- <arg name="robot_ip" 	default="192.168.0.210" /> -->
-	<arg name="arm_id" 			default="panda" doc="Name of the panda robot to spawn" />
-	<arg name="controller" 		default="backstepping_controller" /> <!-- backstepping_controller --> <!-- computed_torque_controller -->
-	<arg name="use_gripper" 	default="false" />
-	<arg name="rviz" 			default="true" />
-	<arg name="package" 		default="panda_controllers" />
-  	<arg name="rosbag" 			default="false" />
+	<arg name="package" 			default="panda_controllers" />
+	<arg name="arm_id" 				default="panda" doc="Name of the panda robot to spawn" />
+	
+	<!-- flag -->
+	<arg name="use_gripper" 		default="false" />
+	<arg name="rviz" 				default="true" />
+	<arg name="clik"            	default="false" />
+	<arg name="rosbag_BS"			value="false" />
     
-	<!-- load yaml -->
+	<!-- set controller -->
+	<arg name="controller_name" 	default="computed_torque_controller" /> <!-- backstepping_controller, computed_torque_controller -->
+	
+	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_REG_p2.yaml" />
-	<!-- <rosparam command="load" 	file="$(find panda_controllers)/config/inertial_DH_DYN.yaml" /> -->
+	<group ns="$(arg controller_name)">
+		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG.yaml" />
+	</group>
+
 	<!-- to load gazebo (and rviz) -->
-	<include file="$(find panda_controllers)/launch/panda.launch">
+	<include file="$(find panda_controllers)/launch/gazebo/panda.launch">
 		<arg name="rviz_config" value="$(find panda_controllers)/launch/rviz/franka_marker.rviz" />
 		<arg name="rviz" 		value="$(arg rviz)" />
 		<arg name="use_gripper" value="$(arg use_gripper)" />
-		<arg name="controller" 	value="$(arg controller)" />
+		<arg name="controller" 	value="$(arg controller_name)" />
 	</include>
 	
 	<!-- to draw trajectory on rviz -->
-	<include file="$(find panda_controllers)/launch/panda_trajectory_rviz.launch" if="$(arg rviz)" />
-	<include file="$(find panda_controllers)/launch/rosbag.launch" if="$(arg rosbag)" />
+	<include file="$(find panda_controllers)/launch/rviz/panda_trajectory_rviz.launch" if="$(arg rviz)" >
+		<arg name="controller_name" value="$(arg controller_name)" />
+	</include>
+	
+	<!-- to start rosbag -->
+	<include file="$(find panda_controllers)/launch/rosbag_BS.launch" if="$(arg rosbag_BS)" >
+		<arg name="controller_name" value="$(arg controller_name)" />
+		<arg name="clik"            value="$(arg clik)" />
+	</include>
 	
 </launch>

@@ -6,13 +6,13 @@
 
 Eigen::Vector3d pose_EE;
 
-void configCallback(const panda_controllers::point& msg) {
+void configCallback(const panda_controllers::point::ConstPtr& msg) {
     
     double EE_x, EE_y, EE_z;
 	
-	EE_x = msg.xyz.x;
-	EE_y = msg.xyz.y;
-	EE_z = msg.xyz.z;
+	EE_x = msg->xyz.x;
+	EE_y = msg->xyz.y;
+	EE_z = msg->xyz.z;
 
 	pose_EE << EE_x, EE_y, EE_z;
 }
@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     ros::Publisher vanishing_pub = node_handle.advertise<visualization_msgs::Marker>("vanishing_marker", 1);
     ros::Publisher marker_pub = node_handle.advertise<visualization_msgs::Marker>("trajectory_marker", 1);
     
-    ros::Subscriber config_sub = node_handle.subscribe("/backstepping_controller/current_config", 1, &configCallback);   
+    ros::Subscriber config_sub = node_handle.subscribe<panda_controllers::point>("current_config", 1, &configCallback);   
     //ros::Subscriber config_sub = node_handle.subscribe("/computed_torque_controller/current_config", 1, &configCallback);
     
     visualization_msgs::Marker total_traj;

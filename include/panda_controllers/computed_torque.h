@@ -23,6 +23,9 @@
 //Ros Message
 #include <sensor_msgs/JointState.h>
 #include "panda_controllers/point.h"
+#include "panda_controllers/link_params.h"
+#include "panda_controllers/log_adaptive_joints.h"
+#include "panda_controllers/flag.h"
 
 #include "utils/ThunderPanda.h"
 #include "utils/utils_param.h"
@@ -58,6 +61,7 @@ private:
     /* Definig the timing */
     
     double dt;
+    ros::Time time_now;
     Eigen::Affine3d T0EE;
     
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
@@ -142,6 +146,7 @@ private:
     
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
+    ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
     
@@ -149,10 +154,21 @@ private:
     
     void setCommandCB (const sensor_msgs::JointStateConstPtr& msg);
     
+    /*Setting Flag Callback*/
+    void setFlagUpdate(const flag::ConstPtr& msg);
+
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
 
+
+    /* Message */
+    
+    template <size_t N>
+    void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
+    void fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_);
+
+	panda_controllers::log_adaptive_joints msg_log;
     panda_controllers::point msg_config;
 };
 

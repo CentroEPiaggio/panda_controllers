@@ -100,30 +100,51 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 			return false;
 		}
 	}
+	/* P parameters */
+	std::vector<double> P11vec(NJ), P22vec(NJ), Poutvec(NJ);
+	Eigen::Matrix<double,NJ,NJ> P11, P22, Pout;
 	
+	if (!node_handle.getParam("P11", P11vec) ||
+		!node_handle.getParam("P22", P22vec) ||
+		!node_handle.getParam("Pout", Poutvec)) {
+	
+		ROS_ERROR("Computed_torque: Could not get parameter for P matrix!");
+		return false;
+	}
+	P11.setZero(); P22.setZero();Pout.setZero();
+	P11.diagonal()<<P11vec[0],P11vec[1],P11vec[2],P11vec[3],P11vec[4],P11vec[5],P11vec[6];
+	P22.diagonal()<<P22vec[0],P22vec[1],P22vec[2],P22vec[3],P22vec[4],P22vec[5],P22vec[6];
+	Pout.diagonal()<<Poutvec[0],Poutvec[1],Poutvec[2],Poutvec[3],Poutvec[4],Poutvec[5],Poutvec[6];
+	P.setZero();
+	P.block(0,0,NJ,NJ) = P11;
+	P.block(0,NJ,NJ,NJ) = Pout;
+	P.block(NJ,0,NJ,NJ) = Pout;
+	P.block(NJ,NJ,NJ,NJ) = P22;
+	std::cout<<"\n P matrix:\n"<<P<<"\n";
 	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
+
 
 	for(int i=0; i<NJ; i++){
 		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-		if (!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/mass", mass) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_x", cmx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_y", cmy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/m_CoM_z", cmz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixx", xx) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixy", xy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Ixz", xz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyy", yy) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Iyz", yz) ||
-			!node_handle.getParam("link"+std::to_string(i+1)+"REG"+"/Izz", zz)){
+		if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_x", cmx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_y", cmy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_z", cmz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixx", xx) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixy", xy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Ixz", xz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Iyy", yy) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Iyz", yz) ||
+			!node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)){
 			
 			ROS_ERROR("Computed_torque: Error in parsing inertial parameters!");
 			return 1;
 		}
 		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 	}
-	std::cout<<"\ninit param:\n"<<param<<"\n";
+	//std::cout<<"\ninit param:\n"<<param<<"\n";
 	regrob::reg2dyn(NJ,PARAM,param,param_dyn);
-	std::cout<<"\ninit param_dyn:\n"<<param_dyn<<"\n";
+	//std::cout<<"\ninit param_dyn:\n"<<param_dyn<<"\n";
 
 	/* Inizializing the R gains to update parameters*/
 	
@@ -151,26 +172,25 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
-
-	if (update_param_flag){
-		for (int i = 0; i<NJ; i++){	
-			Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;
-		}
+	for (int i = 0; i<NJ; i++){	
+		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;
 	}
 
 	/* initialize matrices for updating law*/
 	B.setZero();
-	B.block(8,0,13,6).setIdentity();
-	P.setIdentity(); // soluzione equazione di Lyapunov T.C. (o T.D. ???)
+	B.block(NJ,0,NJ,NJ).setIdentity();
+	//std::cout<<"\n B matrix:\n"<<B<<"\n";
+	//P.setIdentity(); // soluzione equazione di Lyapunov T.C. (o T.D. ???)
 	
 	/* Initialize joint (torque,velocity) limits */
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
 	q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
 	/*Start command subscriber */
-	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
-	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
-	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
+	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
+	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &ComputedTorque::setFlagUpdate, this);  
+	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_joints> ("logging", 1);
+	this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1);
 	
 	/* Initialize regressor object */
 	fastRegMat.init(NJ);
@@ -256,7 +276,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 	/* Saturate desired velocity to avoid limits */
 	for (int i = 0; i < 7; ++i){
-		double ith_des_vel = abs(command_dot_q_d(i)/q_dot_limit(i));
+		double ith_des_vel = std::fabs(command_dot_q_d(i)/q_dot_limit(i));
 		if( ith_des_vel > 1)
 		command_dot_q_d = command_dot_q_d / ith_des_vel; 
 	}
@@ -272,7 +292,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	x.head(7) = error;
 	x.tail(7) = dot_error;
 
-	// Publish tracking errors as joint states
+/* 	// Publish tracking errors as joint states
 	sensor_msgs::JointState error_msg;
 	std::vector<double> err_vec(error.data(), error.data() + error.rows()*error.cols());
 	std::vector<double> dot_err_vec(dot_error.data(), dot_error.data() + dot_error.rows()*dot_error.cols());
@@ -280,7 +300,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	error_msg.header.stamp = ros::Time::now();
 	error_msg.position = err_vec;
 	error_msg.velocity = dot_err_vec;
-	this->pub_err_.publish(error_msg);
+	this->pub_err_.publish(error_msg); */
 
 	Kp_apix = Kp;
 	Kv_apix = Kv;
@@ -298,8 +318,15 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	//regrob::reg2dyn(NJ,PARAM,param,param_dyn);
 	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
 	Mest = fastRegMat.getMass_gen();
+	//std::cout<<"\nMest inv: \n"<<Mest.inverse()<<"\n";
+	/* std::cout<<"\n ================================== \n";
+	std::cout<<"\ndet(Mest): "<<Mest.determinant()<<"\n";
+	std::cout<<"\n ================================== \n";
+	std::cout<<"\ndet(Mros): "<<Mest.determinant()<<"\n";
+	std::cout<<"\n ================================== \n"; */
 	if (update_param_flag){
-		dot_param = Rinv*Y.transpose()*Mest.inverse()*B.transpose()*P*x;
+		//std::cout<<"\ndot param: \n"<<dot_param<<"\n================================\n";
+		dot_param = Rinv*Y.transpose()*Mest.inverse().transpose()*B.transpose()*P*x;
 		param = param + dt*dot_param;
 	}
 	
@@ -324,11 +351,30 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 		joint_handles_[i].setCommand(tau_cmd[i]);
 	}
 
-	msg_config.header.stamp  = ros::Time::now();
+ 	/* Publish messages */
+
+	time_now = ros::Time::now();
+	
+	msg_log.header.stamp = time_now;
+	
+	fillMsg(msg_log.error_q, error);
+	fillMsg(msg_log.dot_error_q, dot_error);
+	fillMsgLink(msg_log.link1, param.segment(0, PARAM));
+	fillMsgLink(msg_log.link2, param.segment(10, PARAM));
+	fillMsgLink(msg_log.link3, param.segment(20, PARAM));
+	fillMsgLink(msg_log.link4, param.segment(30, PARAM));
+	fillMsgLink(msg_log.link5, param.segment(40, PARAM));
+	fillMsgLink(msg_log.link6, param.segment(50, PARAM));
+	fillMsgLink(msg_log.link7, param.segment(60, PARAM));
+	fillMsg(msg_log.tau_cmd, tau_cmd);
+	//fillMsg(msg_log.tau_tilde, tau_tilde);
+
+	msg_config.header.stamp  = time_now;
 	msg_config.xyz.x = T0EE.translation()(0);
 	msg_config.xyz.y = T0EE.translation()(1);
 	msg_config.xyz.z = T0EE.translation()(2);
 
+	this->pub_err_.publish(msg_log);
 	this->pub_config_.publish(msg_config);
 }
 
@@ -342,7 +388,7 @@ Eigen::Matrix<double, 7, 1> ComputedTorque::saturateTorqueRate(
 	const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
 	const Eigen::Matrix<double, 7, 1>& tau_J_d)
 {
-	Eigen::Matrix<double, 7, 1> tau_d_saturated {};
+	Eigen::Matrix<double, 7, 1> tau_d_saturated;
 	for (size_t i = 0; i < 7; i++) {
 
 		double difference = tau_d_calculated[i] - tau_J_d[i];
@@ -354,26 +400,37 @@ Eigen::Matrix<double, 7, 1> ComputedTorque::saturateTorqueRate(
 
 void ComputedTorque::setCommandCB(const sensor_msgs::JointState::ConstPtr& msg)
 {
-	if ((msg->position).size() != 7 || (msg->position).empty()) {
-
-		ROS_FATAL("Desired position has not dimension 7 or is empty!", (msg->position).size());
-	}
-
-	if ((msg->velocity).size() != 7 || (msg->velocity).empty()) {
-
-		ROS_FATAL("Desired velocity has not dimension 7 or is empty!", (msg->velocity).size());
-	}
-
-	// TODO: Here we assign acceleration to effort (use trajectory_msgs::JointTrajectoryMessage)
-	if ((msg->effort).size() != 7 || (msg->effort).empty()) {
-
-		ROS_FATAL("Desired effort (acceleration) has not dimension 7 or is empty!", (msg->effort).size());
-	}
-
 	command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
 	command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
 	command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
 
+}
+
+void ComputedTorque::setFlagUpdate(const panda_controllers::flag::ConstPtr& msg){
+	update_param_flag = msg->flag;
+}
+
+template <size_t N>
+void ComputedTorque::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_) {
+    
+	int dim = data_.size();
+    for (int i = 0; i < dim; i++) {
+        msg_[i] = data_[i];
+    }
+}
+
+void ComputedTorque::fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_) {
+    
+    msg_.mass = data_[0];
+	msg_.m_CoM_x = data_[1];
+	msg_.m_CoM_y = data_[2];
+	msg_.m_CoM_z = data_[3];
+	msg_.Ixx = data_[4];
+	msg_.Ixy = data_[5];
+	msg_.Ixz = data_[6];
+	msg_.Iyy = data_[7];
+	msg_.Iyz = data_[8];
+	msg_.Izz = data_[9];
 }
 
 }

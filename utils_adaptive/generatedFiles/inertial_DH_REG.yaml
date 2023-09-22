@@ -12,7 +12,7 @@
 #             0.088,  M_PI_2,   0,      0,
 #             0,      0,        0.107,  0;
 
-link1_params: &link1
+link1:
   mass: 4.9706840000000003
   m_CoM_x: 0.019261400500000001
   m_CoM_y: 0.23670397208000002
@@ -24,7 +24,7 @@ link1_params: &link1
   Iyz: -0.019661580965898436
   Izz: 0.71795648107738708
 
-link2_params: &link2
+link2:
   mass: 0.646926
   m_CoM_x: -0.002031994566
   m_CoM_y: 0.0022610063699999988
@@ -36,7 +36,7 @@ link2_params: &link2
   Iyz: -0.00076893610294640001
   Izz: 0.028124284712194955
 
-link3_params: &link3
+link3:
   mass: 3.2286039999999998
   m_CoM_x: -0.17751510512800001
   m_CoM_y: -0.21470862320799999
@@ -48,7 +48,7 @@ link3_params: &link3
   Iyz: 0.0043772571218395808
   Izz: 0.060193688370726112
 
-link4_params: &link4
+link4:
   mass: 3.5878950000000001
   m_CoM_x: 0.10523296035
   m_CoM_y: -0.098502069329999969
@@ -60,7 +60,7 @@ link4_params: &link4
   Iyz: 0.001644487577369267
   Izz: 0.025342758538451318
 
-link5_params: &link5
+link5:
   mass: 1.225946
   m_CoM_x: -0.014653732538
   m_CoM_y: -0.047121686401999999
@@ -72,7 +72,7 @@ link5_params: &link5
   Iyz: -0.002164052052098131
   Izz: 0.031460372325260388
 
-link6_params: &link6
+link6:
   mass: 1.666555
   m_CoM_x: -0.046415223304999989
   m_CoM_y: -0.017527158935000002
@@ -84,7 +84,7 @@ link6_params: &link6
   Iyz: -9.356909731460494e-05
   Izz: 0.0058310435147869502
 
-link7_params: &link7
+link7:
   mass: 0.73552200000000001
   m_CoM_x: 0.0077354848739999999
   m_CoM_y: -0.0031274395439999996
@@ -95,14 +95,3 @@ link7_params: &link7
   Iyy: 0.011624582982752355
   Iyz: -0.00088299513761623202
   Izz: 0.0049096519673609458
-
-default_controller: &default
-  link1REG: *link1
-  link2REG: *link2
-  link3REG: *link3
-  link4REG: *link4
-  link5REG: *link5
-  link6REG: *link6
-  link7REG: *link7
-
-backstepping_controller: *default
