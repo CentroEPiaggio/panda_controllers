@@ -39,8 +39,8 @@ backstepping_controller:
     
     # --- Controller parameters --- #
     gainLambda: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]       # gain for Lambda matrix
-    gainRlinks: [0, 0, 0, 0, 0, 0, 1]     # gain for R matrix
+    gainRlinks: [1, 1, 1, 1, 1, 1, 1]     # gain for R matrix
     gainRparam: [1, 0.1, 0.01]                          # gain proportional to [mass, mass*length, mass*length^2] 
-    gainKd: [40, 40, 40, 40, 20, 20, 4]                   # gain for Kd matrix
+    gainKd: [10, 10, 10, 10, 5, 5, 1]                   # gain for Kd matrix
     update_param: false                                 # bool to update inertial parameters
     

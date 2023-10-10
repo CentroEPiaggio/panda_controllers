@@ -255,6 +255,10 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	ddot_qr = mypJacEE*tmp_conversion1*tmp_velocity + mypJacEE*tmp_conversion2*tmp_position +mydot_pJacEE*tmp_conversion1*tmp_position;
 
 	s = dot_qr - dot_q_curr;
+/* 	for(int i=0;i<NJ;i++){
+		if (s(i,1)<=tol_s) s(i,1) = 0;
+	} */
+	
 	
 	/* Update and Compute Regressor */
 	
@@ -270,9 +274,12 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	dt = period.toSec();
 
 	/* Update inertial parameters */
-	
+	Eigen::Matrix<double,7,1> s_temp = s;
+	for(int i=0;i<NJ;i++){
+		if (std::fabs((i,1))<=tol_s) s_temp(i,1) = 0;
+	}
 	if (update_param_flag){
-		dot_param = Rinv*Yr.transpose()*s;
+		dot_param = Rinv*Yr.transpose()*s_temp;
 		param = param + dt*dot_param;
 	}
 

@@ -58,6 +58,7 @@ public:
 private:
   
     bool flag = false;           // flag for check of the desired command velocity
+    const double tol_s = 0.001;
     
     /* Definig the timing */
     

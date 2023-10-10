@@ -31,6 +31,7 @@ using std::endl;
 
 bool use_gripper = false;
 bool copy_flag = true;
+#define MU_JACOB 0.0
 
 std::string name_files = "gen_regr_fun";
 std::string path_reg = "../generatedFiles/";
@@ -73,7 +74,7 @@ int main(){
     RobReg regrobot;
     RobDyn dynrobot;
     
-    kinrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE, 0.001);
+    kinrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE, MU_JACOB);
     regrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE);
     dynrobot.init(nj,jType,DH_table,base_to_L0,Ln_to_EE);
 
