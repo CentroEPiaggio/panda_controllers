@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 	
 	/* Publisher */
-	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1);
+	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1000);
 	
 	/* Subscriber */
 	ros::Subscriber sub_pose = node_handle.subscribe<panda_controllers::point>("current_config", 1, &poseCallback);
@@ -103,6 +103,9 @@ int main(int argc, char **argv)
     case 3:
         traj_ptr = trajFun;
         duration = 50.0;
+        break;
+    case 4:
+        traj_ptr = stay_in_p0;
         break;
     default:
         traj_ptr = stay_in_p0;

@@ -5,7 +5,7 @@
     <arg name="package"     default="panda_controllers" />
     
     <!-- flag -->
-    <arg name="lab"         value="true"/>
+    <arg name="lab"         value="false"/>
     
     <!-- load -->
     <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />

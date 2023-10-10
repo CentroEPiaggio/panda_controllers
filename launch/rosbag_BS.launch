@@ -9,7 +9,7 @@
 
     <!-- flag -->
     <arg name="command_node"    default="true" />
-    <arg name="flag_node"       default="false"/>
+    <arg name="flag_node"       default="true"/>
 
     <!-- rosbag -->
     <arg name="t1"          value="/backstepping_controller/current_config"/>
@@ -19,16 +19,16 @@
     <arg name="topics"      value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/LAB_1"/>
+    <arg name="bag_name"    default="$(arg bag_path)/LAB_13_LINK7"/>
     <arg name="duration"    default="70"/>
     
     <!-- rosbag file name -->
-    <arg name="gainLambda"  default="L(3.0_5.0)"/>
-    <arg name="gainR"       default="Ri1(1_0.1_0.01_0.001)"/>
+    <arg name="gainLambda"  default="L(2.0_2.0)"/>
+    <arg name="gainR"       default="Ri0.1(1_0.1_0.01_0.001)"/>
     <arg name="gainKd"      default="Kd(10.0_5.0_1.0)"/>
-    <arg name="adapt"       default="false"/>
-    <arg name="traj_type"   default="minjerk"/> <!-- liss - circ - minjerk -->
-    <arg name="param_off"   default="p0"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="adapt"       default="true"/>
+    <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
+    <arg name="param_off"   default="pWrong"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gain"        default="$(arg gainLambda)_$(arg gainR)_$(arg gainKd)"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
