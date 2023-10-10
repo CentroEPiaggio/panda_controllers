@@ -23,11 +23,11 @@ liss: &liss
 
 minjerk:
   xf: 0.311613
-  yf: 0.30
+  yf: 0.40
   zf: 0.588755
-  duration: 10
+  duration: 5
 
 lissajous: *liss
 
 flag:
-  type: 1 # 1: lissajous, 2: minjerk, 3: script
+  type: 2 # 1: lissajous, 2: minjerk, 3: script

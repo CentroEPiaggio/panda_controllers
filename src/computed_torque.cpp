@@ -249,8 +249,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	
 	/* =============================================================================== */
 	/* check matrix */
-	/*
-	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
+	
+/* 	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
 	Mest = fastRegMat.getMass_gen();
 	Cest = fastRegMat.getCoriolis_gen();
 	Gest = fastRegMat.getGravity_gen();
@@ -258,8 +258,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	std::cout<<"\n ros Mass:\n"<<M<<"\n";
 	std::cout<<"\n est Mass:\n"<<Mest<<"\n";
 	std::cout<<"\n ros Coriolis:\n"<<C<<"\n";
-	std::cout<<"\n est Coriol:\n"<<Cest*dot_q_curr<<"\n";
-	*/
+	std::cout<<"\n est Coriol:\n"<<Cest*dot_q_curr<<"\n"; */
+	
 /* =============================================================================== */
 	
 	/* Actual position and velocity of the joints */
@@ -337,8 +337,14 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	Mest = fastRegMat.getMass_gen();
 	Cest = fastRegMat.getCoriolis_gen();
 	Gest = fastRegMat.getGravity_gen();
-
-	tau_cmd = Mest * command_dot_dot_q_d + Cest*dot_q_curr + Kp_apix * error + Kv_apix * dot_error + Gest - G;  // C->C*dq
+	
+/* 	std::cout<<"\n ros Mass:\n"<<M<<"\n";
+	std::cout<<"\n est Mass:\n"<<Mest<<"\n";
+	std::cout<<"\n ros Coriolis:\n"<<C<<"\n";
+	std::cout<<"\n est Coriol:\n"<<Cest*dot_q_curr<<"\n";
+ */
+	//tau_cmd = Mest * command_dot_dot_q_d + Cest*dot_q_curr + Kp_apix * error + Kv_apix * dot_error + Gest - G;  // C->C*dq
+	tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;
 	
 	//std::cout<<"\ntau \n"<<tau_cmd<<std::endl;
 

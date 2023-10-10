@@ -46,11 +46,11 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "command_joints_node");
 	ros::NodeHandle node_handle;
-    double frequency = 500;
+    double frequency = 30;
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 
 	/* Publisher */
-	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
+	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1000);
 
 	/* Subscriber */
 	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/joint_states", 1,  &jointsCallback);
