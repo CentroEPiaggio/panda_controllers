@@ -10,5 +10,5 @@ link_params link7
 
 float64[7] tau_cmd
 
-float64[6] error_q
-float64[6] dot_error_q
+float64[7] error_q
+float64[7] dot_error_q

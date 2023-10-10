@@ -1,9 +1,13 @@
 <?xml version="1.0" ?>
 <!-- Launch command_joints_node -->
 <launch>
-    <!-- uncomment to load directly computed_torque_controller to real panda -->
-    <arg name="lab"         value="false"/>
+
     <arg name="package"     default="panda_controllers" />
+    
+    <!-- flag -->
+    <arg name="lab"         value="false"/>
+    
+    <!-- load -->
     <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />
     
     <include file="$(find panda_controllers)/launch/computed_torque_controller.launch" if="$(arg lab)"/>

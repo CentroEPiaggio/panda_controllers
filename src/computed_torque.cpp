@@ -116,11 +116,11 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	P22.diagonal()<<P22vec[0],P22vec[1],P22vec[2],P22vec[3],P22vec[4],P22vec[5],P22vec[6];
 	Pout.diagonal()<<Poutvec[0],Poutvec[1],Poutvec[2],Poutvec[3],Poutvec[4],Poutvec[5],Poutvec[6];
 	P.setZero();
-	P.block(0,0,NJ,NJ) = P11;
-	P.block(0,NJ,NJ,NJ) = Pout;
-	P.block(NJ,0,NJ,NJ) = Pout;
-	P.block(NJ,NJ,NJ,NJ) = P22;
-	std::cout<<"\n P matrix:\n"<<P<<"\n";
+	P.block(0,0,NJ,NJ) = 10*P11;
+	P.block(0,NJ,NJ,NJ) = 10*Pout;
+	P.block(NJ,0,NJ,NJ) = 10*Pout;
+	P.block(NJ,NJ,NJ,NJ) = 10*P22;
+	//std::cout<<"\n P matrix:\n"<<P<<"\n";
 	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
 
 

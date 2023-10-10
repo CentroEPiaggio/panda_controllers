@@ -3,12 +3,14 @@
 <launch>
 
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-
+    <!-- load -->
+    <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />
+    
     <!-- flag -->
-    <arg name="command_node"    default="false" />
-    <arg name="flag_node"       default="false" />
-    <arg name="clik"            default="false" />
-    <arg name="homing"           default="true" />
+    <arg name="command_node"    default="true" />
+    <arg name="flag_node"       default="true" />
+    <arg name="clik"            default="true" />
+    <arg name="homing"          default="false" />
 
     <!-- rosbag -->
     <arg name="t1"      value="/computed_torque_controller/current_config"/>
@@ -16,11 +18,10 @@
     <arg name="t3"      value="/computed_torque_controller/command_joints"/>
     <arg name="t4"      value="/computed_torque_controller/logging"/>
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
-    
    
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/simCT"/>
-    <arg name="duration"    default="30"/>
+    <arg name="bag_name"    default="$(arg bag_path)/SIM_CT_2"/>
+    <arg name="duration"    default="65"/>
     
     <!-- rosbag file name -->
     <arg name="gainR"       default="Ri1(1_0.1_0.01)"/>
@@ -32,10 +33,11 @@
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
         args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
     </node>
-
+    
     <group ns="computed_torque_controller">
+        <rosparam command="load" file="$(arg yaml_file)" />
         <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
-        <node pkg="panda_controllers" type="homing_node" name="homing_node" output="screen" if="$(arg homing)" />
+        <node pkg="panda_controllers" type="command_joints_node" name="command_joints_node" output="screen" if="$(arg homing)" />
     </group>
 
     <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_node)" >

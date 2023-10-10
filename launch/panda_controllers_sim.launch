@@ -15,14 +15,15 @@
 	<arg name="rviz" 				default="true" />
 	<arg name="clik"            	default="false" />
 	<arg name="rosbag_BS"			value="false" />
+	<arg name="rosbag_CT"			value="false" />
     
 	<!-- set controller -->
-	<arg name="controller_name" 	default="computed_torque_controller" /> <!-- backstepping_controller, computed_torque_controller -->
+	<arg name="controller_name" 	default="backstepping_controller" /> <!-- backstepping_controller, computed_torque_controller -->
 	
 	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
 	<group ns="$(arg controller_name)">
-		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG.yaml" />
+		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG_p2.yaml" />
 	</group>
 
 	<!-- to load gazebo (and rviz) -->

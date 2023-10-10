@@ -2,23 +2,25 @@
 <!-- launch rosbag and command -->
 <launch>
 
+    <arg name="package"         default="panda_controllers" />
+    
+    <!-- load -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
 
     <!-- flag -->
     <arg name="command_node"    default="true" />
-    <arg name="flag_node"       default="false" />
-    <arg name="clik"            default="false" />
+    <arg name="flag_node"       default="true"/>
 
     <!-- rosbag -->
     <arg name="t1"          value="/backstepping_controller/current_config"/>
-    <arg name="t2"          value="/joint_states"/>
+    <arg name="t2"          value="/backstepping_controller/logging"/>
     <arg name="t3"          value="/backstepping_controller/command_cartesian"/>
-    <arg name="t4"          value="/backstepping_controller/logging"/>
-    <arg name="topics"      value="$(arg t1) $(arg t4) $(arg t3) $(arg t2)"/>
+    <arg name="t4"          value="/joint_states"/>
+    <arg name="topics"      value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/prova"/>
-    <arg name="duration"    default="30"/>
+    <arg name="bag_name"    default="$(arg bag_path)/SIM_8"/>
+    <arg name="duration"    default="35"/>
     
     <!-- rosbag file name -->
     <arg name="gainLambda"  default="L(100.0_1.0)"/>
@@ -34,12 +36,11 @@
     </node>
 
     <group ns="backstepping_controller">
-        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
+        <node pkg="$(arg package)" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
     </group>
 
     <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_node)" >
         <arg name="controller_name" value="backstepping_controller" />
-        <arg name="clik"            value="$(arg clik)" />
     </include>
 
 </launch>
