@@ -58,7 +58,8 @@ public:
 private:
   
     bool flag = false;           // flag for check of the desired command velocity
-    const double tol_s = 0.001;
+    const double tol_s = 0.01;
+    const double UB_s = 1;
     
     /* Definig the timing */
     
@@ -89,6 +90,7 @@ private:
     //Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
     bool update_param_flag;
+    bool UB_s_flag;
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
 

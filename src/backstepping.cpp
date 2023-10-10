@@ -87,14 +87,15 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	/* Inizializing the Lambda and R and Kd gains */
 	
-	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6), gainKd(7);
+	std::vector<double> gainRlinks(NJ), gainRparam(4), gainLambda(6), gainKd(7);
 	Eigen::Matrix<double,PARAM,PARAM> Rlink;
 
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
 		!node_handle.getParam("gainRlinks", gainRlinks) ||
 		!node_handle.getParam("gainRparam", gainRparam) ||
 		!node_handle.getParam("gainKd", gainKd)  ||
-		!node_handle.getParam("update_param", update_param_flag)) {
+		!node_handle.getParam("update_param", update_param_flag)||
+		!node_handle.getParam("upper_bound_s", UB_s_flag)) {
 	
 		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
 		return false;
@@ -114,10 +115,10 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	Rlink(2,2) = Rlink(1,1);
 	Rlink(3,3) = Rlink(1,1);
 	Rlink(4,4) = gainRparam[2];
-	Rlink(5,5) = Rlink(4,4);
-	Rlink(6,6) = Rlink(4,4);
+	Rlink(5,5) = gainRparam[3];
+	Rlink(6,6) = Rlink(5,5);
 	Rlink(7,7) = Rlink(4,4);
-	Rlink(8,8) = Rlink(4,4);
+	Rlink(8,8) = Rlink(5,5);;
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
@@ -184,7 +185,7 @@ void Backstepping::starting(const ros::Time& time)
 
 void Backstepping::update(const ros::Time&, const ros::Duration& period)
 {
-
+	bool saturate_s_flag;
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
 	robot_state = state_handle_->getRobotState();
@@ -275,11 +276,32 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Update inertial parameters */
 	Eigen::Matrix<double,7,1> s_temp = s;
+
+
 	for(int i=0;i<NJ;i++){
-		if (std::fabs((i,1))<=tol_s) s_temp(i,1) = 0;
+		if (std::fabs(s_temp(i,1)) < tol_s) s_temp(i,1) = 0.0;
 	}
-	if (update_param_flag){
+
+	/*skip update if s>UB_s*/
+	if (UB_s_flag){
+		int count_UB_s = 0;
+		for(int i=0;i<NJ;i++){
+			if (std::fabs(s_temp(i,1)) < tol_s){
+				s_temp(i,1) = 0.0;
+			}
+			if (std::fabs(s(i,1))>UB_s){
+				saturate_s_flag = true;
+			}else{
+				count_UB_s++;
+			}
+			if (count_UB_s == NJ) saturate_s_flag = false;
+		}
+	}
+	
+	if (update_param_flag && !saturate_s_flag){
 		dot_param = Rinv*Yr.transpose()*s_temp;
+/* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
+		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
 		param = param + dt*dot_param;
 	}
 

@@ -19,8 +19,8 @@
     <arg name="topics"      value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/SIM_8"/>
-    <arg name="duration"    default="35"/>
+    <arg name="bag_name"    default="$(arg bag_path)/SIM_PRELAB_3"/>
+    <arg name="duration"    default="70"/>
     
     <!-- rosbag file name -->
     <arg name="gainLambda"  default="L(100.0_1.0)"/>
