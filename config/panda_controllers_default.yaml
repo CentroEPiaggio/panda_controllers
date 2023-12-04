@@ -40,10 +40,10 @@ backstepping_controller:
     cutoff_frequency: 1000
     
     # --- Controller parameters --- #
-    gainLambda: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0]       # gain for Lambda matrix
+    gainLambda: [5.0, 5.0, 5.0, 2.0, 2.0, 2.0]       # gain for Lambda matrix
     gainRlinks: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1]     # gain for R matrix
-    gainRparam: [1.0, 0.1, 0.01, 0.001]                          # gain proportional to [mass, mass*length, mass*length^2] 
-    gainKd: [10, 10, 10, 10, 5, 5, 1]                   # gain for Kd matrix
+    gainRparam: [1.0, 0.1, 0.1, 0.1]                          # gain proportional to [mass, mass*length, mass*length^2] 
+    gainKd: [10, 10, 10, 10, 5, 5, 3]                   # gain for Kd matrix
     update_param: false                                 # bool to update inertial parameters
     upper_bound_s: true
     

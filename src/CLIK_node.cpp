@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 	
 	/* Publisher */
-	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
+	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1000);
 	
 	/* Subscriber */
 	ros::Subscriber sub_des_pose = node_handle.subscribe<panda_controllers::desTrajEE>("command_cartesian", 1, &desPoseCallback);
@@ -91,6 +91,7 @@ int main(int argc, char **argv)
     qr.setZero();
     qr << 0,-0.7854, 0, -2.3562, 0, 1.5708, 0.7854;
     qr_old.setZero();
+    qr_old = qr;
     dot_qr.setZero();
     ddot_qr.setZero();
 
@@ -98,7 +99,7 @@ int main(int argc, char **argv)
     ee_ang_vel_cmd.setZero();
     ee_ang_acc_cmd.setZero();
 
-    gainLambda = {10,10,10,0.1,0.1,0.1};
+    gainLambda = {20,20,20,10,10,10};
     Lambda.setIdentity();
 	for(int i=0;i<6;i++){
 		Lambda(i,i) = gainLambda[i];

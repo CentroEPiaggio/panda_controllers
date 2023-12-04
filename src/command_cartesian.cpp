@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 	ros::Time t;
     double dt = 0.0;
 
-    ros::Duration(1.0).sleep();
+    //ros::Duration(2.0).sleep();
 
 	while (ros::ok()){
     
@@ -189,9 +189,13 @@ void lissajous(const double dt_, const vec3d p0){
     double t0 = 1.0/(4*b);
     //std::cout<<t0<<std::endl;
     dt = dt_;
-    x0 = p0(0) + offX;
+/*     x0 = p0(0) + offX;
     y0 = p0(1) + offY;
-    z0 = p0(2) + offZ;
+    z0 = p0(2) + offZ; */
+    x0 = 0.380 + offX;
+    y0 = 0.000 + offY;
+    z0 = 0.400 + offZ;
+        
 
     position_t << 
         x0 + A * std::sin(2*M_PI * a * (dt-t0) + dx),

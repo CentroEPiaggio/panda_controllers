@@ -5,26 +5,27 @@
 Here you can find backstepping adaptive controller and some classes implemented with casadi library to generalize adaptive control.
 
 ## Table of Contents
-1. [Requirements](#Requirements)
-1. [Utils Adaptive](#Utils-Adaptive)
-1. [Installation](#Installation)
+1. [Requirements](#requirements)
+1. [Utils Adaptive](#utils-adaptive)
+1. [Installation](#installation)
    1. `project-adaptive`
    1. `casadi`
    1. `yaml-cpp`
-1.[ThunderPanda](#ThunderPanda)
-1. [Running controllers](#Running-controllers)
+1. [ThunderPanda](#thunderpanda)
+1. [Running controllers](#running-controllers)
 
 ## Requirements
-* To use this controllers you need to install the package [franka_ros](https://github.com/CentroEPiaggio/franka_ros.git) in your workspace.
-* If you want use and/or modify implemented casadi classes you have to install [casadi](https://github.com/casadi/casadi.git).
+* To test controllers in gazebo and/or RViz you need to install the package [franka_ros](https://github.com/frankaemika/franka_ros.git) in your workspace.
+* If you want to use and/or modify implemented classes you have to install [casadi](https://github.com/casadi/casadi.git).
 * If you want generate yaml file you have to install [yaml-cpp](https://github.com/jbeder/yaml-cpp.git).
 
 ## Utils Adaptive
-The core of our project is in the folder [utils_adaptive](./utils_adaptive), here we created 3 main folders:
+The core of our project is in the folder [utils_adaptive](./utils_adaptive), here we created 4 main folders:
 
-* `genThunder`: we implemented vary classes, keeping in mind object-oriented paradigm to generalize the approach to serial manipulator control, under the point of view of Denavit-Hartenberg parametrization. Important functions were obtainable only with the support of casadi library (for example Christoffel symbols). In particular the aim of this folder is to generate fast and efficient code for Franka Emika Panda to satisfy the constraints of real time.
-* `genYAML`: we manipulate "original" Franka Emika Panda inertial parameters in `inertial.yaml` to create yaml files for Denavit-Hartenberg parametrization and then for Regressor.
-* `generatedFiles`: it contains the files generated from 2 folders above. 
+* `genThunder`: we implemented some classes, keeping in mind object-oriented paradigm, to generalize the approach to serial manipulator control, under the point of view of Denavit-Hartenberg parametrization. Important functions were obtainable only with the support of casadi library (for example Christoffel symbols). In particular the aim of this folder is to generate fast and efficient code for Franka Emika Panda to satisfy the constraints of real time.
+* `genYAML`: we manipulate "original" Franka Emika Panda inertial parameters in `inertial.yaml` to create yaml files for Denavit-Hartenberg parametrization and then for the Regressor.
+* `generatedFiles`: it contains the files generated from 2 folders above.
+* `chrono_test`: it contains the files to compare execution-time of different algorithms.
 
 ## Installation
 Steps for installation:
@@ -85,9 +86,13 @@ That are following:
    ```
 ## ThunderPanda
 
-[ThunderPanda](./panda_controllers/src/) is a class useful for implement controllers without casadi library. Allocate a ThnederPanda object in your code, and you have access to all matrixes for kinematic and dynamic of the robot implemeted in utils adaptive classes.
+[ThunderPanda](./src/) is a class useful for implementing controllers without the dependecy of casadi library. Allocate a ThunderPanda object in your code, and you have access to all matrices for kinematic and dynamic of the robot implemeted in utils adaptive classes.
 
 ## Running Controllers
 
-In the package, there is a launch file related to the spawning of controller `panda_controllers_sim.launch`, that is useful to set type of controller and rviz visualization.
-There are already some simple trajectory implemented that are defined in the yaml file `trajectory_param.yaml` that are used in node `command_cartesian.cpp`, runnable with launch file `command.launch`.
+* In [launch](./launch/) folder there is a launch file related to the spawning of controller `panda_controllers_sim.launch`, that is useful to set type of controller in gazebo and rviz visualization. If you want set up controllores in real robot you have two option: `backstepping_controller.launch` or `computed_torque_controller.launch`.
+
+* In [config](./config/) folder you can use `homing.yaml` to set homing value of joints that can be used in 
+`homing.launch`. You can set parameters of controllers in `panda_controllers_default.yaml` and parameters of some trajectories in `trajectory_param.yaml` used in `command.launch`.
+
+The [launch_map.pdf](./launch_map.pdf) file is a simple map of the launch files and flag and parameters that can be manipulated.
