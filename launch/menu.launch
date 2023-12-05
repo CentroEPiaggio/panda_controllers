@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<launch>
+	<rosparam command="load" file="$(find panda_controllers)/config/menu.yaml" />
+	<node pkg="panda_controllers" name="menu" type="menu" output="screen"/>
+
+</launch>

@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+
+<?xml version="1.0" ?>
+<launch>
+
+  <group ns="franka" >
+  <arg name="robot_ip" default="172.31.1.101"/>
+  <arg name="load_gripper" default="false" />
+  <include file="$(find franka_control)/launch/franka_control.launch" >
+    <arg name="robot_ip" value="$(arg robot_ip)" />
+    <arg name="load_gripper" value="$(arg load_gripper)" />
+  </include>
+
+  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="computed_torque_controller"/>
+
+</group>
+</launch>

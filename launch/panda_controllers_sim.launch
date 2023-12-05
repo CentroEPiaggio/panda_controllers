@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<launch>
+
+	<!--arg name="controller" default="computed_torque_controller"/-->
+	<!-- <arg name="robot_ip" default="192.168.0.210" /> -->
+	<arg name="arm_id" default="panda" doc="Name of the panda robot to spawn" />
+	<arg name="prefix" default="/robot/arm" doc="prefix for arm" />
+	<!-- <arg name="load_gripper" value="false" /> -->
+	<rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+
+	<!-- <node name="controller_load" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="load cartesian_impedance_controller_softbots"/> -->
+	<!-- <node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn computed_torque_controller"/> -->
+
+	<include file="$(find franka_gazebo)/launch/panda.launch">
+		<!-- <arg name="rviz" value="true" /> -->
+		<arg name="controller" value="computed_torque_controller" />
+		<!-- <arg name="controller" value="cartesian_impedance_controller_softbots" /> -->
+	</include>
+
+	<!-- <node name="controller_load" pkg="controller_manager" type="controller_manager" /> -->
+	
+	<!--/group-->
+
+</launch>
