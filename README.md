@@ -16,13 +16,13 @@ Steps for installation:
 1. Clone the `panda_controllers` package to your Catkin Workspace, e.g. `~/catkin_ws`:
    ```
    cd ~/catkin_ws/src
-   git clone --branch stefano-darko https://github.com/CentroEPiaggio/panda_controllers.git
+   git clone https://github.com/CentroEPiaggio/panda_controllers.git
    ```
 
 1. Compile the package using `catkin`:
    ```
    cd ~/catkin_ws
-   catkin_make
+   catkin build
    ```   
 ## Requirements 
 Since you are interested in using this controllers you need to install libfranka and franka_ros, availables at: [franka_FCI](https://frankaemika.github.io/docs/)
