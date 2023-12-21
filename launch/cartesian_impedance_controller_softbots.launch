@@ -1,6 +1,4 @@
 <?xml version="1.0" ?>
-
-<?xml version="1.0" ?>
 <launch>
 
   <group ns="franka" >
@@ -11,7 +9,7 @@
     <arg name="load_gripper" value="$(arg load_gripper)" />
   </include>
 
-  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers.yaml" />
+  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="cartesian_impedance_controller_softbots"/>
 
 </group>
