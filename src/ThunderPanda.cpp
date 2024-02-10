@@ -24,6 +24,7 @@ namespace regrob{
 
         reg_gen.resize(num_joints,10*num_joints);
         jac_gen.resize(6,num_joints);
+        dotJac_gen.resize(6,num_joints);
         pinvJac_gen.resize(num_joints,6);
         pinvJacPos_gen.resize(num_joints,3);
         dotPinvJac_gen.resize(num_joints,6);
@@ -72,7 +73,7 @@ namespace regrob{
             std::cout<<"in setArguments: invalid dimensions of arguments\n";
         }
         computeJac_gen();
-        //computeDotJac_gen();
+        computeDotJac_gen();
         computePinvJac_gen();
         computeDotPinvJac_gen();
         computePinvJacPos_gen();
@@ -127,7 +128,7 @@ namespace regrob{
         const double* input_[] = {q.data(), param.data()};
         double* output_[] = {mass_gen.data()};
         
-        int check = mass_fun(input_, output_, p3, p4, 0);
+        int check = mass_fun(input_, output_, p3, p4, 0); // calcola la matrice di massa sfruttando libreria casadi
         
     }
     
@@ -139,7 +140,7 @@ namespace regrob{
         const double* input_[] = {q.data(), dq.data(), param.data()};
         double* output_[] = {coriolis_gen.data()};
         
-        int check = coriolis_fun(input_, output_, p3, p4, 0);
+        int check = coriolis_fun(input_, output_, p3, p4, 0); // calcola la matrice di coriolis sfruttando libreria casadi
     }
 
     void thunderPanda::computeGravity_gen(){
@@ -149,7 +150,7 @@ namespace regrob{
 
         const double* input_[] = {q.data(), param.data()};
         double* output_[] = {gravity_gen.data()};
-        int check = gravity_fun(input_, output_, p3, p4, 0);
+        int check = gravity_fun(input_, output_, p3, p4, 0); 
     }
 
     void thunderPanda::computeJac_gen(){

@@ -105,10 +105,10 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	Eigen::Matrix<double,NJ,NJ> P11, P22, Pout;
 	
 	if (!node_handle.getParam("P11", P11vec) ||
-		!node_handle.getParam("P22", P22vec) ||
-		!node_handle.getParam("Pout", Poutvec)) {
+	!node_handle.getParam("P22", P22vec) ||
+	!node_handle.getParam("Pout", Poutvec)) {
 	
-		ROS_ERROR("Computed_torque: Could not get parameter for P matrix!");
+	ROS_ERROR("Computed_torque: Could not get parameter for P matrix!");
 		return false;
 	}
 	P11.setZero(); P22.setZero();Pout.setZero();
@@ -116,10 +116,10 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	P22.diagonal()<<P22vec[0],P22vec[1],P22vec[2],P22vec[3],P22vec[4],P22vec[5],P22vec[6];
 	Pout.diagonal()<<Poutvec[0],Poutvec[1],Poutvec[2],Poutvec[3],Poutvec[4],Poutvec[5],Poutvec[6];
 	P.setZero();
-	P.block(0,0,NJ,NJ) = 10*P11;
-	P.block(0,NJ,NJ,NJ) = 10*Pout;
-	P.block(NJ,0,NJ,NJ) = 10*Pout;
-	P.block(NJ,NJ,NJ,NJ) = 10*P22;
+	P.block(0,0,NJ,NJ) = P11;
+	P.block(0,NJ,NJ,NJ) = Pout;
+	P.block(NJ,0,NJ,NJ) = Pout;
+	P.block(NJ,NJ,NJ,NJ) = P22;
 	//std::cout<<"\n P matrix:\n"<<P<<"\n";
 	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
 
@@ -148,7 +148,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
 	/* Inizializing the R gains to update parameters*/
 	
-	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6);
+	std::vector<double> gainRlinks(NJ), gainRparam(3), gainLambda(6); // ?
 	Eigen::Matrix<double,PARAM,PARAM> Rlink;
 
 	if (!node_handle.getParam("gainRlinks", gainRlinks) ||
@@ -176,11 +176,17 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;
 	}
 
-	/* initialize matrices for updating law*/
+	/* initialize matrices for updating law. Uso equazione di Lyapunov per calcolo di P*/
+	// A.setZero();
+	// A.block(0,NJ,NJ,NJ).setIdentity();
+	// A.block(NJ,0,NJ,NJ) = -Kp;
+	// A.block(NJ,NJ,NJ,NJ) = -Kv;
+	// Q = Eigen::MatrixXd::Identity(14, 14);
+
 	B.setZero();
 	B.block(NJ,0,NJ,NJ).setIdentity();
 	//std::cout<<"\n B matrix:\n"<<B<<"\n";
-	//P.setIdentity(); // soluzione equazione di Lyapunov T.C. (o T.D. ???)
+	// P.setIdentity(); // soluzione equazione di Lyapunov T.C. (o T.D. ???)
 	
 	/* Initialize joint (torque,velocity) limits */
 	tau_limit << 87, 87, 87, 87, 12, 12, 12;
@@ -191,7 +197,8 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &ComputedTorque::setFlagUpdate, this);  
 	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_joints> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1);
-	
+	this->pub_deb_ = node_handle.advertise<panda_controllers::Vec7D>("debug",1);
+
 	/* Initialize regressor object */
 	fastRegMat.init(NJ);
 
@@ -229,6 +236,7 @@ void ComputedTorque::starting(const ros::Time& time)
 
 	/* Update regressor */
 	dot_q_curr_old.setZero();
+	ddot_q_curr_old.setZero();
 	ddot_q_curr.setZero();
 	dot_param.setZero();
 	fastRegMat.setInertialParam(param_dyn);
@@ -269,6 +277,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 	ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt;
 	dot_q_curr_old = dot_q_curr;
+	ddot_q_curr_old = ddot_q_curr;
 
 	/* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 
@@ -289,7 +298,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 	error = command_q_d - q_curr;
 	dot_error = command_dot_q_d - dot_q_curr;
-	x.head(7) = error;
+	x.head(7) = error; // x indica la variabile di stato composta da [error dot_error]'
 	x.tail(7) = dot_error;
 
 /* 	// Publish tracking errors as joint states
@@ -315,9 +324,9 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 	/* Update inertial parameters */
 
-	//regrob::reg2dyn(NJ,PARAM,param,param_dyn);
+	regrob::reg2dyn(NJ,PARAM,param,param_dyn);
 	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
-	Mest = fastRegMat.getMass_gen();
+	Mest = fastRegMat.getMass_gen(); // inversione potrebbe generare singolarità
 	//std::cout<<"\nMest inv: \n"<<Mest.inverse()<<"\n";
 	/* std::cout<<"\n ================================== \n";
 	std::cout<<"\ndet(Mest): "<<Mest.determinant()<<"\n";
@@ -326,19 +335,19 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	std::cout<<"\n ================================== \n"; */
 	if (update_param_flag){
 		//std::cout<<"\ndot param: \n"<<dot_param<<"\n================================\n";
-		dot_param = Rinv*Y.transpose()*Mest.inverse().transpose()*B.transpose()*P*x;
+		dot_param = Rinv*Y.transpose()*Mest.inverse().transpose()*B.transpose()*P*x; // legge aggiornamento parametri se vi è update
 		param = param + dt*dot_param;
 	}
 	
 	/* update dynamic for control law */
 
-	regrob::reg2dyn(NJ,PARAM,param,param_dyn);					// conversion of updated parameters
+	regrob::reg2dyn(NJ,PARAM,param,param_dyn);					// conversion of updated parameters, nuovo oggetto thunderpsnda
 	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
 	Mest = fastRegMat.getMass_gen();
 	Cest = fastRegMat.getCoriolis_gen();
 	Gest = fastRegMat.getGravity_gen();
 
-	tau_cmd = Mest * command_dot_dot_q_d + Cest*dot_q_curr + Kp_apix * error + Kv_apix * dot_error + Gest - G;  // C->C*dq
+	tau_cmd = Mest * command_dot_dot_q_d + Cest*dot_q_curr + Kp_apix * error + Kv_apix * dot_error + Gest - G;  // C->C*dq, legge computed torque
 	
 	//std::cout<<"\ntau \n"<<tau_cmd<<std::endl;
 
@@ -351,12 +360,28 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 		joint_handles_[i].setCommand(tau_cmd[i]);
 	}
 
+	m1 = Mest.col(0);
+	m2 = Mest.col(1);
+	m3 = Mest.col(2);
+	m4 = Mest.col(3);
+	m5 = Mest.col(4);
+	m6 = Mest.col(5);
+	m7 = Mest.col(6);
+
  	/* Publish messages */
 
 	time_now = ros::Time::now();
 	
 	msg_log.header.stamp = time_now;
 	
+	fillMsg(msg_deb.MatM1, m1);
+	fillMsg(msg_deb.MatM2, m2);
+	fillMsg(msg_deb.MatM3, m3);
+	fillMsg(msg_deb.MatM4, m4);
+	fillMsg(msg_deb.MatM5, m5);
+	fillMsg(msg_deb.MatM6, m6);
+	fillMsg(msg_deb.MatM7, m7);
+	fillMsg(msg_log.ddot_q_curr, ddot_q_curr);
 	fillMsg(msg_log.error_q, error);
 	fillMsg(msg_log.dot_error_q, dot_error);
 	fillMsgLink(msg_log.link1, param.segment(0, PARAM));
@@ -370,12 +395,13 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	//fillMsg(msg_log.tau_tilde, tau_tilde);
 
 	msg_config.header.stamp  = time_now;
-	msg_config.xyz.x = T0EE.translation()(0);
+	msg_config.xyz.x = T0EE.translation()(0); // ?
 	msg_config.xyz.y = T0EE.translation()(1);
 	msg_config.xyz.z = T0EE.translation()(2);
 
 	this->pub_err_.publish(msg_log);
 	this->pub_config_.publish(msg_config);
+	this->pub_deb_.publish(msg_deb);
 }
 
 void ComputedTorque::stopping(const ros::Time&)

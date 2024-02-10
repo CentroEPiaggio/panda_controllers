@@ -118,7 +118,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	Rlink(5,5) = gainRparam[3];
 	Rlink(6,6) = Rlink(5,5);
 	Rlink(7,7) = Rlink(4,4);
-	Rlink(8,8) = Rlink(5,5);;
+	Rlink(8,8) = Rlink(5,5);
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
@@ -231,7 +231,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	ee_omega = jacobian.bottomRows(3)*dot_q_curr;
 
 	Rs_tilde = ee_rot_cmd*ee_rot.transpose();
-	L = createL(ee_rot_cmd, ee_rot);
+	L = createL(ee_rot_cmd, ee_rot); // penso sia il calcolo del Lagrangiano
 	dotL = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
 	
 	error.tail(3) = vect(Rs_tilde);

@@ -4,7 +4,7 @@
 
     <arg name="package"         default="panda_controllers" />
     <arg name="node_name"       default="trajectory_rviz" />
-    <arg name="controller_name" default="no_controller" />
+    <arg name="controller_name" default="computed_torque_mod_controller" />
 
     <group ns="$(arg controller_name)">
         <node name="$(arg node_name)" pkg="$(arg package)" type="trajectory_rviz" output="screen"/>

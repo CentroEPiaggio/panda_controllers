@@ -15,6 +15,9 @@
 #include "utils/ThunderPanda.h"
 #include "utils/utils_cartesian.h"
 
+#include <franka_hw/franka_model_interface.h>
+#include <franka_hw/franka_state_interface.h>
+
 #define NJ 7
 
 typedef Eigen::Vector3d vec3d;
@@ -32,6 +35,9 @@ Eigen::Matrix<double, 3, 3> ee_rot_cmd;             // desired command position
 Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;         // desired command velocity 
 Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
+std::unique_ptr<franka_hw::FrankaStateHandle> state_handle2_;
+franka::RobotState robot_state2;
+
 /* Obtain end-effector pose */
 void desPoseCallback(const panda_controllers::desTrajEE::ConstPtr& msg);
 
@@ -43,7 +49,7 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "clik_node");
 	ros::NodeHandle node_handle;
     double frequency = 1000;
-	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
+	ros::Rate loop_rate(frequency); 
 	
 	/* Publisher */
 	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
@@ -62,15 +68,17 @@ int main(int argc, char **argv)
     robot_handle.init(NJ);
     Eigen::Matrix<double,4,4> T0EE;
     Eigen::Matrix<double,6,NJ> JacEE;
-    Eigen::Matrix<double,NJ,6> pJacEE;
+    Eigen::Matrix<double,NJ,6> pJacEE; // Sta per pseudo-inversa
     Eigen::Matrix<double,NJ,6> dot_pJacEE;
     Eigen::Matrix<double,6,6> Lambda;
     std::vector<double> gainLambda(6);
 
     Eigen::Matrix<double, NJ, 1> qr;
-    Eigen::Matrix<double, NJ, 1> qr_old;
+    // Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
+    Eigen::Matrix<double, NJ, 1> q_curr;
+    Eigen::Matrix<double, NJ, 1> dot_q_curr;
 
     /* Error and dot error feedback */
     
@@ -90,7 +98,7 @@ int main(int argc, char **argv)
 
     qr.setZero();
     qr << 0,-0.7854, 0, -2.3562, 0, 1.5708, 0.7854;
-    qr_old.setZero();
+    // qr_old.setZero();
     dot_qr.setZero();
     ddot_qr.setZero();
 
@@ -98,7 +106,9 @@ int main(int argc, char **argv)
     ee_ang_vel_cmd.setZero();
     ee_ang_acc_cmd.setZero();
 
-    gainLambda = {10,10,10,0.1,0.1,0.1};
+
+    //gainLambda= {2.0, 2.0, 3.0, 5.0, 5.0, 5.0};
+    gainLambda = {1,1,1,1,1,1};
     Lambda.setIdentity();
 	for(int i=0;i<6;i++){
 		Lambda(i,i) = gainLambda[i];
@@ -107,20 +117,33 @@ int main(int argc, char **argv)
     double period = 1/frequency;
 	ros::Time t;
 
-    ros::Duration(1.0).sleep();
+    //ros::Duration(1.0).sleep();
 
 	while (ros::ok()){
     
         ros::spinOnce();
 
         t = ros::Time::now();
+        
+        /*
+        robot_state2 = state_handle2_->getRobotState();
+        T0EE = Eigen::Matrix4d::Map(robot_state2.O_T_EE.data());
+	    q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state2.q.data());
+	    dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state2.dq.data());
+        
+        robot_handle.setArguments(q_curr,dot_q_curr);
+        //T0EE = robot_handle.getKin_gen();
+        JacEE = robot_handle.getJac_gen();
+        pJacEE = robot_handle.getPinvJac_gen();
+        dot_pJacEE = robot_handle.getDotPinvJac_gen();
+        */
 
         robot_handle.setArguments(qr,dot_qr);
         T0EE = robot_handle.getKin_gen();
         JacEE = robot_handle.getJac_gen();
         pJacEE = robot_handle.getPinvJac_gen();
         dot_pJacEE = robot_handle.getDotPinvJac_gen();
-
+        
         if(!start){
             ee_rot_cmd = T0EE.block(0,0,3,3);
             start = true;
@@ -131,6 +154,7 @@ int main(int argc, char **argv)
         /* ======================================== */
         /* Compute error translation */
         ee_position = T0EE.col(3).head(3);
+        //ee_velocity = JacEE.topRows(3)*dot_q_curr;
         ee_velocity = JacEE.topRows(3)*dot_qr;
 
         error.head(3) = ee_pos_cmd - ee_position;
@@ -139,6 +163,7 @@ int main(int argc, char **argv)
         /* Compute error orientation */
 
         ee_rot = T0EE.block(0,0,3,3);
+        //ee_omega = JacEE.bottomRows(3)*dot_q_curr;
         ee_omega = JacEE.bottomRows(3)*dot_qr;
 
         Rs_tilde = ee_rot_cmd*ee_rot.transpose();
@@ -157,16 +182,17 @@ int main(int argc, char **argv)
         tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
         
         tmp_conversion0.setIdentity();
-        tmp_conversion0.block(3, 3, 3, 3) = L;
+        tmp_conversion0.block(3, 3, 3, 3) = L; // conversione da capire per le rotazioni
         tmp_conversion1.setIdentity();
         tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
 
-        dot_qr = pJacEE*tmp_conversion1*tmp_position;
+        dot_qr = pJacEE*tmp_conversion1*tmp_position; // velocità desiderata
         ddot_qr = pJacEE*tmp_conversion1*tmp_velocity + pJacEE*tmp_conversion2*tmp_position +dot_pJacEE*tmp_conversion1*tmp_position;
-        qr_old = qr;
-        qr = qr_old + period * dot_qr;
+        // qr_old = qr;
+        //dot_qr = dot_qr + period*ddot_qr;
+        qr = qr + period * dot_qr; // + 0.5*pow(period,2)*ddot_qr;
         /* ======================================== */
         /*          UPDATE MESSAGE */
         /* ======================================== */

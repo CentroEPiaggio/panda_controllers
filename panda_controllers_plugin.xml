@@ -6,6 +6,19 @@
    </description>
   </class>
 
+  <class name="panda_controllers/ComputedTorqueMod" type="panda_controllers::ComputedTorqueMod" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Computed Torque controller modified.
+   </description>
+  </class>
+
+<class name="panda_controllers/CTModOS" type="panda_controllers::CTModOS" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Computed Torque controller modified operative space.
+   </description>
+  </class>
+
+
   <class name="panda_controllers/Backstepping" type="panda_controllers::Backstepping" base_class_type="controller_interface::ControllerBase">
    <description>
       Backstepping controller.

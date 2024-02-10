@@ -51,10 +51,10 @@ void trajFun    (const double dt_, const vec3d p0);
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "command_node");
+	ros::init(argc, argv, "command_cartesian_node");
 	ros::NodeHandle node_handle;
-    double frequency = 100;
-	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
+    double frequency = 1000;
+	ros::Rate loop_rate(frequency); 
 	
 	/* Publisher */
 	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1);
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 	ros::Time t;
     double dt = 0.0;
 
-    ros::Duration(1.0).sleep();
+    //ros::Duration(1.0).sleep();
 
 	while (ros::ok()){
     
@@ -124,6 +124,7 @@ int main(int argc, char **argv)
 
         if (!start){
             t_start = t.toSec();
+            cout<<"Tempo iniziale:"<<t_start;
             start = true;
         }else if(dt<(duration-period)){
             dt = t.toSec() - t_start;

@@ -26,6 +26,7 @@
 #include "panda_controllers/link_params.h"
 #include "panda_controllers/log_adaptive_joints.h"
 #include "panda_controllers/flag.h"
+#include "panda_controllers/Vec7D.h"
 
 #include "utils/ThunderPanda.h"
 #include "utils/utils_param.h"
@@ -63,7 +64,16 @@ private:
     double dt;
     ros::Time time_now;
     Eigen::Affine3d T0EE;
-    
+
+    // colonne matrice di massa
+    Eigen::VectorXd m1;
+    Eigen::VectorXd m2;
+    Eigen::VectorXd m3;
+    Eigen::VectorXd m4;
+    Eigen::VectorXd m5;
+    Eigen::VectorXd m6;
+    Eigen::VectorXd m7;
+
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     
     Eigen::Matrix<double, 7, 1> tau_limit;
@@ -80,8 +90,10 @@ private:
     /* Gain for parameters */
 
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
+    Eigen::Matrix<double, 14 ,14> A;
     Eigen::Matrix<double, 14 ,7> B;
     Eigen::Matrix<double, 14, 14> P;
+    Eigen::Matrix<double, 14, 14> Q;
     bool update_param_flag;
  
     /* Defining q_current, dot_q_current, and tau_cmd */
@@ -91,6 +103,7 @@ private:
     Eigen::Matrix<double, 7, 1> dot_q_curr_old;
     Eigen::Matrix<double, 7, 1> ddot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
+    Eigen::Matrix<double, 7, 1> ddot_q_curr_old;
     
     /* Error and dot error feedback */
     
@@ -137,7 +150,9 @@ private:
     Eigen::Matrix<double, 7, 1> saturateTorqueRate (
         const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
         const Eigen::Matrix<double, 7, 1>& tau_J_d);
-    
+    // Eigen::Matrix<double, 14, 14> solveContinuousLyapunov(const Eigen::Matrix<double,14,14>& A, const Eigen::Matrix<double,14,14>& Q);
+
+
     Eigen::Matrix<double, 7, 1> tau_J_d;
 
     static constexpr double kDeltaTauMax {1.0};
@@ -149,6 +164,7 @@ private:
     ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
+    ros::Publisher pub_deb_;
     
     /* Setting Command Callback*/
     
@@ -170,6 +186,7 @@ private:
 
 	panda_controllers::log_adaptive_joints msg_log;
     panda_controllers::point msg_config;
+    panda_controllers::Vec7D msg_deb;
 };
 
 }

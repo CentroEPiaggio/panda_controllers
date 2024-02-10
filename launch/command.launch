@@ -5,12 +5,12 @@
     <arg name="package"         default="panda_controllers" />
     
     <!-- set -->
-    <arg name="controller_name" default="backstepping_controller" /> <!-- backstepping_controller, computed_torque_controller --> 
-    <arg name="command_name"    default="command_cartesian" /> <!-- command_cartesian, command_joints -->
+    <arg name="controller_name" default="computed_torque_mod_controller" /> <!-- backstepping_controller, computed_torque_controller, CT_mod_OS --> 
+    <arg name="command_name"    default="com_joints_sin_node" /> <!-- command_cartesian, command_joints, com_joints_sin_node -->
 
     <!-- flag -->
     <arg name="clik"            default="false" />
-    <arg name="flag_node"       default="false" />
+    <arg name="flag_node"       default="true" />
 
     <group ns="$(arg controller_name)">
         <!-- load yaml -->
@@ -23,5 +23,19 @@
         <!-- load adaptiveFlag -->
         <node pkg="$(arg package)" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />
     </group>
+
+
+    <!-- rosbag -->
+    <arg name="t1"      value="/computed_torque_mod_controller/current_config"/>
+    <arg name="t2"      value="/computed_torque_mod_controller/debug"/>
+    <arg name="t3"      value="/computed_torque_mod_controller/command_joints"/>
+    <arg name="t4"      value="/computed_torque_mod_controller/logging"/>
+    <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
+   
+    <arg name="bag_path"    default="/home/tommy/bagfiles"/>
+    <arg name="bag_name"    default="$(arg bag_path)/rosbag_modRes"/>
+    <arg name="duration"    default="60"/>
+    
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
 
 </launch>

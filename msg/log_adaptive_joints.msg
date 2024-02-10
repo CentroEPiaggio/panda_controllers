@@ -12,3 +12,5 @@ float64[7] tau_cmd
 
 float64[7] error_q
 float64[7] dot_error_q
+float64[7] q_cur
+float64[7] ddot_q_curr

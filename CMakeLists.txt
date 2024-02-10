@@ -37,6 +37,7 @@ add_message_files(FILES
 	point.msg
 	link_params.msg
 	flag.msg
+	Vec7D.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -73,6 +74,8 @@ catkin_package(
 
 add_library(${PROJECT_NAME}   
 	src/computed_torque.cpp #Computed Torque controller
+	src/computed_torque_mod.cpp #Computed Torque modified
+	src/CT_mod_OS.cpp #Computed Torque modified Operative space
 	src/backstepping.cpp #Backstepping controller
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	src/gen_regr_fun.cpp
@@ -128,6 +131,18 @@ add_dependencies(command_joints_node
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
+
+add_executable(com_joints_sin_node
+	src/com_joints_sin.cpp
+)
+target_link_libraries(com_joints_sin_node
+	${catkin_LIBRARIES}
+)
+add_dependencies(com_joints_sin_node
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
 )

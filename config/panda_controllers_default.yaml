@@ -18,19 +18,59 @@ computed_torque_controller:
     joint_names: *jointNames
     
     # --- Controller parameters --- #
-    kp1: 300.0   #default: 120.0
-    kp2: 150.0   #default: 70.0
-    kp3: 30.0    #default: 50.0
-    kv1: 30.0
-    kv2: 15.0
-    kv3: 3.0
+    kp1: 10.0   #default: 120.0
+    kp2: 5.0   #default: 70.0
+    kp3: 1.0    #default: 50.0
+    kv1: 10.0
+    kv2: 5.0
+    kv3: 1.0
     dt: 0.001
-    gainRlinks: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]                   # gain for R matrix
+    # gainRlinks: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]                   # gain for R matrix
+    gainRlinks: [1, 1, 1, 1, 1, 1, 1] 
     gainRparam: [1, 0.1, 0.01]                          # gain proportional to [mass, mass*length, mass*length^2] 
     update_param: false
-    P11: [0.5349, 0.0667, 0.0667, 0.0667, 0.0836, 0.0836, 0.2222]
-    P22: [0.4703, 5.0167, 5.0167, 5.0167, 5.0333, 5.0333, 5.1667]
-    Pout: [-0.5, -0.5, -0.5, -0.5, -0.5, -0.5, -0.5]
+    # P11: [0.5349, 0.0667, 0.0667, 0.0667, 0.0836, 0.0836, 0.2222]
+    # P22: [0.4703, 5.0167, 5.0167, 5.0167, 5.0333, 5.0333, 5.1667]
+    # Pout: [-0.5, -0.5, -0.5, -0.5, -0.5, -0.5, -0.5]
+    P11: [0.0056, 0.0056, 0.0056, 0.0056, 0.0062, 0.0062, 0.0150]
+    P22: [0.0055, 0.0055, 0.0055, 0.0055, 0.0060, 0.0060, 0.0100]
+    Pout: [-0.005, -0.005, -0.005, -0.005, -0.005, -0.005, -0.005]
+
+computed_torque_mod_controller:
+    type: panda_controllers/ComputedTorqueMod
+    arm_id: panda
+    joint_names: *jointNames
+    
+    # --- Controller parameters --- #
+    kp1: 10.0   #default: 120.0
+    kp2: 5.0   #default: 70.0
+    kp3: 1.0    #default: 50.0
+    kv1: 10.0
+    kv2: 5.0
+    kv3: 1.0
+    dt: 0.001
+    gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
+    gainRparam: [1, 0.1, 0.01, 0.001]                          # gain proportional to [mass, mass*length, mass*length^2] 
+    update_param: false
+
+CT_mod_controller_OS:
+    type: panda_controllers/CTModOS
+    arm_id: panda
+    joint_names: *jointNames
+    
+    # --- Controller parameters --- #
+    kp1: 100.0   #default: 120.0
+    kp2: 100.0   #default: 70.0
+    kp3: 100.0    #default: 50.0
+    kv1: 50.0
+    kv2: 50.0
+    kv3: 50.0
+    dt: 0.001
+    gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
+    gainRparam: [1, 0.1, 0.01, 0.001]                   # gain proportional to [mass, mass*length, mass*length^2] 
+    gainLambda: [2.0, 2.0, 3.0, 5.0, 5.0, 5.0] 
+    update_param: false
+   
 
 backstepping_controller:
     type: panda_controllers/Backstepping
