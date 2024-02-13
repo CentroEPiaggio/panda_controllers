@@ -70,9 +70,9 @@ int main(int argc, char **argv)
             dt = t.toSec() - t_start;
         }
         
-        qr << 0.0027+0.30*sin((M_PI)*dt), -0.30+0.30*sin((M_PI/2)*dt), 0.2778+0.30*sin((M_PI/4)*dt), -2.200+0.30*sin((M_PI/4)*dt), 0.2949+0.30*sin((M_PI/6)*dt), 1.5708+0.30*sin((M_PI/6)*dt), 0.7854+0.30*sin((M_PI/8)*dt);
-        dot_qr << (M_PI)*0.30*cos((M_PI)*dt), (M_PI/2)*0.30*cos((M_PI/2)*dt), (M_PI/4)*0.30*cos((M_PI/4)*dt), (M_PI/4)*0.30*cos((M_PI/4)*dt), (M_PI/6)*0.30*cos((M_PI/6)*dt), (M_PI/6)*0.30*cos((M_PI/6)*dt), (M_PI/8)*0.30*cos((M_PI/8)*dt);
-        ddot_qr << -pow((M_PI),2)*0.30*sin((M_PI)*dt), -pow((M_PI/2),2)*0.30*sin((M_PI/2)*dt), +pow((M_PI/4),2)*0.30*sin((M_PI/4)*dt), -pow((M_PI/4),2)*0.30*sin((M_PI/4)*dt), -pow((M_PI/6),2)*0.30*sin((M_PI/6)*dt), -pow((M_PI/6),2)*0.30*sin((M_PI/6)*dt), -pow((M_PI/8),2)*0.30*sin((M_PI/8)*dt);
+        qr << 0.30*sin(1.5*(M_PI)*dt), -0.30+0.30*sin(2*(M_PI/2)*dt), 0.30*sin(2*(M_PI/4)*dt), -2.356+0.30*sin(2*(M_PI/4)*dt), 0.30*sin(2*(M_PI/6)*dt), 1.5708+0.30*sin(2*(M_PI/6)*dt), 0.7854+0.30*sin(2*(M_PI/8)*dt);
+        dot_qr << 1.5*(M_PI)*0.30*cos(1.5*(M_PI)*dt), 2*(M_PI/2)*0.30*cos(2*(M_PI/2)*dt), 2*(M_PI/4)*0.30*cos(2*(M_PI/4)*dt), 2*(M_PI/4)*0.30*cos(2*(M_PI/4)*dt), 2*(M_PI/6)*0.30*cos(2*(M_PI/6)*dt), 2*(M_PI/6)*0.30*cos(2*(M_PI/6)*dt), 2*(M_PI/8)*0.30*cos(2*(M_PI/8)*dt);
+        ddot_qr << -pow((M_PI),2)*0.30*sin((M_PI)*dt), -pow(2*(M_PI/2),2)*0.30*sin(2*(M_PI/2)*dt), +pow(2*(M_PI/4),2)*0.30*sin(2*(M_PI/4)*dt), -pow(2*(M_PI/4),2)*0.30*sin(2*(M_PI/4)*dt), -pow(2*(M_PI/6),2)*0.30*sin(2*(M_PI/6)*dt), -pow(2*(M_PI/6),2)*0.30*sin(2*(M_PI/6)*dt), -pow(2*(M_PI/8),2)*0.30*sin(2*(M_PI/8)*dt);
         
         for(int i=0;i<NJ;i++){
             command.position[i] = qr(i);

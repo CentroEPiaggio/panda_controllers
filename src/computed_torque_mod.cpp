@@ -208,6 +208,7 @@ namespace panda_controllers{
 
         q_est = q_curr;
         dq_est = dot_q_curr;
+        buffer_dq.push_back(dot_q_curr);
 
         /* Compute error (PARTE AGGIUNTA DI INIZIALIZZAZIONE)*/
         error.setZero();
@@ -220,12 +221,12 @@ namespace panda_controllers{
         /* Update regressor */
         fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
         fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
-
+    
     }
 
 
     void ComputedTorqueMod::update(const ros::Time&, const ros::Duration& period){
-
+        
         /* Solito mappaggio già visto nell'inizializzazione*/
         franka::RobotState robot_state = state_handle_->getRobotState();
 	    std::array<double, 49> mass_array = model_handle_->getMass();
@@ -248,24 +249,36 @@ namespace panda_controllers{
         T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // matrice di trasformazione omogenea che mi fa passare da s.d.r base a s.d.r EE
         q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+
+        
+
+        aggiungiDato(buffer_dq, dot_q_curr, 8);
+
+        //Media dei dati nella finestra del filtro
+        dq_est = calcolaMedia(buffer_dq);
+        dot_q_curr = dq_est;
         
         // q_est_old = q_est;
         // q_est = q_est + 0.9*(q_curr - q_est);
         // dot_q_curr = (q_curr - q_est_old)/dt;
 
-        dq_est_old = dq_est;
-        dq_est = dq_est + 0.1*(dot_q_curr - dq_est);
-        ddot_q_curr = (dq_est - dq_est_old)/dt; // ricavo accelerazione corrente del giunto attraverso definizione 
-        // dot_q_curr_old = dot_q_curr; // aggiorno il valore di dot_q_curr_old per il prossimo update
-        // dot_q_curr = dq_est; // Prova per rendere meno rumorosa velocità
+        ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
+        dot_q_curr_old = dot_q_curr;
 
+        aggiungiDato(buffer_ddq, ddot_q_curr, 8);
 
+        //Media dei dati nella finestra del filtro
+        ddot_q_curr = calcolaMedia(buffer_ddq);
+
+        // dq_est.setZero();
+        // ddot_q_curr_old.setZero();
         // Filro semplice per ddot_q_curr(tipo feeding filter)
         // ddot_q_curr = 0.8*ddot_q_curr + 0.2*ddot_q_curr_old;
         // ddot_q_curr_old = ddot_q_curr;
 
         /* tau_J_d is the desired link-side joint torque sensor signals "without gravity" (un concetto più teorico ideale per inseguimento dato da franka?)*/
 	    tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
+        // tau_J = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J.data());
 
         /* Saturate desired velocity to avoid limits*/  
         // for (int i = 0; i < 7; ++i){
@@ -299,11 +312,18 @@ namespace panda_controllers{
 	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
+
+        tau_J = tau_cmd + G;
+        aggiungiDato(buffer_tau, tau_J, 8);
+
+        // Media dei dati nella finestra del filtro
+        tau_cmd = calcolaMedia(buffer_tau);
         
+        err_param = tau_J - Y_norm*param;
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = Rinv*(Y_mod.transpose()*dot_error + Y_norm.transpose()*0.001*(tau_cmd - Y_norm*param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.1*Rinv*(Y_mod.transpose()*dot_error + Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
 	    }
 
@@ -318,7 +338,9 @@ namespace panda_controllers{
         /* command torque to joint */
         tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
        
-        /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
+
+
+        // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
@@ -340,7 +362,8 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link5, param.segment(40, PARAM));
         fillMsgLink(msg_log.link6, param.segment(50, PARAM));
         fillMsgLink(msg_log.link7, param.segment(60, PARAM));
-        fillMsg(msg_log.tau_cmd, tau_cmd);
+        fillMsg(msg_log.tau_cmd, err_param);
+        fillMsg(msg_log.ddot_q_curr, ddot_q_curr);
 
         msg_config.header.stamp  = time_now; // publico tempo attuale nodo
         msg_config.xyz.x = T0EE.translation()(0); 
@@ -354,6 +377,25 @@ namespace panda_controllers{
     void ComputedTorqueMod::stopping(const ros::Time&)
     {
 	//TO DO
+    }
+
+
+    // Funzione per l'aggiunta di un dato al buffer_dq
+    void ComputedTorqueMod::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
+        buffer_.push_back(dato_);
+        if (buffer_.size() > lunghezza_finestra) {
+            buffer_.erase(buffer_.begin());
+        }
+    }
+
+    // Funzione per il calcolo della media
+    Eigen::Matrix<double,7, 1> ComputedTorqueMod::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
+        Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
+        for (const auto& vettore : buffer_) {
+            media += vettore;
+        }
+        media /= buffer_.size();
+        return media;
     }
 
     /* Check for the effort commanded */
@@ -371,7 +413,7 @@ namespace panda_controllers{
 	    return tau_d_saturated;
     }
 
-    void ComputedTorqueMod::setCommandCB(const sensor_msgs::JointState::ConstPtr& msg)
+    void ComputedTorqueMod::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
     {
         command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
         command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());

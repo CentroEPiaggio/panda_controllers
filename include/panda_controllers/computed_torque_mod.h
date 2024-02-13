@@ -28,6 +28,7 @@
 #include "panda_controllers/flag.h"
 
 #include "utils/ThunderPanda.h"
+// #include "utils/FiltroPassaBasso.h"
 #include "utils/utils_param.h"
 
 #define     DEBUG   0
@@ -62,8 +63,16 @@ namespace panda_controllers
         
         double dt;
         ros::Time time_now;
+       
         Eigen::Affine3d T0EE;
-        
+
+        /*Variabili filtro Media mobile*/
+        std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
+        std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
+        std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
+        int lunghezza_finestra = 10;
+
+
         // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
         
         Eigen::Matrix<double, 7, 1> tau_limit;
@@ -96,6 +105,8 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> q_est;
         Eigen::Matrix<double, 7, 1> q_est_old;
         Eigen::Matrix<double, 7, 1> tau_cmd;
+        Eigen::Matrix<double, 7, 1> tau_J;
+        Eigen::Matrix<double, 7, 1> err_param;
         
         /* Error and dot error feedback */
         
@@ -149,6 +160,11 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> tau_J_d;
 
         static constexpr double kDeltaTauMax {1.0};
+
+
+        /*Filter function*/
+        void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
+        Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
         
         /* ROS variables */
         
@@ -169,6 +185,9 @@ namespace panda_controllers
         std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
         std::vector<hardware_interface::JointHandle> joint_handles_;
 
+
+        /* Definizione variabile filtro*/
+        // FiltroPassaBasso filtro;
 
         /* Message */
         

@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "command_cartesian_node");
 	ros::NodeHandle node_handle;
-    double frequency = 1000;
+    double frequency = 500;
 	ros::Rate loop_rate(frequency); 
 	
 	/* Publisher */
