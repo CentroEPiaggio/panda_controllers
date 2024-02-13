@@ -19,21 +19,22 @@
     <arg name="topics"      value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/SIM_PRELAB_3"/>
+    <arg name="bag_name"    default="/media/franka/PANDA_LAZY/lab_13ottobre/video/hand/LAB_hand_2_LINK7"/>
     <arg name="duration"    default="70"/>
     
     <!-- rosbag file name -->
-    <arg name="gainLambda"  default="L(100.0_1.0)"/>
-    <arg name="gainR"       default="Ri1(1_0.1_0.01)"/>
-    <arg name="gainKd"      default="Kd(10.0)"/>
-    <arg name="adapt"       default="true"/>
+    <arg name="gainLambda"  default="L(2.0_2.0)"/>
+    <arg name="gainR"       default="Ri0.1(1_0.1_0.01_0.001)"/>
+    <arg name="gainKd"      default="Kd(20.0_10.0_2.0)"/>
+    <arg name="adapt"       default="$(arg flag_node)"/>
     <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
-    <arg name="param_off"   default="p2"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="param_off"   default="pW"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gain"        default="$(arg gainLambda)_$(arg gainR)_$(arg gainKd)"/>
     
+    
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
-        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
-    </node>
+        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg param_off) $(arg topics)">
+    </node><!-- duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)" -->
 
     <group ns="backstepping_controller">
         <node pkg="$(arg package)" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />

@@ -68,8 +68,7 @@ int main(int argc, char **argv)
 	}
 
     /* initialize trajectory pointer */
-    void (*traj_ptr)(const double, const vec7d);
-    
+    void (*traj_ptr)(const double, const vec7d);    
     switch (flag_traj)
     {
     case 1:
@@ -87,12 +86,13 @@ int main(int argc, char **argv)
 	ros::Time t;
     double dt = 0.0;
 
-    ros::Duration(1.0).sleep();
+    ros::Duration(2.0).sleep();
 
 	while (ros::ok()){
     
 		ros::spinOnce();
         t = ros::Time::now();
+
 
         if (!start){
             t_start = t.toSec();
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
             traj_ptr = stay_in_q0;
             end_motion = true;
         }
-
+        
         (*traj_ptr)(dt,q_start);
         msg_joints.header.stamp = t;
 

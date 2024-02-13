@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); 
 	
 	/* Publisher */
-	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
+	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1000);
 	
 	/* Subscriber */
 	ros::Subscriber sub_des_pose = node_handle.subscribe<panda_controllers::desTrajEE>("command_cartesian", 1, &desPoseCallback);
@@ -99,6 +99,7 @@ int main(int argc, char **argv)
     qr.setZero();
     qr << 0,-0.7854, 0, -2.3562, 0, 1.5708, 0.7854;
     // qr_old.setZero();
+    // qr_old = qr;
     dot_qr.setZero();
     ddot_qr.setZero();
 

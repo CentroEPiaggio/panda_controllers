@@ -14,7 +14,7 @@
 #include "library/RobReg.h"
 #include "library/RobDyn.h"
 
-#define NJ 7
+#define NJ 2
 #define PARAM 10
 
 using namespace regrob;
@@ -185,6 +185,39 @@ int main(){
     cout<<"\ntau_cmd_dyn:\n"<<tau_cmd_dyn<<endl;
     cout<<"\ntau_cmd_reg:\n"<<tau_cmd_reg<<endl;
     cout<<"\nfunziona diff tau_cmd:\n"<<tau_cmd_dyn-tau_cmd_reg<<endl;
+
+    /* Get Casadi Functions */
+    std::vector<casadi::Function> kin_vec, reg_vec, dyn_vec, all_vec;
+    kin_vec = kinrobot.getCasadiFunctions();
+    reg_vec = regrobot.getCasadiFunctions();
+    dyn_vec = dynrobot.getCasadiFunctions();
+
+    /* Merge casadi function */
+    int dim1, dim2,dim3;
+    dim1 = kin_vec.size();
+    dim2 = reg_vec.size();
+    dim3 = dyn_vec.size();
+
+    for (int i=2; i<dim1; i++){     // exclude kinematic and jacobian
+        all_vec.push_back(kin_vec[i]);
+    }
+    for (int i=0; i<dim2; i++){
+        all_vec.push_back(reg_vec[i]);
+    }
+    for (int i=2; i<dim3; i++){     // exclude kinematic and jacobian
+        all_vec.push_back(dyn_vec[i]);
+    }
+    if(all_vec.size()!=dim1+dim2+dim3-4) cout<<"Merge Error"<<endl;
+
+    /* Generate merge code */
+    std::string relativePath = "";
+
+    std::filesystem::path currentPath = std::filesystem::current_path();
+    std::string absolutePath = currentPath / relativePath;
+    std::cout << "Absolute path: " << absolutePath << std::endl;
+
+    regrobot.generate_mergeCode(all_vec, absolutePath, "regr_fun_3R_classic");
+
 
     return 0;
 }

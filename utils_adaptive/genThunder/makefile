@@ -1,7 +1,7 @@
 CC = g++
 LFLAGS = -lcasadi -lyaml-cpp
 CFLAGS = -std=c++17
-MAIN = main_Thunder
+MAIN = main_Thunder_test
 MOD1 = RobKinBasic
 MOD2 = RobKinAdv
 MOD3 = RobReg

@@ -7,10 +7,10 @@
     <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />
     
     <!-- flag -->
-    <arg name="command_node"    default="true" />
-    <arg name="flag_node"       default="true" />
-    <arg name="clik"            default="true" />
-    <arg name="homing"          default="false" />
+    <arg name="command_cartesian"   default="true" />
+    <arg name="flag_node"           default="false" />
+    <arg name="clik"                default="$(arg command_cartesian)" />
+    <arg name="homing"              default="false" />
 
     <!-- rosbag -->
     <arg name="t1"      value="/computed_torque_controller/current_config"/>
@@ -20,18 +20,18 @@
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/SIM_CT_2"/>
+    <arg name="bag_name"    default="$(arg bag_path)/LAB_CT_1"/>
     <arg name="duration"    default="65"/>
     
     <!-- rosbag file name -->
-    <arg name="gainR"       default="Ri1(1_0.1_0.01)"/>
-    <arg name="adapt"       default="true"/>
+    <arg name="gainR"       default="Ri1(1_0.1_0.01_0.001)"/>
+    <arg name="adapt"       default="$(arg flag_node)"/>
     <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
-    <arg name="param_off"   default="p2"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="param_off"   default="p0"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gain"        default="$(arg gainR)"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
-        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)">
+        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg param_off) $(arg topics)">
     </node>
     
     <group ns="computed_torque_controller">
@@ -40,9 +40,10 @@
         <node pkg="panda_controllers" type="command_joints_node" name="command_joints_node" output="screen" if="$(arg homing)" />
     </group>
 
-    <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_node)" >
+    <include file="$(find panda_controllers)/launch/command.launch" if="$(arg command_cartesian)" >
         <arg name="controller_name" value="computed_torque_controller" />
         <arg name="clik"            value="$(arg clik)" />
+        <arg name="flag_node"       value="$(arg flag_node)" />
     </include>
 
 </launch>

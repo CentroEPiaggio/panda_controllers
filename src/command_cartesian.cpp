@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); 
 	
 	/* Publisher */
-	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1);
+	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1000);
 	
 	/* Subscriber */
 	ros::Subscriber sub_pose = node_handle.subscribe<panda_controllers::point>("current_config", 1, &poseCallback);
@@ -103,6 +103,9 @@ int main(int argc, char **argv)
     case 3:
         traj_ptr = trajFun;
         duration = 50.0;
+        break;
+    case 4:
+        traj_ptr = stay_in_p0;
         break;
     default:
         traj_ptr = stay_in_p0;
@@ -187,9 +190,13 @@ void lissajous(const double dt_, const vec3d p0){
     double t0 = 1.0/(4*b);
     //std::cout<<t0<<std::endl;
     dt = dt_;
-    x0 = p0(0) + offX;
+/*     x0 = p0(0) + offX;
     y0 = p0(1) + offY;
-    z0 = p0(2) + offZ;
+    z0 = p0(2) + offZ; */
+    x0 = 0.380 + offX;
+    y0 = 0.000 + offY;
+    z0 = 0.400 + offZ;
+        
 
     position_t << 
         x0 + A * std::sin(2*M_PI * a * (dt-t0) + dx),

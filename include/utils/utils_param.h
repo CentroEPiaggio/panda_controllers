@@ -136,16 +136,12 @@ namespace regrob{
             param_dyn(i*np+1,0) = OiGi(0);
             param_dyn(i*np+2,0) = OiGi(1);
             param_dyn(i*np+3,0) = OiGi(2);
-            param_dyn(i*np+4,0) = IOi(0,0);
-            param_dyn(i*np+5,0) = IOi(0,1);
-            param_dyn(i*np+6,0) = IOi(0,2);
-            param_dyn(i*np+7,0) = IOi(1,1);
-            param_dyn(i*np+8,0) = IOi(1,2);
-            param_dyn(i*np+9,0) = IOi(2,2);
-/*             std::cout<<"\nmi "<<i<<" = "<<mi<<"\n";
-            std::cout<<"\nOiGi "<<i<<" = \n"<<OiGi<<"\n";
-            std::cout<<"\n ============================== \n"; */
-
+            param_dyn(i*np+4,0) = IGi(0,0);
+            param_dyn(i*np+5,0) = IGi(0,1);
+            param_dyn(i*np+6,0) = IGi(0,2);
+            param_dyn(i*np+7,0) = IGi(1,1);
+            param_dyn(i*np+8,0) = IGi(1,2);
+            param_dyn(i*np+9,0) = IGi(2,2);
         }
     }
 
