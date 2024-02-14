@@ -252,7 +252,7 @@ namespace panda_controllers{
 
         
 
-        aggiungiDato(buffer_dq, dot_q_curr, 4);
+        aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
 
         //Media dei dati nella finestra del filtro
         dq_est = calcolaMedia(buffer_dq);
@@ -265,7 +265,7 @@ namespace panda_controllers{
         ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
         dot_q_curr_old = dot_q_curr;
 
-        aggiungiDato(buffer_ddq, ddot_q_curr, 4);
+        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
 
         //Media dei dati nella finestra del filtro
         ddot_q_curr = calcolaMedia(buffer_ddq);
@@ -314,7 +314,7 @@ namespace panda_controllers{
         Y_norm = fastRegMat.getReg_gen();
 
         tau_J = tau_cmd + G;
-        aggiungiDato(buffer_tau, tau_J, 4);
+        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
         tau_cmd = calcolaMedia(buffer_tau);
@@ -323,7 +323,7 @@ namespace panda_controllers{
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.1*Rinv*(Y_mod.transpose()*dot_error + Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
 	    }
 
@@ -337,7 +337,8 @@ namespace panda_controllers{
 
         /* command torque to joint */
         tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
-       
+        // tau_cmd = Mest * command_dot_dot_q_d + Cest * dot_q_curr  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
+
 
 
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */

@@ -2,7 +2,7 @@
 <!-- to use computed_torque_controller on real panda -->
 <launch>
 
-  <arg name="robot_ip" default="172.16.0.3"/>
+  <arg name="robot_ip" default="172.16.0.104"/>
   <arg name="load_gripper" default="false" />
 
   <include file="$(find franka_control)/launch/franka_control.launch" >
@@ -10,13 +10,16 @@
     <arg name="load_gripper" value="$(arg load_gripper)" />
   </include>
 
+  <!-- set controller -->
+	<arg name="controller_name" 	default="computed_torque_mod_controller" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller, CT_mod_controller_OS -->
+
   <!-- load initial guess parameters -->
-  <group ns="computed_torque_controller">
+  <group ns="$(arg controller_name)">
     <rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG.yaml" />
   </group>
 
   <!-- load controller parameters -->
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="computed_torque_controller"/>
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg controller_name)"/>
 
 </launch>

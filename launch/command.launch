@@ -32,9 +32,9 @@
     <arg name="t4"      value="/computed_torque_mod_controller/logging"/>
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
-    <arg name="bag_path"    default="/home/tommy/bagfiles"/>
-    <arg name="bag_name"    default="$(arg bag_path)/rosbag_modRes2"/>
-    <arg name="duration"    default="60"/>
+    <arg name="bag_path"    default="$(find panda_controllers)/bags"/>
+    <arg name="bag_name"    default="$(arg bag_path)/rosbag_ExpModResAdp_win6_res03_adp0005"/>
+    <arg name="duration"    default="30"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
 

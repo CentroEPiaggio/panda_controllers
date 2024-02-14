@@ -70,7 +70,7 @@ namespace panda_controllers
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
-        int lunghezza_finestra = 10;
+        const int WIN_LEN = 6;
 
 
         // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html

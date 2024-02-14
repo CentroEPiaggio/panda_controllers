@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	panda_controllers::flag msg_update_flag;
 
 	ros::Time t;
-	ros::Duration(1.0).sleep();
+	// ros::Duration(1.0).sleep();
     
 	while (ros::ok()){
     
