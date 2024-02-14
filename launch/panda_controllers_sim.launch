@@ -5,7 +5,7 @@
 		- backstepping_controller
 		- computed_torque_controller
 		- computed_torque_mod_controller
-		- CT_mod_OS
+		- CT_mod_controller_OS
 	- la traiettoria su rviz -->
 <launch>
 
@@ -20,7 +20,7 @@
 	<arg name="rosbag_CT"			value="false" />
     
 	<!-- set controller -->
-	<arg name="controller_name" 	default="computed_torque_mod_controller" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller -->
+	<arg name="controller_name" 	default="CT_mod_controller_OS" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller -->
 	
 	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" /> <!-- File che carica valori di costanti quali valori di k e dt -->

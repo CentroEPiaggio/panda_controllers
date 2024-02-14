@@ -157,6 +157,7 @@ private:
 	Eigen::Matrix<double,6,NJ> myJacEE;
     Eigen::Matrix<double,6,NJ> mydot_JacEE;
 	Eigen::Matrix<double,NJ,6> mypJacEE;
+    Eigen::Matrix<double,6,NJ> mypJacEETran;
 	Eigen::Matrix<double,NJ,6> mydot_pJacEE;
 
     /* Object Regressor Slotine Li*/

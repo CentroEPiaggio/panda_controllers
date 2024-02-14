@@ -281,7 +281,8 @@ namespace panda_controllers{
         myJacEE = fastRegMat.getJac_gen();
         mydot_JacEE = fastRegMat.getDotJac_gen();
 	    // mypJacEE = fastRegMat.getPinvJac_gen();
-        mypJacEE = ((jacobian*jacobian.transpose()).inverse()*jacobian).transpose();
+        mypJacEE = jacobian.transpose()*((jacobian*jacobian.transpose()).inverse()); // pseudo-inversa destra di J
+        mypJacEETran = ((jacobian*jacobian.transpose()).inverse())*jacobian; // pseudo-inversa sinistra di J trasposto
 	    mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
         
         // ROS_INFO_STREAM("Differenza jacobiano:" << myJacEE-jacobian);
@@ -308,10 +309,7 @@ namespace panda_controllers{
 	    error.tail(3) = vect(Rs_tilde);
 	    dot_error.tail(3) = L.transpose()*ee_ang_vel_cmd-L*ee_omega;
         
-        if (l == 0) {
-            ROS_INFO_STREAM("errore velocita:" << dot_error << "Errore posizione:" << error);    
-            l++;
-        }
+
 
         /* Compute reference */
         ee_vel_cmd_tot << ee_vel_cmd, L.transpose()*ee_ang_vel_cmd;
@@ -357,20 +355,20 @@ namespace panda_controllers{
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
         
         /*Matrici nello spazio operativo*/
-        MestXi = mypJacEE.transpose()*Mest*mypJacEE;
+        MestXi = mypJacEETran*Mest*mypJacEE;
         // hestXi = mypJacEE.transpose()*(Cest*dot_q_curr + Gest) - MestXi*mydot_JacEE*dot_q_curr;
-        CestXi = (mypJacEE.transpose()*Cest - MestXi*mydot_JacEE)*mypJacEE;
-        GestXi = mypJacEE.transpose()*Gest;
+        CestXi = (mypJacEETran*Cest - MestXi*mydot_JacEE)*mypJacEE;
+        GestXi = mypJacEETran*Gest;
         // Eigen::JacobiSVD<Eigen::MatrixXd> svd(CestXi);
         // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1); 
 
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
 
         // /*Command in operative space*/
-        F_cmd = MestXi*ee_acc_cmd_tot + CestXi*ee_vel_cmd_tot + GestXi + Kp*error + Kv*dot_error; 
+        F_cmd = MestXi*ee_acc_cmd_tot.setZero() + CestXi*ee_vel_cmd_tot.setZero()  + Kp*error.setZero() + Kv*dot_error.setZero(); 
 
         // /* command torque to joint */
-        tau_cmd = jacobian.transpose()*F_cmd - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
+        tau_cmd = jacobian.transpose()*F_cmd; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
        
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);

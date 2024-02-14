@@ -252,7 +252,7 @@ namespace panda_controllers{
 
         
 
-        aggiungiDato(buffer_dq, dot_q_curr, 8);
+        aggiungiDato(buffer_dq, dot_q_curr, 4);
 
         //Media dei dati nella finestra del filtro
         dq_est = calcolaMedia(buffer_dq);
@@ -265,7 +265,7 @@ namespace panda_controllers{
         ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
         dot_q_curr_old = dot_q_curr;
 
-        aggiungiDato(buffer_ddq, ddot_q_curr, 8);
+        aggiungiDato(buffer_ddq, ddot_q_curr, 4);
 
         //Media dei dati nella finestra del filtro
         ddot_q_curr = calcolaMedia(buffer_ddq);
@@ -314,7 +314,7 @@ namespace panda_controllers{
         Y_norm = fastRegMat.getReg_gen();
 
         tau_J = tau_cmd + G;
-        aggiungiDato(buffer_tau, tau_J, 8);
+        aggiungiDato(buffer_tau, tau_J, 4);
 
         // Media dei dati nella finestra del filtro
         tau_cmd = calcolaMedia(buffer_tau);
