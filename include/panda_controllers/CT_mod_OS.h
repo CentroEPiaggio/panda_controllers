@@ -99,6 +99,7 @@ private:
     /* Defining q_current, dot_q_current, s and tau_cmd */
 
     Eigen::Matrix<double, NJ, 1> q_curr;
+    Eigen::Matrix<double, NJ, 1> q_c; // vettore giunti meta corsa
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
@@ -107,12 +108,21 @@ private:
     Eigen::Matrix<double, NJ, 1> s;
     Eigen::Matrix<double, NJ, 1> tau_cmd;
     Eigen::Matrix<double, 6, 1> F_cmd; // Forza commandata agente sull'EE
+    Eigen::Matrix<double, 6, 1> vel_cur;
     Eigen::Matrix<double, NJ, 1> tau_tilde;
     
     /* Error and dot error feedback */
     
     Eigen::Matrix<double, 6, 1> error;
     Eigen::Matrix<double, 6, 1> dot_error;
+    Eigen::Matrix<double, 6, 1> ddot_error;
+
+    Eigen::Vector3d ee_position, ee_velocity, ee_acceleration;
+    Eigen::Vector3d ee_omega;
+
+    Eigen::Matrix<double,3,3> ee_rot;
+    Eigen::Matrix<double,3,3> Rs_tilde;
+    Eigen::Matrix<double,6,6> L, L_dot;
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
     
@@ -141,6 +151,7 @@ private:
     /* Mass Matrix and Coriolis vector with regressor calculation*/
     Eigen::Matrix<double, 7, 7> Mest;
     Eigen::Matrix<double, 7, 7> Cest;
+    Eigen::Matrix<double, 7, 7> I7;
     Eigen::Matrix<double, 7, 1> Gest;
     
     /* Mass Matrix and Coriolis vector with regressor calculation in operative space*/
@@ -154,12 +165,17 @@ private:
     Eigen::Matrix<double, NJ, NJ*PARAM> Y;
 	
 	/* Pseudo-inverse of jacobian and its derivative matrices */
-	Eigen::Matrix<double,6,NJ> myJacEE;
-    Eigen::Matrix<double,6,NJ> mydot_JacEE;
-	Eigen::Matrix<double,NJ,6> mypJacEE;
-    Eigen::Matrix<double,6,NJ> mypJacEETran;
-	Eigen::Matrix<double,NJ,6> mydot_pJacEE;
+	Eigen::Matrix<double,6,NJ> J;
+    Eigen::Matrix<double,6,NJ> J_dot;
+	Eigen::Matrix<double,NJ,6> J_pinv;
+    Eigen::Matrix<double,6,NJ> J_T_pinv;
+	Eigen::Matrix<double,NJ,6> J_dot_pinv;
 
+    Eigen::Matrix<double,6,NJ> Ja;
+    Eigen::Matrix<double,6,NJ> Ja_dot;
+	Eigen::Matrix<double,NJ,6> Ja_pinv;
+    Eigen::Matrix<double,6,NJ> Ja_T_pinv;
+	Eigen::Matrix<double,NJ,6> Ja_dot_pinv;
     /* Object Regressor Slotine Li*/
 
     regrob::thunderPanda fastRegMat;

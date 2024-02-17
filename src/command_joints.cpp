@@ -46,14 +46,14 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "command_joints_node");
 	ros::NodeHandle node_handle;
-    double frequency = 100;
+    double frequency = 500;
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore (messaggio più lento di nodo di controllo che ha frequenza di campionamento di 1000Hz)
 
 	/* Publisher */
 	ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1); // invio messaggio di comando(elemento di collegamento con il nodo di controllo)
 
 	/* Subscriber */
-	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/joint_states", 1,  &jointsCallback);
+	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1,  &jointsCallback);
 
 	/* Message for /computed_torque_controller/command */
 	sensor_msgs::JointState msg_joints;

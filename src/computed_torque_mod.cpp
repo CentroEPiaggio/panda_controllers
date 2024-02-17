@@ -149,7 +149,7 @@ namespace panda_controllers{
         Rlink(2,2) = Rlink(1,1);
         Rlink(3,3) = Rlink(1,1);
         Rlink(4,4) = gainRparam[2];
-        Rlink(5,5) = gainRparam[3];
+        Rlink(5,5) = gainRparam[3]; // Termini misti tensore di inerzia stimati meno
         Rlink(6,6) = Rlink(5,5);
         Rlink(7,7) = Rlink(4,4);
         Rlink(8,8) = Rlink(5,5);
@@ -323,7 +323,7 @@ namespace panda_controllers{
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.1*Rinv*(Y_mod.transpose()*dot_error + Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.02*Rinv*(Y_mod.transpose()*dot_error + Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
 	    }
 

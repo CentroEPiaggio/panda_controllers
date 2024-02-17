@@ -38,7 +38,7 @@ namespace panda_controllers{
         Kp = Eigen::MatrixXd::Identity(6, 6);
         Kp(0,0) = kp1; 
         Kp(1,1) = kp1; 
-        Kp(2,2) = kp2; 
+        Kp(2,2) = kp1; 
         Kp(3,3) = kp3; 
         Kp(4,4) = kp3; 
         Kp(5,5) = kp3; 
@@ -47,7 +47,7 @@ namespace panda_controllers{
         Kv = Eigen::MatrixXd::Identity(6, 6);
         Kv(0,0) = kv1; 
         Kv(1,1) = kv1; 
-        Kv(2,2) = kv2; 
+        Kv(2,2) = kv1; 
         Kv(3,3) = kv3; 
         Kv(4,4) = kv3; 
         Kv(5,5) = kv3; 
@@ -199,17 +199,17 @@ namespace panda_controllers{
         /* Mapping actual joints position, actual joints velocity, Mass matrix and Coriolis vector onto Matrix form  */
 	    q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	    dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
-        jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+        // J = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 	  
 
         /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
 	   	ee_pos_cmd = T0EE.translation();
 	    ee_rot_cmd = T0EE.linear();
 	
-    	ee_vel_cmd = jacobian.topRows(3)*dot_q_curr;
+    	ee_vel_cmd.setZero();
 	    ee_acc_cmd.setZero();
 
-	    ee_ang_vel_cmd = jacobian.bottomRows(3)*dot_q_curr;
+	    ee_ang_vel_cmd.setZero();
 	    ee_ang_acc_cmd.setZero();
         
     	/* Compute error */
@@ -220,6 +220,9 @@ namespace panda_controllers{
 		dot_qr.setZero();
 	    ddot_qr.setZero();
 
+
+        // definizionw vettore fine corsa
+        q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
         /* Defining the NEW gains */
         Kp_xi = Kp;
@@ -234,16 +237,10 @@ namespace panda_controllers{
 
 
     void CTModOS::update(const ros::Time&, const ros::Duration& period){
-        Eigen::Vector3d ee_position, ee_velocity;
-	    Eigen::Vector3d ee_omega;
-	    Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
-	    Eigen::VectorXd tmp_position(6), tmp_velocity(6);
-	
-  	    Eigen::Matrix<double,3,3> ee_rot;
-  	    Eigen::Matrix<double,3,3> Rs_tilde;
-  	    Eigen::Matrix<double,3,3> L, dotL;
 
 	    Eigen::Matrix<double,6,6> tmp_conversion0, tmp_conversion1, tmp_conversion2;
+        Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
+        Eigen::VectorXd tmp_position(6), tmp_velocity(6);
 
 
         /* Solito mappaggio già visto nell'inizializzazione*/
@@ -254,7 +251,7 @@ namespace panda_controllers{
 	    // C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 	    G = Eigen::Map<Eigen::Matrix<double, 7, 1>> (model_handle_->getGravity().data());
 
-        jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+        // jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 
        /* Actual position and velocity of the joints */
         T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // matrice di trasformazione omogenea che mi fa passare da s.d.r base a s.d.r EE
@@ -274,59 +271,75 @@ namespace panda_controllers{
         //     }    
 	    // }
 
-        /* Update pseudo-inverse of jacobian and its derivative */
+        /* Update pseudo-inverse of J and its derivative */
     	fastRegMat.setArguments(q_curr,dot_q_curr);
 
-        /* Compute pseudo-inverse of jacobian and its derivative */
-        myJacEE = fastRegMat.getJac_gen();
-        mydot_JacEE = fastRegMat.getDotJac_gen();
-	    // mypJacEE = fastRegMat.getPinvJac_gen();
-        mypJacEE = jacobian.transpose()*((jacobian*jacobian.transpose()).inverse()); // pseudo-inversa destra di J
-        mypJacEETran = ((jacobian*jacobian.transpose()).inverse())*jacobian; // pseudo-inversa sinistra di J trasposto
-	    mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+        // Jacobians
+        /* Compute pseudo-inverse of J and its derivative */
         
-        // ROS_INFO_STREAM("Differenza jacobiano:" << myJacEE-jacobian);
+        Rs_tilde = ee_rot_cmd*ee_rot.transpose();
+        J = fastRegMat.getJac_gen();
+        J_dot = fastRegMat.getDotJac_gen();
+        Eigen::Matrix<double,3,3> L_tmp, L_dot_tmp;
+	    L_tmp = createL(ee_rot_cmd, ee_rot); 
+	    L_dot_tmp = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
+        L.setIdentity();
+        L.block(3, 3, 3, 3) = L_tmp;
+        L_dot.setZero();
+        L_dot.block(3, 3, 3, 3) = L_dot_tmp;
+        // Analytical Jacobians
+        Ja = L * J;
+        Ja_dot = L_dot * J + L * J_dot;
+	    // J_pinv = fastRegMat.getPinvJac_gen();
+        J_pinv = J.transpose()*((J*J.transpose()).inverse()); // pseudo-inversa destra di J
+        J_T_pinv = ((J*J.transpose()).inverse())*J; // pseudo-inversa sinistra di J trasposto
+	    // J_dot_pinv = fastRegMat.getDotPinvJac_gen();
+        Ja_pinv =  Ja.transpose()*((Ja*Ja.transpose()).inverse());
+        Ja_T_pinv = ((Ja*Ja.transpose()).inverse())*Ja; // pseudo-inversa sinistra di J trasposto
+	    
+        
+        // ROS_INFO_STREAM("Differenza jacobiano:" << J-J);
 
         /* Compute error translation */
 
     	ee_position = T0EE.translation();
-	    ee_velocity = jacobian.topRows(3)*dot_q_curr;
+	    ee_velocity = J.topRows(3)*dot_q_curr;
+        ee_acceleration = J.topRows(3)*ddot_q_curr + J_dot.topRows(3)*dot_q_curr;
 
 
     	error.head(3) = ee_pos_cmd - ee_position;
     	dot_error.head(3) = ee_vel_cmd - ee_velocity;
+        // ddot_error.head(3) = ee_acc_cmd - ee_acceleration;
+        vel_cur.head(3) = ee_velocity;
         // ROS_INFO_STREAM(ee_vel_cmd);
 
     	/* Compute error orientation */
 
   	    ee_rot = T0EE.linear();
-	    ee_omega = jacobian.bottomRows(3)*dot_q_curr;
-
-	    Rs_tilde = ee_rot_cmd*ee_rot.transpose();
-	    L = createL(ee_rot_cmd, ee_rot); // penso sia il calcolo del Lagrangiano
-	    dotL = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
+	    ee_omega = J.bottomRows(3)*dot_q_curr;
+        vel_cur.tail(3) = ee_omega;
 	
 	    error.tail(3) = vect(Rs_tilde);
-	    dot_error.tail(3) = L.transpose()*ee_ang_vel_cmd-L*ee_omega;
-        
+	    dot_error.tail(3) = L_tmp.transpose()*ee_ang_vel_cmd-L_tmp*ee_omega;
+        // ddot_error.tail(3) =  ddot_error.head(3) = ee_acc_cmd - ee_acceleration; // da correggere
 
 
         /* Compute reference */
-        ee_vel_cmd_tot << ee_vel_cmd, L.transpose()*ee_ang_vel_cmd;
-        ee_acc_cmd_tot << ee_acc_cmd, dotL.transpose()*ee_ang_vel_cmd + L.transpose()*ee_ang_acc_cmd;
+        ee_vel_cmd_tot << ee_vel_cmd, L_tmp.transpose()*ee_ang_vel_cmd;
+        ee_acc_cmd_tot << ee_acc_cmd, L_dot_tmp.transpose()*ee_ang_vel_cmd + L_tmp.transpose()*ee_ang_acc_cmd;
         
-        tmp_position = ee_vel_cmd_tot + Lambda * error;
-        tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
+        // tmp_position = ee_vel_cmd_tot + Lambda * error;
+        // tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
         
         tmp_conversion0.setIdentity();
-        tmp_conversion0.block(3, 3, 3, 3) = L;
+        tmp_conversion0.block(3, 3, 3, 3) = L_tmp;
         tmp_conversion1.setIdentity();
-        tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
+        tmp_conversion1.block(3, 3, 3, 3) = L_tmp.inverse();
         tmp_conversion2.setZero();
-        tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
+        tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        dot_qr = mypJacEE*tmp_conversion1*tmp_position;
-	    ddot_qr = mypJacEE*tmp_conversion1*tmp_velocity + mypJacEE*tmp_conversion2*tmp_position +mydot_pJacEE*tmp_conversion1*tmp_position;
+        // dot_qr = J_pinv*tmp_conversion1*tmp_position;
+	    // ddot_qr = J_pinv*tmp_conversion1*tmp_velocity + J_pinv*tmp_conversion2*tmp_position +J_dot_pinv*tmp_conversion1*tmp_position;
 
 
         /* Sempre stessi valori dei guadagni*/
@@ -334,7 +347,7 @@ namespace panda_controllers{
     	Kv_xi = Kv;
 
         /* Update and Compute Regressor */
-	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr);
+	    fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*ee_vel_cmd_tot, J_pinv*ee_acc_cmd_tot);
 	    Y = fastRegMat.getReg_gen(); // calcolo del regressore
         
        
@@ -342,7 +355,7 @@ namespace panda_controllers{
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = Rinv*Y.transpose()*mypJacEE*dot_error; // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = Rinv*Y.transpose()*J_pinv*dot_error; // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
 	    }
 
@@ -355,23 +368,26 @@ namespace panda_controllers{
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
         
         /*Matrici nello spazio operativo*/
-        MestXi = mypJacEETran*Mest*mypJacEE;
-        // hestXi = mypJacEE.transpose()*(Cest*dot_q_curr + Gest) - MestXi*mydot_JacEE*dot_q_curr;
-        CestXi = (mypJacEETran*Cest - MestXi*mydot_JacEE)*mypJacEE;
-        GestXi = mypJacEETran*Gest;
+        MestXi = J_T_pinv*Mest*J_pinv;
+        // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
+        CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
+        GestXi = J_T_pinv*Gest;
         // Eigen::JacobiSVD<Eigen::MatrixXd> svd(CestXi);
         // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1); 
 
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
 
         // /*Command in operative space*/
-        F_cmd = MestXi*ee_acc_cmd_tot.setZero() + CestXi*ee_vel_cmd_tot.setZero()  + Kp*error.setZero() + Kv*dot_error.setZero(); 
+        F_cmd = MestXi*tmp_conversion1*ee_acc_cmd_tot + CestXi*tmp_conversion1*ee_vel_cmd_tot + GestXi + L.transpose()*Kp*error + L.transpose()*Kv*dot_error - MestXi*tmp_conversion2*vel_cur - MestXi*J_dot*J_pinv*tmp_conversion1*ee_vel_cmd_tot;
+        // F_cmd = MestXi*ddot_error.setZero() + CestXi*dot_error  + GestXi + Kp*error + Kv*dot_error + MestXi*J_dot*J_pinv*error - J_T_pinv*(Cest*dot_q_curr + Mest*ddot_q_curr);  // legge disperazione 
 
         // /* command torque to joint */
-        tau_cmd = jacobian.transpose()*F_cmd; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
-       
+        tau_cmd = J.transpose()*F_cmd + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr) - G; 
+        // tau_cmd = -Mest*J_pinv*J_dot*dot_q_curr + Mest*J_pinv*ee_acc_cmd_tot + J.transpose()*Kv*dot_error + J.transpose()*Kp*error + Cest*dot_q_curr + Gest - G;
+        // tau_cmd = tau_cmd - 0.1*(I7.setIdentity() - J_pinv*J)*dot_q_curr;
+
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+	    // tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {

@@ -10,9 +10,9 @@
     <!-- load -->
     <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />
     
-    <include file="$(find panda_controllers)/launch/computed_torque_controller.launch" if="$(arg lab)"/>
+    <!-- <include file="$(find panda_controllers)/launch/computed_torque_controller.launch" if="$(arg lab)"/> -->
     
-    <group ns="computed_torque_controller">
+    <group ns="computed_torque_mod_controller">
         <rosparam command="load" file="$(arg yaml_file)" />
         <node name="command_joints_node" pkg="$(arg package)" type="command_joints_node" output="screen"/>
     </group>
