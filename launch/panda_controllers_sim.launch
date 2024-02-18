@@ -25,7 +25,7 @@
 	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" /> <!-- File che carica valori di costanti quali valori di k e dt -->
 	<group ns="$(arg controller_name)">
-		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG_p20.yaml" /> <!--File che carica parametri dinamici per regressore stimati, ricavati attraverso dati URDF del franka con convernzione D-H -->
+		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG_p10.yaml" /> <!--File che carica parametri dinamici per regressore stimati, ricavati attraverso dati URDF del franka con convernzione D-H -->
 	</group>
 
 	<!-- to load gazebo (and rviz) -->

@@ -58,9 +58,7 @@ public:
 
 private:
   
-    bool flag = false;           // flag for check of the desired command velocity
-    const double tol_s = 0.01;
-    const double UB_s = 1;
+    bool flag = true;           // flag for check of the desired command velocity
     
     /* Definig the timing */
     
@@ -107,6 +105,8 @@ private:
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> s;
     Eigen::Matrix<double, NJ, 1> tau_cmd;
+    Eigen::Matrix<double, NJ, 1> tau_J;
+    Eigen::Matrix<double, NJ, 1> err_param;
     Eigen::Matrix<double, 6, 1> F_cmd; // Forza commandata agente sull'EE
     Eigen::Matrix<double, 6, 1> vel_cur;
     Eigen::Matrix<double, NJ, 1> tau_tilde;
@@ -135,6 +135,11 @@ private:
     Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;         // desired command velocity 
     Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
+    const int WIN_LEN = 6;
+
     /* Parameter vector */
 
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -162,7 +167,8 @@ private:
 
     /* Regressor Matrix */
     
-    Eigen::Matrix<double, NJ, NJ*PARAM> Y;
+    Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
+    Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
 	
 	/* Pseudo-inverse of jacobian and its derivative matrices */
 	Eigen::Matrix<double,6,NJ> J;
@@ -176,12 +182,18 @@ private:
 	Eigen::Matrix<double,NJ,6> Ja_pinv;
     Eigen::Matrix<double,6,NJ> Ja_T_pinv;
 	Eigen::Matrix<double,NJ,6> Ja_dot_pinv;
+
+    Eigen::Matrix<double,NJ,NJ> P; // proiettore nel nullo
     /* Object Regressor Slotine Li*/
 
     regrob::thunderPanda fastRegMat;
 
     /* Check the effort limits */
     
+    /*Filter function*/
+    void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
+    Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
+
     Eigen::Matrix<double, NJ, 1> saturateTorqueRate (
         const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,
         const Eigen::Matrix<double, NJ, 1>& tau_J_d);

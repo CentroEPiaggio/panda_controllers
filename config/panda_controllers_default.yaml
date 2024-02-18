@@ -60,12 +60,12 @@ CT_mod_controller_OS:
     joint_names: *jointNames
     
     # --- Controller parameters --- #
-    kp1: 50.0   #default: 120.0
-    kp2: 50.0   #default: 70.0
+    kp1: 30.0   #default: 120.0
+    kp2: 30.0   #default: 70.0
     kp3: 15.0    #default: 50.0
-    kv1: 50.0
-    kv2: 50.0
-    kv3: 5.0
+    kv1: 30.0
+    kv2: 30.0
+    kv3: 2.0
     dt: 0.001
     gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
     gainRparam: [1, 0.1, 0.01, 0.001]                   # gain proportional to [mass, mass*length, mass*length^2] 

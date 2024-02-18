@@ -252,12 +252,7 @@ namespace panda_controllers{
 
         
 
-        aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
-
-        //Media dei dati nella finestra del filtro
-        dq_est = calcolaMedia(buffer_dq);
-        dot_q_curr = dq_est;
-        
+    
         // q_est_old = q_est;
         // q_est = q_est + 0.9*(q_curr - q_est);
         // dot_q_curr = (q_curr - q_est_old)/dt;
@@ -265,10 +260,6 @@ namespace panda_controllers{
         ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
         dot_q_curr_old = dot_q_curr;
 
-        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
-
-        //Media dei dati nella finestra del filtro
-        ddot_q_curr = calcolaMedia(buffer_ddq);
 
         // dq_est.setZero();
         // ddot_q_curr_old.setZero();
@@ -307,6 +298,16 @@ namespace panda_controllers{
     	Kp_apix = Kp;
     	Kv_apix = Kv;
 
+
+        aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
+        //Media dei dati nella finestra del filtro
+        dq_est = calcolaMedia(buffer_dq);
+        dot_q_curr = dq_est;
+
+        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
+        //Media dei dati nella finestra del filtro
+        ddot_q_curr = calcolaMedia(buffer_ddq);
+
         /* Update and Compute Regressor mod e Regressor Classic*/
 	    fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d);
 	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
@@ -317,7 +318,7 @@ namespace panda_controllers{
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
-        tau_cmd = calcolaMedia(buffer_tau);
+        tau_J = calcolaMedia(buffer_tau);
         
         err_param = tau_J - Y_norm*param;
 
