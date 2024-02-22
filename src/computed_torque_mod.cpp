@@ -313,7 +313,8 @@ namespace panda_controllers{
         /*Compute Friction matrix before filter*/
         Dest.setZero();
         for(int i = 0; i < 7; ++i){
-            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr(i));
+            // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr(i));
+            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr(i));
         }
         
 
@@ -336,10 +337,11 @@ namespace panda_controllers{
         Y_D_norm.setZero();
         for (int i = 0; i < 7; ++i) {
             Y_D(i, i * 2) = command_dot_q_d(i); // Imposta 1 sulla diagonale principale
-            Y_D(i, i * 2 + 1) = command_dot_q_d(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            // Y_D(i, i * 2 + 1) = command_dot_q_d(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            Y_D(i, i * 2 + 1) = command_dot_q_d(i)*deltaCompute(dot_q_curr(i));
             Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
-            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            
+            // Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i));
         }
 
         // ROS_INFO_STREAM("Y_D:" << Y_D << "Dest:" << Dest);
@@ -353,14 +355,13 @@ namespace panda_controllers{
         // Y_mod_D << Y_mod, Y_D; // concatenation
         // Y_norm_D << Y_norm, Y_D; // concatenation
         
-        err_param = tau_J - Y_norm*param;
-        err_param_frict = tau_J - Y_D_norm*param_frict;
+        err_param = tau_J - Y_norm*param - Y_D_norm*param_frict;
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
-            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param_frict));
+            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
 	    }
 
@@ -440,6 +441,17 @@ namespace panda_controllers{
         }
         media /= buffer_.size();
         return media;
+    }
+
+    double ComputedTorqueMod::deltaCompute (double a){
+        double delta;
+        
+        if (fabs(a) < 0.01){
+            delta = 0.0; 
+        }else{
+            delta = 1/fabs(a);
+        }
+        return delta;
     }
 
     /* Check for the effort commanded */

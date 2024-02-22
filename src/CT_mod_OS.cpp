@@ -361,8 +361,8 @@ namespace panda_controllers{
 
         Dest.setZero();
         for(int i = 0; i < 7; ++i){
-            // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr[i]);
-            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
+            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr[i]);
+            // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
         }
 
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
@@ -386,11 +386,11 @@ namespace panda_controllers{
         
         for (int i = 0; i < 7; ++i) {
             Y_D(i, i * 2) = dot_qr(i); // Imposta 1 sulla diagonale principale
-            // Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            Y_D(i, i * 2 + 1) = dot_qr(i)*fabs(dot_q_curr(i));
+            Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            // Y_D(i, i * 2 + 1) = dot_qr(i)*fabs(dot_q_curr(i));
             Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
-            // Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i));    
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            // Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i));    
         }
 
         tau_J = tau_cmd + G;
@@ -399,16 +399,16 @@ namespace panda_controllers{
         // Media dei dati nella finestra del filtro
         tau_J = calcolaMedia(buffer_tau);
         
-        err_param = tau_J - Y_norm*param;
-        err_param_frict = tau_J - Y_D_norm*param_frict;
+        err_param = tau_J - Y_norm*param - Y_D_norm*param_frict; 
+        // err_param_frict = tau_J - Y_D_norm*param_frict;
        
 	       
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.01*(Rinv*Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param; 
-            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param_frict));
+            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
 	    }
 

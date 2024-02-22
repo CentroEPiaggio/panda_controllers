@@ -178,6 +178,7 @@ namespace panda_controllers
         /*Filter function*/
         void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
         Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
+        double deltaCompute (double a);
         
         /* ROS variables */
         
