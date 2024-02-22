@@ -12,6 +12,10 @@
 #define     PARAM 10	// number of parameters for each link
 #endif
 
+#ifndef     FRICTION
+#define     FRICTION 2	// number of parameters for each link
+#endif
+
 namespace regrob{
     
     inline Eigen::Matrix3d hat(const Eigen::Vector3d v){ // Metodo che costruisce la omega anti-simmetrica
@@ -112,7 +116,7 @@ namespace regrob{
         }
     }
 
-    inline void reg2dyn(const int n, const int np, Eigen::Matrix<double, NJ*PARAM, 1> param_reg,  Eigen::Matrix<double, NJ*PARAM, 1> &param_dyn){ 
+    inline void reg2dyn(const int n, const int np, Eigen::Matrix<double, NJ*(PARAM), 1> param_reg,  Eigen::Matrix<double, NJ*(PARAM), 1> &param_dyn){ 
         // Da analizzare(non ben chiara la reale differenza tra paramentri del regressore e parametri dinamici)
         double mi;
         std::vector<double> parI(6);
@@ -126,10 +130,12 @@ namespace regrob{
             OiGi << param_reg(i*np+1,0), param_reg(i*np+2,0), param_reg(i*np+3,0); // vettore centri di massi cmx, cmy,cmz
             OiGi = OiGi/mi;
             parI = {param_reg(i*np+4,0), param_reg(i*np+5,0), param_reg(i*np+6,0), param_reg(i*np+7,0), param_reg(i*np+8,0), param_reg(i*np+9,0)};
+          
+
             IOi = createI(parI); // creazione matrice di inerzia
             OiGi_hat = hat(OiGi); // mi trasforma vettore centri di massa da vee form ad hat (matrice 3x3)
-
-            IGi = IOi - mi*OiGi_hat.transpose()*OiGi_hat; // (sta formula da dove viene)
+            
+            IGi = IOi - mi*OiGi_hat.transpose()*OiGi_hat; // 
 
             // cosi facendo setto il valore dei parametri dinamici che in tal caso specifico coincidono con quelli del regressore?
             param_dyn(i*np,0) = mi;
@@ -142,6 +148,45 @@ namespace regrob{
             param_dyn(i*np+7,0) = IGi(1,1);
             param_dyn(i*np+8,0) = IGi(1,2);
             param_dyn(i*np+9,0) = IGi(2,2);
+        }
+    }
+
+
+    inline void reg2dyn2(const int n, const int np, Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_reg,  Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> &param_dyn){ 
+        // Da analizzare(non ben chiara la reale differenza tra paramentri del regressore e parametri dinamici)
+        double mi;
+        std::vector<double> parI(6);
+        Eigen::Vector3d OiGi;
+        Eigen::Vector2d di;
+        Eigen::Matrix3d IGi;
+        Eigen::Matrix3d IOi;
+        Eigen::Matrix3d OiGi_hat;
+
+        for(int i=0;i<n;i++){
+            mi = param_reg(i*np,0);
+            OiGi << param_reg(i*np+1,0), param_reg(i*np+2,0), param_reg(i*np+3,0); // vettore centri di massi cmx, cmy,cmz
+            OiGi = OiGi/mi;
+            parI = {param_reg(i*np+4,0), param_reg(i*np+5,0), param_reg(i*np+6,0), param_reg(i*np+7,0), param_reg(i*np+8,0), param_reg(i*np+9,0)};
+            di << param_reg(i*np+10,0), param_reg(i*np+11,0);
+
+            IOi = createI(parI); // creazione matrice di inerzia
+            OiGi_hat = hat(OiGi); // mi trasforma vettore centri di massa da vee form ad hat (matrice 3x3)
+            
+            IGi = IOi - mi*OiGi_hat.transpose()*OiGi_hat; // 
+
+            // cosi facendo setto il valore dei parametri dinamici che in tal caso specifico coincidono con quelli del regressore?
+            param_dyn(i*np,0) = mi;
+            param_dyn(i*np+1,0) = OiGi(0);
+            param_dyn(i*np+2,0) = OiGi(1);
+            param_dyn(i*np+3,0) = OiGi(2);
+            param_dyn(i*np+4,0) = IGi(0,0);
+            param_dyn(i*np+5,0) = IGi(0,1);
+            param_dyn(i*np+6,0) = IGi(0,2);
+            param_dyn(i*np+7,0) = IGi(1,1);
+            param_dyn(i*np+8,0) = IGi(1,2);
+            param_dyn(i*np+9,0) = IGi(2,2);
+            param_dyn(i*np+10,0) = di(0);
+            param_dyn(i*np+11,0) = di(1);
         }
     }
 

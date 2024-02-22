@@ -8,3 +8,5 @@ float64 Ixz
 float64 Iyy
 float64 Iyz
 float64 Izz
+float64 d1
+float64 d2

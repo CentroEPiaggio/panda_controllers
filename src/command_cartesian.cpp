@@ -127,7 +127,6 @@ int main(int argc, char **argv)
 
         if (!start){
             t_start = t.toSec();
-            cout<<"Tempo iniziale:"<<t_start;
             start = true;
         }else if(dt<(duration-period)){
             dt = t.toSec() - t_start;

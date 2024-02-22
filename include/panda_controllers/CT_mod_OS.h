@@ -42,6 +42,10 @@
 # define    PARAM 10	// number of parameters for each link
 #endif
 
+#ifndef     FRICTION
+#define     FRICTION 2	// number of friction parameters for each link
+#endif
+
 namespace panda_controllers
 {
 
@@ -64,6 +68,7 @@ private:
     
     double dt;
     ros::Time time_now;
+    
 
     /* Robot state handle */
 
@@ -85,13 +90,14 @@ private:
     /* Gain Matrices */
     Eigen::Matrix<double, 6, 6> Lambda; 
     Eigen::Matrix<double, 6, 6> Kp; 
-    Eigen::Matrix<double, 6, 6> Kv;
+    Eigen::Matrix<double, 7, 7> Kv;
     Eigen::Matrix<double, 6, 6> Kp_xi; 
-    Eigen::Matrix<double, 6, 6> Kv_xi;
-    int l = 0;
+    Eigen::Matrix<double, 7, 7> Kv_xi;
+   
      /* Gain for parameters */
 
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
+    Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
     bool update_param_flag;
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
@@ -103,10 +109,13 @@ private:
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
-    Eigen::Matrix<double, NJ, 1> s;
+    Eigen::Matrix<double, NJ, 1> dot_error_q;
+    
+    Eigen::Matrix<double, NJ, 1> err_param;
+    Eigen::Matrix<double, 7, 1> err_param_frict;
+
     Eigen::Matrix<double, NJ, 1> tau_cmd;
     Eigen::Matrix<double, NJ, 1> tau_J;
-    Eigen::Matrix<double, NJ, 1> err_param;
     Eigen::Matrix<double, 6, 1> F_cmd; // Forza commandata agente sull'EE
     Eigen::Matrix<double, 6, 1> vel_cur;
     Eigen::Matrix<double, NJ, 1> tau_tilde;
@@ -146,6 +155,9 @@ private:
     Eigen::Matrix<double, NJ*PARAM, 1> param_init;
     Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
     Eigen::Matrix<double, NJ*PARAM, 1> param_dyn;
+    Eigen::Matrix<double, NJ*(FRICTION), 1> param_frict;
+    Eigen::Matrix<double, NJ*(FRICTION), 1> dot_param_frict;
+    Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_tot;
 
     /* Mass Matrix and Coriolis vector */
         
@@ -158,6 +170,7 @@ private:
     Eigen::Matrix<double, 7, 7> Cest;
     Eigen::Matrix<double, 7, 7> I7;
     Eigen::Matrix<double, 7, 1> Gest;
+    Eigen::Matrix<double, 7, 7> Dest; // Matrice stimata degli attriti
     
     /* Mass Matrix and Coriolis vector with regressor calculation in operative space*/
     Eigen::Matrix<double, 6, 6> MestXi;
@@ -169,6 +182,8 @@ private:
     
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
+    Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
+    Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
 	
 	/* Pseudo-inverse of jacobian and its derivative matrices */
 	Eigen::Matrix<double,6,NJ> J;
@@ -193,6 +208,7 @@ private:
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
     Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
+    double deltaCompute (double a);
 
     Eigen::Matrix<double, NJ, 1> saturateTorqueRate (
         const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,

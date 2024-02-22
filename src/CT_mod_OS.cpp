@@ -44,13 +44,14 @@ namespace panda_controllers{
         Kp(5,5) = kp3; 
 
         /* Assegno valori Kvi*/
-        Kv = Eigen::MatrixXd::Identity(6, 6);
+        Kv = Eigen::MatrixXd::Identity(7, 7);
         Kv(0,0) = kv1; 
         Kv(1,1) = kv1; 
         Kv(2,2) = kv1; 
-        Kv(3,3) = kv3; 
-        Kv(4,4) = kv3; 
-        Kv(5,5) = kv3; 
+        Kv(3,3) = kv1; 
+        Kv(4,4) = kv2; 
+        Kv(5,5) = kv2;
+        Kv(6,6) = kv3; 
 
         /*Set parametri Lambda*/
         Lambda.setIdentity();
@@ -119,7 +120,7 @@ namespace panda_controllers{
 
          /* Verifica corretta acquisizizone(da dove?) dei parametri inerziali del robot(stimati) */
         for(int i=0; i<NJ; i++){
-            double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+            double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz, d1, d2;
             if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_x", cmx) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_y", cmy) ||
@@ -129,12 +130,15 @@ namespace panda_controllers{
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Ixz", xz) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Iyy", yy) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Iyz", yz) ||
-                !node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)){
+                !node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz) ||
+                !node_handle.getParam("link"+std::to_string(i+1)+"/d1", d1)||
+                !node_handle.getParam("link"+std::to_string(i+1)+"/d2", d2)){
                 
                 ROS_ERROR("Computed_torque: Error in parsing inertial parameters!");
                 return 1;
             }
             param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz; // inserisco ad ogni passo i parametri in unica colonna in ordine
+            param_frict.segment((FRICTION)*i, FRICTION) << d1, d2;
 	    }
 
         /* Credo serva a settare il parametri dinamici del sistema (nel file backsteppinh non è usato)?*/
@@ -143,6 +147,7 @@ namespace panda_controllers{
         /* Inizializing the R gains (da capire in che modo si attribuiscono i valori) to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
 	    Eigen::Matrix<double,PARAM,PARAM> Rlink;
+        Eigen::Matrix<double,FRICTION,FRICTION> Rlink_fric;
 
         // Gestione di errore nel caso in cui parametri non trovati dal nodo di controllo
 	    if (!node_handle.getParam("gainRlinks", gainRlinks) ||
@@ -166,11 +171,16 @@ namespace panda_controllers{
         Rlink(8,8) = Rlink(5,5);
         Rlink(9,9) = Rlink(4,4);
 
+        Rlink_fric(0,0) = gainRparam[1];
+        Rlink_fric(1,1) = gainRparam[2];
+
 
         /* Calcolo la matrice inversa di R utile per la legge di controllo */
         Rinv.setZero();
+        Rinv_fric.setZero();
         for (int i = 0; i<NJ; i++){	
             Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink; // block permette di fare le operazioni blocco per blocco (dubbio su che principio calcola tale inversa).
+            Rinv_fric.block(i*(FRICTION), i*(FRICTION), FRICTION, FRICTION) = gainRlinks[i]*Rlink_fric; 
         }
 
         /* Initialize joint (torque,velocity) limits */
@@ -200,6 +210,9 @@ namespace panda_controllers{
 	    q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	    dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         // J = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+
+        dot_q_curr_old = dot_q_curr;
+        ddot_q_curr.setZero();
 	  
 
         /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
@@ -230,6 +243,7 @@ namespace panda_controllers{
         
         /* Update regressor */
         dot_param.setZero();
+        dot_param_frict.setZero();
         fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y_mod attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
 
@@ -336,13 +350,19 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        // dot_qr = J_pinv*tmp_conversion1*tmp_position;
-	    // ddot_qr = J_pinv*tmp_conversion1*tmp_velocity + J_pinv*tmp_conversion2*tmp_position +J_dot_pinv*tmp_conversion1*tmp_position;
+        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
 
+        dot_error_q = dot_qr - dot_q_curr;
 
         /* Sempre stessi valori dei guadagni*/
     	Kp_xi = Kp;
     	Kv_xi = Kv;
+
+        Dest.setZero();
+        for(int i = 0; i < 7; ++i){
+            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr[i]);
+        }
 
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         dot_q_curr = calcolaMedia(buffer_dq);
@@ -354,10 +374,22 @@ namespace panda_controllers{
 
         /* Update and Compute Regressor */
 	    // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*ee_vel_cmd_tot, J_pinv*ee_acc_cmd_tot - J_pinv*J_dot*J_pinv*ee_vel_cmd_tot);
-        fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*tmp_conversion1*ee_vel_cmd_tot, J_pinv*(tmp_conversion1*ee_acc_cmd_tot + tmp_conversion2*ee_vel_cmd_tot - J_dot*J_pinv*tmp_conversion1*ee_vel_cmd_tot));
-	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
+        // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*tmp_conversion1*ee_vel_cmd_tot, J_pinv*(tmp_conversion1*ee_acc_cmd_tot + tmp_conversion2*ee_vel_cmd_tot - J_dot*J_pinv*tmp_conversion1*ee_vel_cmd_tot));
+	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+        Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
+
+        Y_D.setZero();
+        Y_D_norm.setZero();
+        
+        for (int i = 0; i < 7; ++i) {
+            Y_D(i, i * 2) = dot_qr(i); // Imposta 1 sulla diagonale principale
+            Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            
+        }
 
         tau_J = tau_cmd + G;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
@@ -366,16 +398,23 @@ namespace panda_controllers{
         tau_J = calcolaMedia(buffer_tau);
         
         err_param = tau_J - Y_norm*param;
-        
+        err_param_frict = tau_J - Y_D_norm*param_frict;
        
-	    // dt = period.toSec();    
+	       
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.01*(Rinv*Y_mod.transpose()*J_pinv*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.01*(Rinv*Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param; 
+            dot_param_frict = 0.01*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param_frict));
+            param_frict = param_frict + dt*dot_param_frict;
 	    }
 
+         /*Riordino parametri per ogni link*/
+        for(int i = 0; i < 7; ++i){
+            param_tot.segment(i*(PARAM+FRICTION),PARAM) = param.segment(i*(PARAM),PARAM);
+            param_tot.segment(i*(PARAM+FRICTION) + PARAM,FRICTION) = param_frict.segment(i*FRICTION,FRICTION);
+        }
 
         /* update dynamic for control law */
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
@@ -391,29 +430,24 @@ namespace panda_controllers{
         // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
         CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
         GestXi = J_T_pinv*Gest;
-        // Eigen::JacobiSVD<Eigen::MatrixXd> svd(CestXi);
-        // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1); 
-        // if (flag){
-        //     ROS_INFO_STREAM("M,C,G:" << MestXi << CestXi << GestXi);
-        //     flag = false;
-        // }
+       
 
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
-        P = (I7.setIdentity() - J_pinv*J);
+        // P = (I7.setIdentity() - J_pinv*J);
 
         // /*Command in operative space*/
-        F_cmd = MestXi*tmp_conversion1*ee_acc_cmd_tot + CestXi*tmp_conversion1*ee_vel_cmd_tot + Kp*error + Kv*dot_error + MestXi*tmp_conversion2*ee_vel_cmd_tot;
+        // F_cmd = MestXi*tmp_conversion1*ee_acc_cmd_tot + CestXi*tmp_conversion1*ee_vel_cmd_tot + Kp*error + Kv*dot_error + MestXi*tmp_conversion2*ee_vel_cmd_tot;
         // F_cmd = MestXi*ee_acc_cmd_tot + CestXi*ee_vel_cmd_tot + Kp*error + Kv*dot_error;
         // F_cmd = MestXi*ddot_error.setZero() + CestXi*dot_error  + GestXi + Kp*error + Kv*dot_error + MestXi*J_dot*J_pinv*error - J_T_pinv*(Cest*dot_q_curr + Mest*ddot_q_curr);  // legge disperazione 
 
         // /* command torque to joint */
-        tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr);
+        // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr);
         // tau_cmd = (1.0*(q_c-q_curr) - 1.0*dot_q_curr); 
-        // tau_cmd = J.transpose()*F_cmd  + Gest - G;
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + Kv_xi*dot_error_q - G + Dest*dot_qr;
         // tau_cmd = -Mest*J_pinv*J_dot*dot_q_curr + Mest*J_pinv*ee_acc_cmd_tot + J.transpose()*Kv*dot_error + J.transpose()*Kp*error + Cest*dot_q_curr + Gest - G;
 
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-	    // tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
@@ -426,13 +460,13 @@ namespace panda_controllers{
 
         fillMsg(msg_log.error_pos_EE, error);
 	    fillMsg(msg_log.dot_error_pos_EE, dot_error);
-        fillMsgLink(msg_log.link1, param.segment(0, PARAM));
-        fillMsgLink(msg_log.link2, param.segment(10, PARAM));
-        fillMsgLink(msg_log.link3, param.segment(20, PARAM));
-        fillMsgLink(msg_log.link4, param.segment(30, PARAM));
-        fillMsgLink(msg_log.link5, param.segment(40, PARAM));
-        fillMsgLink(msg_log.link6, param.segment(50, PARAM));
-        fillMsgLink(msg_log.link7, param.segment(60, PARAM));
+        fillMsgLink(msg_log.link1, param_tot.segment(0, PARAM+FRICTION));
+        fillMsgLink(msg_log.link2, param_tot.segment(12, PARAM+FRICTION));
+        fillMsgLink(msg_log.link3, param_tot.segment(24, PARAM+FRICTION));
+        fillMsgLink(msg_log.link4, param_tot.segment(36, PARAM+FRICTION));
+        fillMsgLink(msg_log.link5, param_tot.segment(48, PARAM+FRICTION));
+        fillMsgLink(msg_log.link6, param_tot.segment(60, PARAM+FRICTION));
+        fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
         fillMsg(msg_log.tau_cmd, tau_cmd);
 
         msg_config.header.stamp  = time_now; // publico tempo attuale nodo
@@ -450,6 +484,7 @@ namespace panda_controllers{
 	//TO DO
     }
 
+
     void CTModOS::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
         buffer_.push_back(dato_);
         if (buffer_.size() > lunghezza_finestra) {
@@ -465,6 +500,17 @@ namespace panda_controllers{
         }
         media /= buffer_.size();
         return media;
+    }
+
+    double CTModOS::deltaCompute(double a){
+        double delta;
+        
+        if (a < 0.01 && a > -0.01){
+            delta = 0.0; 
+        }else{
+            delta = 1/fabs(a);
+        }
+        return delta;
     }
 
     /* Check for the effort commanded */
@@ -512,6 +558,8 @@ namespace panda_controllers{
         msg_.Iyy = data_[7];
         msg_.Iyz = data_[8];
         msg_.Izz = data_[9];
+        msg_.d1 = data_[10];
+        msg_.d2 = data_[11];
     }
 
 }

@@ -41,6 +41,10 @@
 #define     PARAM 10	// number of parameters for each link
 #endif
 
+#ifndef     FRICTION
+#define     FRICTION 2	// number of friction parameters for each link
+#endif
+
 namespace panda_controllers
 {
 
@@ -88,9 +92,8 @@ namespace panda_controllers
 
         /* Gain for parameters */
 
-        Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
-        Eigen::Matrix<double, 14 ,7> B;
-        Eigen::Matrix<double, 14, 14> P;
+        Eigen::Matrix<double, NJ*(PARAM), NJ*(PARAM)> Rinv;
+        Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
         bool update_param_flag;
     
         /* Defining q_current, dot_q_current, and tau_cmd */
@@ -107,6 +110,8 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> tau_cmd;
         Eigen::Matrix<double, 7, 1> tau_J;
         Eigen::Matrix<double, 7, 1> err_param;
+        Eigen::Matrix<double, 7, 1> err_param_frict;
+        
         
         /* Error and dot error feedback */
         
@@ -128,24 +133,32 @@ namespace panda_controllers
         /* Mass Matrix and Coriolis vector */
         
         Eigen::Matrix<double, 7, 7> M;
-        Eigen::Matrix<double, 7, 1> C; // ?
+        Eigen::Matrix<double, 7, 1> C; 
         Eigen::Matrix<double, 7, 1> G;
 
         /* Mass Matrix and Coriolis vector with regressor calculation*/
         Eigen::Matrix<double, 7, 7> Mest;
         Eigen::Matrix<double, 7, 7> Cest;
+        Eigen::Matrix<double, 7, 7> Dest; // Matrice stimata degli attriti
         Eigen::Matrix<double, 7, 1> Gest;
         
         /* Parameter vector */
 
-        Eigen::Matrix<double, NJ*PARAM, 1> param;    // usfull for calculate an estimate of M, C, G (equivale al pigreco)
-        Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
-        Eigen::Matrix<double, NJ*PARAM, 1> param_dyn; 
+        Eigen::Matrix<double, NJ*(PARAM), 1> param;    // usfull for calculate an estimate of M, C, G (equivale al pigreco)
+        Eigen::Matrix<double, NJ*(PARAM), 1> dot_param;
+        Eigen::Matrix<double, NJ*(FRICTION), 1> param_frict;
+        Eigen::Matrix<double, NJ*(FRICTION), 1> dot_param_frict;
+        Eigen::Matrix<double, NJ*(PARAM), 1> param_dyn; 
+        Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_tot;
 
         /* Regressor Matrix */
         
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
+        Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
+        Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
+        // Eigen::Matrix<double, NJ, NJ*(PARAM+FRICTION)> Y_mod_D;
+        // Eigen::Matrix<double, NJ, NJ*(PARAM+FRICTION)> Y_norm_D;
 
         /* Object Regressor Slotine Li*/
 

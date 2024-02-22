@@ -108,7 +108,7 @@ namespace panda_controllers{
 
          /* Verifica corretta acquisizizone(da dove?) dei parametri inerziali del robot(stimati) */
         for(int i=0; i<NJ; i++){
-            double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+            double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz,d1, d2;
             if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_x", cmx) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_y", cmy) ||
@@ -118,12 +118,15 @@ namespace panda_controllers{
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Ixz", xz) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Iyy", yy) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Iyz", yz) ||
-                !node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)){
+                !node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)||
+                !node_handle.getParam("link"+std::to_string(i+1)+"/d1", d1)||
+                !node_handle.getParam("link"+std::to_string(i+1)+"/d2", d2)){
                 
                 ROS_ERROR("Computed_torque: Error in parsing inertial parameters!");
                 return 1;
             }
-            param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz; // inserisco ad ogni passo i parametri in unica colonna in ordine
+            param.segment((PARAM)*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz; // inserisco ad ogni passo i parametri in unica colonna in ordine
+            param_frict.segment((FRICTION)*i, FRICTION) << d1, d2;
 	    }
 
         /* Credo serva a settare il parametri dinamici del sistema (nel file backsteppinh non è usato)?*/
@@ -132,6 +135,7 @@ namespace panda_controllers{
         /* Inizializing the R gains (da capire in che modo si attribuiscono i valori) to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
 	    Eigen::Matrix<double,PARAM,PARAM> Rlink;
+        Eigen::Matrix<double,FRICTION,FRICTION> Rlink_fric;
 
         // Gestione di errore nel caso in cui parametri non trovati dal nodo di controllo
 	    if (!node_handle.getParam("gainRlinks", gainRlinks) ||
@@ -155,11 +159,17 @@ namespace panda_controllers{
         Rlink(8,8) = Rlink(5,5);
         Rlink(9,9) = Rlink(4,4);
 
+        Rlink_fric.setZero();
+        Rlink_fric(0,0) = gainRparam[1];
+        Rlink_fric(1,1) = gainRparam[2];
+
 
         /* Calcolo la matrice inversa di R utile per la legge di controllo */
         Rinv.setZero();
+        Rinv_fric.setZero();
         for (int i = 0; i<NJ; i++){	
-            Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink; // block permette di fare le operazioni blocco per blocco (dubbio su che principio calcola tale inversa).
+            Rinv.block(i*(PARAM), i*(PARAM), PARAM, PARAM) = gainRlinks[i]*Rlink; // block permette di fare le operazioni blocco per blocco (dubbio su che principio calcola tale inversa).
+            Rinv_fric.block(i*(FRICTION), i*(FRICTION), FRICTION, FRICTION) = gainRlinks[i]*Rlink_fric; 
         }
 
         /* Initialize joint (torque,velocity) limits */
@@ -205,6 +215,7 @@ namespace panda_controllers{
         ddot_q_curr_old = (dot_q_curr - dot_q_curr_old) / dt;
         ddot_q_curr.setZero();
         dot_param.setZero();
+        dot_param_frict.setZero();
 
         q_est = q_curr;
         dq_est = dot_q_curr;
@@ -213,6 +224,7 @@ namespace panda_controllers{
         /* Compute error (PARTE AGGIUNTA DI INIZIALIZZAZIONE)*/
         error.setZero();
 	    dot_error.setZero();
+        param_tot.setZero();
 
         /* Defining the NEW gains */
         Kp_apix = Kp;
@@ -298,14 +310,18 @@ namespace panda_controllers{
     	Kp_apix = Kp;
     	Kv_apix = Kv;
 
+        /*Compute Friction matrix before filter*/
+        Dest.setZero();
+        for(int i = 0; i < 7; ++i){
+            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr(i));
+        }
+        
 
+        // Filtro velocità e accelerazioni dopo calcolo errore
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
-        //Media dei dati nella finestra del filtro
         dq_est = calcolaMedia(buffer_dq);
         dot_q_curr = dq_est;
-
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
-        //Media dei dati nella finestra del filtro
         ddot_q_curr = calcolaMedia(buffer_ddq);
 
         /* Update and Compute Regressor mod e Regressor Classic*/
@@ -314,20 +330,46 @@ namespace panda_controllers{
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
 
+
+        /*Calcolo a meno del regressore di attrito*/
+        Y_D.setZero();
+        Y_D_norm.setZero();
+        for (int i = 0; i < 7; ++i) {
+            Y_D(i, i * 2) = command_dot_q_d(i); // Imposta 1 sulla diagonale principale
+            Y_D(i, i * 2 + 1) = command_dot_q_d(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
+            
+        }
+
+        // ROS_INFO_STREAM("Y_D:" << Y_D << "Dest:" << Dest);
+
+        /*Gravità compensata non va nel calcolo del residuo*/
         tau_J = tau_cmd + G;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
         tau_J = calcolaMedia(buffer_tau);
+        // Y_mod_D << Y_mod, Y_D; // concatenation
+        // Y_norm_D << Y_norm, Y_D; // concatenation
         
         err_param = tau_J - Y_norm*param;
+        err_param_frict = tau_J - Y_D_norm*param_frict;
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
+            dot_param_frict = 0.01*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param_frict));
+            param_frict = param_frict + dt*dot_param_frict;
 	    }
 
+        /*Riordino parametri per ogni link*/
+        for(int i = 0; i < 7; ++i){
+            param_tot.segment(i*(PARAM+FRICTION),PARAM) = param.segment(i*(PARAM),PARAM);
+            param_tot.segment(i*(PARAM+FRICTION) + PARAM,FRICTION) = param_frict.segment(i*FRICTION,FRICTION);
+        }
+        // ROS_INFO_STREAM(param_tot);
 
         /* update dynamic for control law */
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
@@ -337,7 +379,7 @@ namespace panda_controllers{
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
 
         /* command torque to joint */
-        tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
+        tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G + Dest*command_dot_q_d; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
         // tau_cmd = Mest * command_dot_dot_q_d + Cest * dot_q_curr  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
 
 
@@ -357,13 +399,13 @@ namespace panda_controllers{
         fillMsg(msg_log.error_q, error);
         fillMsg(msg_log.dot_error_q, dot_error);
         fillMsg(msg_log.q_cur, q_curr);
-        fillMsgLink(msg_log.link1, param.segment(0, PARAM));
-        fillMsgLink(msg_log.link2, param.segment(10, PARAM));
-        fillMsgLink(msg_log.link3, param.segment(20, PARAM));
-        fillMsgLink(msg_log.link4, param.segment(30, PARAM));
-        fillMsgLink(msg_log.link5, param.segment(40, PARAM));
-        fillMsgLink(msg_log.link6, param.segment(50, PARAM));
-        fillMsgLink(msg_log.link7, param.segment(60, PARAM));
+        fillMsgLink(msg_log.link1, param_tot.segment(0, PARAM+FRICTION));
+        fillMsgLink(msg_log.link2, param_tot.segment(12, PARAM+FRICTION));
+        fillMsgLink(msg_log.link3, param_tot.segment(24, PARAM+FRICTION));
+        fillMsgLink(msg_log.link4, param_tot.segment(36, PARAM+FRICTION));
+        fillMsgLink(msg_log.link5, param_tot.segment(48, PARAM+FRICTION));
+        fillMsgLink(msg_log.link6, param_tot.segment(60, PARAM+FRICTION));
+        fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
         fillMsg(msg_log.tau_cmd, err_param);
         fillMsg(msg_log.ddot_q_curr, ddot_q_curr);
 
@@ -446,6 +488,8 @@ namespace panda_controllers{
         msg_.Iyy = data_[7];
         msg_.Iyz = data_[8];
         msg_.Izz = data_[9];
+        msg_.d1 = data_[10];
+        msg_.d2 = data_[11];
     }
 
 }
