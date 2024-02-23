@@ -374,7 +374,7 @@ namespace panda_controllers{
 
         /* update dynamic for control law */
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
         Mest = fastRegMat.getMass_gen(); // matrice di massa stimata usando regressore
         Cest = fastRegMat.getCoriolis_gen(); // matrice di coriolis stimata usando regressore
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore

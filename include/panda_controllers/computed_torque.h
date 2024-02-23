@@ -104,6 +104,12 @@ private:
     Eigen::Matrix<double, 7, 1> ddot_q_curr;
     Eigen::Matrix<double, 7, 1> tau_cmd;
     Eigen::Matrix<double, 7, 1> ddot_q_curr_old;
+
+    /*Variabili filtro Media mobile*/
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
+    const int WIN_LEN = 6;
     
     /* Error and dot error feedback */
     
@@ -145,6 +151,10 @@ private:
 
     regrob::thunderPanda fastRegMat;
 
+    /*Filter function*/
+    void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
+    Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
+    
     /* Check the effort limits */
     
     Eigen::Matrix<double, 7, 1> saturateTorqueRate (

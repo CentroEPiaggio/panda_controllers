@@ -171,6 +171,7 @@ namespace panda_controllers{
         Rlink(8,8) = Rlink(5,5);
         Rlink(9,9) = Rlink(4,4);
 
+        Rlink_fric.setZero();
         Rlink_fric(0,0) = gainRparam[1];
         Rlink_fric(1,1) = gainRparam[2];
 
@@ -213,7 +214,7 @@ namespace panda_controllers{
 
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
-	  
+        // buffer_dq.push_back(dot_q_curr);
 
         /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
 	   	ee_pos_cmd = T0EE.translation();
@@ -392,6 +393,7 @@ namespace panda_controllers{
             Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
             // Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i));    
         }
+        // ROS_INFO_STREAM(Rinv_fric);
 
         tau_J = tau_cmd + G;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
@@ -421,7 +423,7 @@ namespace panda_controllers{
 
         /* update dynamic for control law */
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
         Mest = fastRegMat.getMass_gen(); // matrice di massa stimata usando regressore
         Cest = fastRegMat.getCoriolis_gen(); // matrice di coriolis stimata usando regressore
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore

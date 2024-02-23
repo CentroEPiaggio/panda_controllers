@@ -314,6 +314,12 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	Kp_apix = Kp;
 	Kv_apix = Kv;
 
+	// Filtro velocità e accelerazioni dopo calcolo errore
+    aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
+    dot_q_curr = calcolaMedia(buffer_dq);
+    aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
+    ddot_q_curr = calcolaMedia(buffer_ddq);
+
 	/* Update and Compute Regressor */
 	
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
@@ -407,6 +413,24 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 void ComputedTorque::stopping(const ros::Time&)
 {
 	//TO DO
+}
+
+ // Funzione per l'aggiunta di un dato al buffer_dq
+void ComputedTorque::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
+    buffer_.push_back(dato_);
+    if (buffer_.size() > lunghezza_finestra) {
+        buffer_.erase(buffer_.begin());
+    }
+}
+
+    // Funzione per il calcolo della media
+Eigen::Matrix<double,7, 1> ComputedTorque::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
+    Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
+    for (const auto& vettore : buffer_) {
+        media += vettore;
+    }
+    media /= buffer_.size();
+    return media;
 }
 
 /* Check for the effort commanded */
