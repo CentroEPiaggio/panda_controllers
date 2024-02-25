@@ -14,12 +14,15 @@ find_package(catkin REQUIRED COMPONENTS
 	franka_msgs
 	hardware_interface
 	message_generation
+	eigen_conversions
 	pluginlib
 	realtime_tools
 	roscpp
 	rospy
 	sensor_msgs
 	visualization_msgs
+	controller_manager_msgs
+	trajectory_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -44,6 +47,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
+  sensor_msgs
 )
 
 include_directories(
@@ -59,6 +63,7 @@ catkin_package(
 	LIBRARIES ${PROJECT_NAME}
 	CATKIN_DEPENDS
 	controller_interface
+	controller_manager_msgs
 	dynamic_reconfigure
 	franka_hw
 	geometry_msgs
@@ -80,11 +85,13 @@ add_library(${PROJECT_NAME}
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	src/gen_regr_fun.cpp
 	src/ThunderPanda.cpp
+	src/min_jerk.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
 	${${PROJECT_NAME}_EXPORTED_TARGETS}
 	panda_controllers ${catkin_EXPORTED_TARGETS}
+	custom_msg_generate_messages_cpp
 )
 
 add_executable(command_cartesian
@@ -113,6 +120,18 @@ add_dependencies(CLIK_node
 add_executable(adaptiveFlag_node
 	src/adaptiveFlag_node.cpp
 )
+add_executable(menu src/menu.cpp)
+add_executable(menu_core src/menu_core.cpp)
+add_executable(close_hand_node src/close_hand_node.cpp)
+add_executable(adaptive_throw src/adaptive_throw.cpp
+	src/min_jerk.cpp)
+
+# target_link_libraries(franka_throw_node ${PROJECT_NAME})
+target_link_libraries(close_hand_node ${catkin_LIBRARIES})
+target_link_libraries(adaptive_throw ${catkin_LIBRARIES})
+target_link_libraries(menu ${catkin_LIBRARIES})
+target_link_libraries(menu_core ${catkin_LIBRARIES})
+
 target_link_libraries(adaptiveFlag_node
 	${catkin_LIBRARIES}
 )

@@ -1,0 +1,17 @@
+<?xml version="1.0" ?>
+<!-- Launch throwing for backstepping or computed_torque-->
+<launch>
+    <arg name="package"         default="panda_controllers" />
+    
+    <!-- set -->
+    <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, CT_mod_controller_OS, computed_torque_controller, computed_torque_mod_controller -->
+
+    <!-- flags -->
+	<arg name="yaml_file1" default="$(find panda_controllers)/config/trajectory_param.yaml" />
+    <rosparam command="load" file="$(arg yaml_file1)" />
+	<arg name="yaml_file2" default="$(find panda_controllers)/config/adaptive_throw.yaml" />
+	<rosparam command="load" file="$(arg yaml_file2)" />
+
+	<node pkg="panda_controllers"  name="adaptive_throw" type="adaptive_throw" output="screen"/>
+
+</launch>
