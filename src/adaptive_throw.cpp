@@ -3,6 +3,7 @@
 #include <utils/min_jerk.h>
 
 /* TO DO:
+- problem on estimate trajectory continuity
 */
 
 
@@ -45,6 +46,7 @@ std:: string robot_name;
 // define q as 7x1 matrix
 Eigen::Matrix<double, 7, 1> q;
 Eigen::Vector3d p;
+Eigen::Matrix<double, 4, 1> orient;
 min_jerk_class min_jerk;
 // franka_throw_class throw_node = franka_throw_class();
 // lissagious parameters
@@ -131,22 +133,19 @@ traj_struct_cartesian estimate_traj(Eigen::Vector3d center, double tf, double t)
 }
 
 void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
-	// Eigen::Matrix3d rotation;
-	// rotation << msg->O_T_EE[0], msg->O_T_EE[4], msg->O_T_EE[8],
-	// 			msg->O_T_EE[1], msg->O_T_EE[5], msg->O_T_EE[9],
-	// 			msg->O_T_EE[2], msg->O_T_EE[6], msg->O_T_EE[10];
-	// Eigen::Quaterniond quaternion(rotation);
-	// quaternion.normalize();
-	// pos[0] = msg->O_T_EE[12];
-	// pos[1] = msg->O_T_EE[13];
-	// pos[2] = msg->O_T_EE[14];
-	// Eigen::Vector4d coeffs = quaternion.coeffs();
-	// orient(0) = coeffs(0);
-	// orient(1) = coeffs(1);
-	// orient(2) = coeffs(2);
-	// orient(3) = coeffs(3);
-	// q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->q).data());
+	Eigen::Matrix3d rotation;
+	rotation << msg->O_T_EE[0], msg->O_T_EE[4], msg->O_T_EE[8],
+				msg->O_T_EE[1], msg->O_T_EE[5], msg->O_T_EE[9],
+				msg->O_T_EE[2], msg->O_T_EE[6], msg->O_T_EE[10];
+	Eigen::Quaterniond quaternion(rotation);
+	quaternion.normalize();
 	p << msg->O_T_EE[12], msg->O_T_EE[13], msg->O_T_EE[14];
+	Eigen::Vector4d coeffs = quaternion.coeffs();
+	orient(0) = coeffs(0);
+	orient(1) = coeffs(1);
+	orient(2) = coeffs(2);
+	orient(3) = coeffs(3);
+	// q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->q).data());
 	init_p = true;
 }
 
@@ -190,6 +189,7 @@ int main(int argc, char **argv)
 	float HAND_DELAY;
 	std::vector<double> Q0_THROW;
 	std::vector<double> P0_THROW;
+	std::vector<double> P0_EST;
 	std::vector<double> QF_THROW;
 	std::vector<double> PF_THROW;
 	std::vector<double> DPF_THROW;
@@ -213,6 +213,8 @@ int main(int argc, char **argv)
 	if(!node_handle.getParam("/throw_node/QF_THROW", QF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/P0_THROW", P0_THROW))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/P0_EST", P0_EST))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/PF_THROW", PF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -279,13 +281,15 @@ int main(int argc, char **argv)
 	Eigen::Vector3d zero;
 	zero.setZero();
 	Eigen::Matrix<double, 7, 1> q0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(Q0_THROW.data(), Q0_THROW.size());
-	Eigen::Vector3d p0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());;
-	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());;
-	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());;
+	Eigen::Vector3d p0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
+	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());
+	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());
+	Eigen::Vector3d p0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_EST.data(), P0_EST.size());
 	Eigen::Vector3d pf_brake;
-	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());;
+	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
 	Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
+	Eigen::Vector3d p_saved = p0_est;	// starting point of estimating trajectory
 	// Eigen::Vector3d p_est_end;	// stopping point of estimating trajectory
 	// Eigen::Vector3d vel_est_end;	// used to save ending velocity of estimating trajectory
 	// Eigen::Vector3d vel_est_start;	// used to save starting velocity of estimating trajectory
@@ -317,11 +321,12 @@ int main(int argc, char **argv)
 	// double pos_des[3] = {1.2, 0.0, 0.0};
 	double t = 0;
 	int choice = 0;
+	int choice_2 = 0;
 	int executing = 0;
 
 	while (ros::ok()){
 		if (executing == 0){
-			cout<<"choice:   (1: save p0,  2: save pf,  3: set tf,  4: go to start,  5: throw,  6: estimate) "<<endl;
+			cout<<"choice:   (1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate) "<<endl;
 			cin>>choice;
 			if (choice == 1){
 				// --- save q, p --- //
@@ -330,41 +335,38 @@ int main(int argc, char **argv)
 				while((init_q==false) || (init_p==false)){
 					ros::spinOnce();
 				}
-				q0_throw = q;
-				p0_throw = p;
+				p_saved = p;
+				cout<<"q: ["<<q[0]<<", "<<q[1]<<", "<<q[2]<<", "<<q[3]<<", "<<q[4]<<", "<<q[5]<<", "<<q[6]<<"]"<<endl;
+				cout<<"ee_pose: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<", "<<orient[0]<<", "<<orient[1]<<", "<<orient[2]<<", "<<orient[3]<<"]"<<endl;
 				cout<<"saved!"<<endl;
 			}else if (choice == 2){
-				// --- save qf, pf --- //
-				init_q = false;
-				init_p = false;
-				while((init_q==false) || (init_p==false)){
-					ros::spinOnce();
-				}
-				qf_throw = q;
-				pf_throw = p;
-				cout<<"saved!"<<endl;
-			}else if (choice == 3){
 				// --- set tf--- //
 				cout<<"tf throwing: ";
 				cin>>tf_throw;
 				cout<<"tf estimate: ";
 				cin>>tf_est;
-			}else if (choice == 4){
-				// --- go to start --- //
-				init_p = false;
-				while(init_p==false){
-					ros::spinOnce();
+			}else if (choice == 3){
+				// --- go to --- //
+				cout<<"where:   (1: p0_throw,  2: pf_throw,  3: p0_est,  4: p_saved,     0: cancel) "<<endl;
+				cin>>choice_2;
+				if (choice_2 == 0){
+					choice = 0;
+				}else{
+					init_p = false;
+					while(init_p==false){
+						ros::spinOnce();
+					}
+					p_start = p;
+					executing = 1;
+					tf = tf_0;
 				}
-				p_start = p;
-				executing = 1;
-				tf = tf_0;
-			}else if (choice == 5){
+			}else if (choice == 4){
 				// --- throw --- //
 				first_time = true; // used for hand opening
 				pf_brake = pf_throw + dpf_throw*tf_brake/2;
 				executing = 2;
 				tf = tf_throw + tf_brake;
-			}else if (choice == 6){
+			}else if (choice == 5){
 				// --- estimate --- //
 				// trajectory center
 				init_p = false;
@@ -402,9 +404,19 @@ int main(int argc, char **argv)
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
-					// --- going to start --- //
-					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_throw, zero, zero, tf_0, t);
-
+					if (choice_2 == 1){
+						// - go to p0_throw - //
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_throw, zero, zero, tf_0, t);
+					}else if (choice_2 == 2){
+						// - go to p0_est - //
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, zero, zero, tf_0, t);
+					}else if (choice_2 == 3){
+						// - go to p_saved - //
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_est, zero, zero, tf_0, t);
+					}else if (choice_2 == 4){
+						// - go to p_saved - //
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_saved, zero, zero, tf_0, t);
+					}
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
