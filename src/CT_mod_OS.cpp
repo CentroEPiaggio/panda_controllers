@@ -256,6 +256,7 @@ namespace panda_controllers{
 	    Eigen::Matrix<double,6,6> tmp_conversion0, tmp_conversion1, tmp_conversion2;
         Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
         Eigen::VectorXd tmp_position(6), tmp_velocity(6);
+		Eigen::Matrix<double,7,7> N;
 
 
         /* Solito mappaggio già visto nell'inizializzazione*/
@@ -291,6 +292,7 @@ namespace panda_controllers{
         // J_T_pinv = J_pinv.transpose(); // pseudo-inversa sinistra di J trasposto
         J_T_pinv = ((J*J.transpose()).inverse())*J; // pseudo-inversa sinistra di J trasposto
 	    J_dot_pinv = fastRegMat.getDotPinvJac_gen();
+		N = (I7.setIdentity() - J_pinv*J);
         // Ja_pinv =  Ja.transpose()*((Ja*Ja.transpose()).inverse());
         // Ja_T_pinv = ((Ja*Ja.transpose()).inverse())*Ja; // pseudo-inversa sinistra di J trasposto
 	    
@@ -352,7 +354,7 @@ namespace panda_controllers{
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
         dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot + N*10*(q_c - q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
 
         dot_error_q = dot_qr - dot_q_curr;
 
@@ -438,7 +440,7 @@ namespace panda_controllers{
        
 
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
-        // P = (I7.setIdentity() - J_pinv*J);
+        // N = (I7.setIdentity() - J_pinv*J);
 
         // /*Command in operative space*/
         // F_cmd = MestXi*tmp_conversion1*ee_acc_cmd_tot + CestXi*tmp_conversion1*ee_vel_cmd_tot + Kp*error + Kv*dot_error + MestXi*tmp_conversion2*ee_vel_cmd_tot;
