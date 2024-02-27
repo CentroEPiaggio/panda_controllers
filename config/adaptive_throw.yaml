@@ -4,14 +4,14 @@ throw_node:
   GRIPPER: 0            # gripper used
   RATE: 1000            # hz of throwing traj
   RATE_CLOSE: 1.9       # hz of closure hand
-  HAND_DELAY: 0.6       # 0.2 dh3, 0.6 hand2, 0.4 hand1
+  HAND_DELAY: 0.5       # 0.2 dh3, 0.6 hand2, 0.4 hand1
   HAND_EFFORT_MAX: 0.15 # 0.15 hand2, 0.8 hand1
   Q0_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw start point configuration (not set)
   QF_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw end point configuration (not set)
   P0_THROW: [0.4, -0.4, 0.2]        # must coincide with Q0
-  PF_THROW: [0.4, 0.4, 0.5]         # throwing point
+  PF_THROW: [0.4, 0.2, 0.5]         # throwing point
   P0_EST: [0.4, 0.0, 0.4]           # desired center of estimating point
-  DPF_THROW: [0, 1, 1]              # throwing velocity
+  DPF_THROW: [0, 1.7, 1.7]              # throwing velocity
   TF_THROW: 1.0
   TF_BRAKE: 0.3
   TF_BRAKE_EST: 0.5

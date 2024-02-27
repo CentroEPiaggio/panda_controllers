@@ -39,7 +39,7 @@
 using namespace std;
 
 #define alpha 0.1
-bool init_flag = false;
+bool ready = false;
 bool init_q = false;
 bool init_p = false;
 std:: string robot_name;
@@ -47,6 +47,8 @@ std:: string robot_name;
 Eigen::Matrix<double, 7, 1> q;
 Eigen::Vector3d p;
 Eigen::Matrix<double, 4, 1> orient;
+Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
+Eigen::Vector3d p_end;	// used to save starting point of tragectory (go to start)
 min_jerk_class min_jerk;
 // franka_throw_class throw_node = franka_throw_class();
 // lissagious parameters
@@ -147,6 +149,11 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 	orient(3) = coeffs(3);
 	// q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->q).data());
 	init_p = true;
+	if (!ready){
+		p_start = p;
+		p_end = p;
+		ready = true;
+	}
 }
 
 // void demo_inf_XY(Eigen::Vector3d pos_i, double t){
@@ -287,7 +294,6 @@ int main(int argc, char **argv)
 	Eigen::Vector3d p0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_EST.data(), P0_EST.size());
 	Eigen::Vector3d pf_brake;
 	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
-	Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
 	Eigen::Vector3d p_saved = p0_est;	// starting point of estimating trajectory
 	// Eigen::Vector3d p_est_end;	// stopping point of estimating trajectory
@@ -313,6 +319,7 @@ int main(int argc, char **argv)
 	ros::Time t_init;
 	init_q = false;
 	init_p = false;
+	ready = false;
 	for(int i=0; i<7; i++){
 		double q_low = q_lim_low[i];
 		double q_upp = q_lim_upp[i];
@@ -326,8 +333,9 @@ int main(int argc, char **argv)
 
 	while (ros::ok()){
 		if (executing == 0){
-			cout<<"choice:   (1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate) "<<endl;
+			cout<<"choice:   (1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos) "<<endl;
 			cin>>choice;
+			while (!ready) ros::spinOnce();
 			if (choice == 1){
 				// --- save q, p --- //
 				init_q = false;
@@ -351,81 +359,94 @@ int main(int argc, char **argv)
 				cin>>choice_2;
 				if (choice_2 == 0){
 					choice = 0;
-				}else{
-					init_p = false;
-					while(init_p==false){
-						ros::spinOnce();
-					}
-					p_start = p;
+				}else {
+					p_start = p_end;
 					executing = 1;
 					tf = tf_0;
+					if (choice_2 == 1) 			p_end = p0_throw;
+					else if (choice_2 == 2) 	p_end = pf_throw;
+					else if (choice_2 == 3) 	p_end = p0_est;
+					else if (choice_2 == 4) 	p_end = p_saved;
+					else {
+						executing = 0;
+						p_end = p_start;
+					}
 				}
 			}else if (choice == 4){
 				// --- throw --- //
 				first_time = true; // used for hand opening
 				pf_brake = pf_throw + dpf_throw*tf_brake/2;
+				p_end = pf_brake;
 				executing = 2;
 				tf = tf_throw + tf_brake;
 			}else if (choice == 5){
 				// --- estimate --- //
-				// trajectory center
-				init_p = false;
-				while(init_p==false){
-					ros::spinOnce();
+				cout<<"estimation type:   (1: lissajous,  2: min-jerk,     0: cancel) "<<endl;
+				cin>>choice_2;
+				if (choice_2 == 1){
+					// trajectory center
+					p_center = p_end;
+					// set executing
+					executing = 3;
+					// // starting adaptive
+					// adaptive_flag_msg.header.stamp = ros::Time::now();
+					// adaptive_flag_msg.flag = true;
+					// pub_flagAdaptive.publish(adaptive_flag_msg);
+					// trajectory stuff
+					tf = tf_est + 1.0;
+					// obtain estimate_traj velocity
+					traj_est_start = estimate_traj(p_center, tf_est, tf_brake_est);
+					traj_est_end = estimate_traj(p_center, tf_est, tf_est);
+					traj_tmp = estimate_traj(p_center, tf_est, tf_est-tf_brake_est);
+					// vel_est_end = traj_cartesian.vel;
+					// acc_est_end = traj_cartesian.acc;
+					p_end = traj_est_end.pos;
+				} else if (choice_2 == 2){
+					pf_brake = pf_throw + dpf_throw*tf_brake/2;
+					p_end = pf_brake;
+					executing = 4;
+					tf = tf_throw + tf_brake;
 				}
-				p_center = p;
-				// set executing
-				executing = 3;
-				// starting adaptive
-				adaptive_flag_msg.header.stamp = ros::Time::now();
-				adaptive_flag_msg.flag = true;
-				pub_flagAdaptive.publish(adaptive_flag_msg);
-				// trajectory stuff
-				tf = tf_est + 1.0;
-				// obtain estimate_traj velocity
-				traj_est_start = estimate_traj(p_center, tf_est, tf_brake_est);
-				// traj_est_start = traj_cartesian;
-				// vel_est_start = traj_cartesian.vel;
-				// acc_est_start = traj_cartesian.acc;
-				traj_est_end = estimate_traj(p_center, tf_est, tf_est);
-				traj_tmp = estimate_traj(p_center, tf_est, tf_est-tf_brake_est);
-				// vel_est_end = traj_cartesian.vel;
-				// acc_est_end = traj_cartesian.acc;
+			}else if (choice == 6){
+				cout<<"adaptive:   (0: disable,  1: enable,     other: cancel) "<<endl;
+				cin>>choice_2;
+				if (choice_2 == 0){
+					// stopping adaptive
+					adaptive_flag_msg.header.stamp = ros::Time::now();
+					adaptive_flag_msg.flag = false;
+					pub_flagAdaptive.publish(adaptive_flag_msg);
+					cout<<"adaptive disabled!"<<endl;
+				} else if (choice_2 == 1){
+					// starting adaptive
+					adaptive_flag_msg.header.stamp = ros::Time::now();
+					adaptive_flag_msg.flag = true;
+					pub_flagAdaptive.publish(adaptive_flag_msg);
+					cout<<"adaptive enabled!"<<endl;
+				}
+			}
+			else if (choice == 7){
+				ready = false;
 			}
 		}else{
 			// ----- init trajectory cycle ----- //
-			init_q = false;
-			init_p = false;
-			while((init_q==false) || (init_p==false)){
-				ros::spinOnce();
-			}
 			t_init = ros::Time::now();
 			t = (ros::Time::now() - t_init).toSec();
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
-					if (choice_2 == 1){
-						// - go to p0_throw - //
-						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_throw, zero, zero, tf_0, t);
-					}else if (choice_2 == 2){
-						// - go to p0_est - //
-						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, zero, zero, tf_0, t);
-					}else if (choice_2 == 3){
-						// - go to p_saved - //
-						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_est, zero, zero, tf_0, t);
-					}else if (choice_2 == 4){
-						// - go to p_saved - //
-						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_saved, zero, zero, tf_0, t);
-					}
+					// --- go to --- //
+					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
 						traj_cartesian = interpolator_cartesian(p0_throw, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
-					}else{
-						if (first_time){
-							qbhand1_move(1.0);
-							first_time = false;
+						if (t > tf_throw - HAND_DELAY){
+							if (first_time){
+								qbhand1_move(1.0);
+								first_time = false;
+							}
 						}
+					}else{
 						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
 					}
 				}else if (executing == 3){
@@ -442,13 +463,20 @@ int main(int argc, char **argv)
 						t_new = t - (tf_est-tf_brake_est);
 						traj_cartesian = interpolator_cartesian(traj_tmp.pos, traj_tmp.vel, traj_tmp.acc, traj_est_end.pos, traj_est_end.vel, traj_est_end.acc, tf_brake_est, t_new);
 					}else if ((t >= tf_est) && (t <= tf_est + 1.0)){
-						// - go to p0_throw - //
+						// - stay in p_end - //
 						t_new = t - tf_est;
 						traj_cartesian.pos = traj_est_end.pos;
 						traj_cartesian.vel = zero;
 						traj_cartesian.acc = zero;
 					}else{
 						break;
+					}
+				} else if (executing == 4){
+					// --- Estimating with throw --- //
+					if (t <= tf_throw){
+						traj_cartesian = interpolator_cartesian(p0_throw, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
+					}else{
+						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
 					}
 				}
 				// ----- publishing ----- //
@@ -468,10 +496,6 @@ int main(int argc, char **argv)
 				t = (ros::Time::now() - t_init).toSec();
 			}
 			executing = 0;
-			// stopping adaptive
-			adaptive_flag_msg.header.stamp = ros::Time::now();
-			adaptive_flag_msg.flag = false;
-			pub_flagAdaptive.publish(adaptive_flag_msg);
 			// reset first_time
 			first_time = true;
 		}
