@@ -422,7 +422,7 @@ int main(int argc, char **argv)
 				} else if (choice_2 == 2){
 					pf_brake_est = pf_throw_est + dpf_throw_est*tf_brake/2;
 					p_start = p_end;
-					p_end = pf_throw_est;
+					p_end = pf_brake_est;
 					executing = 4;
 					tf = tf_0 + tf_throw_est + tf_brake;
 				}
