@@ -14,5 +14,9 @@ throw_node:
   DPF_THROW: [0, 1.7, 1.7]              # throwing velocity
   TF_THROW: 1.0
   TF_BRAKE: 0.3
-  TF_BRAKE_EST: 0.5
+  TF_EST_BRAKE: 0.5
   TF_EST: 10.0
+  P0_THROW_EST: [0.4, -0.3, 0.2]
+  PF_THROW_EST: [0.4, 0.1, 0.4] 
+  TF_THROW_EST: 1.0
+  DPF_THROW_EST: [0, 1, 1]

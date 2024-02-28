@@ -191,15 +191,19 @@ int main(int argc, char **argv)
 	int GRIPPER;
 	float TF_THROW;
 	float TF_BRAKE;
-	float TF_BRAKE_EST;
+	float TF_EST_BRAKE;
 	float TF_EST;
 	float HAND_DELAY;
+	float TF_THROW_EST;
 	std::vector<double> Q0_THROW;
 	std::vector<double> P0_THROW;
 	std::vector<double> P0_EST;
 	std::vector<double> QF_THROW;
 	std::vector<double> PF_THROW;
 	std::vector<double> DPF_THROW;
+	std::vector<double> P0_THROW_EST;
+	std::vector<double> PF_THROW_EST;
+	std::vector<double> DPF_THROW_EST;
 
 	if(!node_handle.getParam("/throw_node/SIMULATION", SIMULATION))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -211,7 +215,7 @@ int main(int argc, char **argv)
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/TF_BRAKE", TF_BRAKE))
 		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/TF_BRAKE_EST", TF_BRAKE_EST))
+	if(!node_handle.getParam("/throw_node/TF_EST_BRAKE", TF_EST_BRAKE))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/HAND_DELAY", HAND_DELAY))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -228,6 +232,14 @@ int main(int argc, char **argv)
 	if(!node_handle.getParam("/throw_node/DPF_THROW", DPF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/TF_EST", TF_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/P0_THROW_EST", P0_THROW_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/TF_THROW_EST", TF_THROW_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/PF_THROW_EST", PF_THROW_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/DPF_THROW_EST", DPF_THROW_EST))
 		ROS_ERROR("Failed to get parameter from server.");
 	if (!node_handle.getParam("lissajous/ampX", ampX) ||
 			!node_handle.getParam("lissajous/ampY", ampY) ||
@@ -278,10 +290,11 @@ int main(int argc, char **argv)
 	double tf = 3.0;
 	double rate = RATE;
 	double tf_throw = TF_THROW;
+	double tf_throw_est = TF_THROW_EST;
 	double tf_brake = TF_BRAKE;
 	double tf_0 = 3.0;
 	double tf_est = TF_EST;
-	double tf_brake_est = TF_BRAKE_EST;
+	double tf_est_brake = TF_EST_BRAKE;
 	double t_new = 0.0;
 	// Eigen::Matrix<double, 7, 1> qf;
 	// Eigen::Vector3d pf;
@@ -292,8 +305,12 @@ int main(int argc, char **argv)
 	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());
 	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());
 	Eigen::Vector3d p0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_EST.data(), P0_EST.size());
-	Eigen::Vector3d pf_brake;
 	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
+	Eigen::Vector3d p0_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW_EST.data(), P0_THROW_EST.size());
+	Eigen::Vector3d pf_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW_EST.data(), PF_THROW_EST.size());
+	Eigen::Vector3d dpf_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW_EST.data(), DPF_THROW_EST.size());
+	Eigen::Vector3d pf_brake;
+	Eigen::Vector3d pf_brake_est;
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
 	Eigen::Vector3d p_saved = p0_est;	// starting point of estimating trajectory
 	// Eigen::Vector3d p_est_end;	// stopping point of estimating trajectory
@@ -376,6 +393,7 @@ int main(int argc, char **argv)
 				// --- throw --- //
 				first_time = true; // used for hand opening
 				pf_brake = pf_throw + dpf_throw*tf_brake/2;
+				p_start = p_end;
 				p_end = pf_brake;
 				executing = 2;
 				tf = tf_throw + tf_brake;
@@ -395,17 +413,18 @@ int main(int argc, char **argv)
 					// trajectory stuff
 					tf = tf_est + 1.0;
 					// obtain estimate_traj velocity
-					traj_est_start = estimate_traj(p_center, tf_est, tf_brake_est);
+					traj_est_start = estimate_traj(p_center, tf_est, tf_est_brake);
 					traj_est_end = estimate_traj(p_center, tf_est, tf_est);
-					traj_tmp = estimate_traj(p_center, tf_est, tf_est-tf_brake_est);
+					traj_tmp = estimate_traj(p_center, tf_est, tf_est-tf_est_brake);
 					// vel_est_end = traj_cartesian.vel;
 					// acc_est_end = traj_cartesian.acc;
 					p_end = traj_est_end.pos;
 				} else if (choice_2 == 2){
-					pf_brake = pf_throw + dpf_throw*tf_brake/2;
-					p_end = pf_brake;
+					pf_brake_est = pf_throw_est + dpf_throw_est*tf_brake/2;
+					p_start = p_end;
+					p_end = pf_throw_est;
 					executing = 4;
-					tf = tf_throw + tf_brake;
+					tf = tf_0 + tf_throw_est + tf_brake;
 				}
 			}else if (choice == 6){
 				cout<<"adaptive:   (0: disable,  1: enable,     other: cancel) "<<endl;
@@ -439,7 +458,7 @@ int main(int argc, char **argv)
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
-						traj_cartesian = interpolator_cartesian(p0_throw, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
 						if (t > tf_throw - HAND_DELAY){
 							if (first_time){
 								qbhand1_move(1.0);
@@ -451,17 +470,18 @@ int main(int argc, char **argv)
 					}
 				}else if (executing == 3){
 					// --- Estimating --- //
-					if (t < tf_brake_est){
+					if (t < tf_est_brake){
 						// - start estimating trajectory - //
-						traj_cartesian = interpolator_cartesian(p_center, zero, zero, traj_est_start.pos, traj_est_start.vel, traj_est_start.acc, tf_brake_est, t);
-					}else if ((t >= tf_brake_est) && (t < tf_est - tf_brake_est)){
+						traj_cartesian = interpolator_cartesian(p_center, zero, zero, traj_est_start.pos, traj_est_start.vel, traj_est_start.acc, tf_est_brake, t);
+					}else if ((t >= tf_est_brake) && (t < tf_est - tf_est_brake)){
 						// - estimating - //
-						t_new = t - tf_brake_est;
+						// t_new = t - tf_est_brake;
+						t_new = t;
 						traj_cartesian = estimate_traj(p_center, tf_est, t_new);
-					}else if ((t >= tf_est-tf_brake_est) && (t < tf_est)){
+					}else if ((t >= tf_est-tf_est_brake) && (t < tf_est)){
 						// - braking estimate trajectory - //
-						t_new = t - (tf_est-tf_brake_est);
-						traj_cartesian = interpolator_cartesian(traj_tmp.pos, traj_tmp.vel, traj_tmp.acc, traj_est_end.pos, traj_est_end.vel, traj_est_end.acc, tf_brake_est, t_new);
+						t_new = t - (tf_est-tf_est_brake);
+						traj_cartesian = interpolator_cartesian(traj_tmp.pos, traj_tmp.vel, traj_tmp.acc, traj_est_end.pos, zero, zero, tf_est_brake, t_new);
 					}else if ((t >= tf_est) && (t <= tf_est + 1.0)){
 						// - stay in p_end - //
 						t_new = t - tf_est;
@@ -473,10 +493,17 @@ int main(int argc, char **argv)
 					}
 				} else if (executing == 4){
 					// --- Estimating with throw --- //
-					if (t <= tf_throw){
-						traj_cartesian = interpolator_cartesian(p0_throw, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
-					}else{
-						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
+					if (t <= tf_0){
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_throw_est, zero, zero, tf_0, t);
+					}else if ((t > tf_0) && (t <= tf_0 + tf_throw_est)){
+						// traj_cartesian = interpolator_cartesian(pf_throw_est, dpf_throw_est, zero, pf_brake_est, zero, zero, tf_brake, t-tf_throw_est);
+						traj_cartesian = interpolator_cartesian(p0_throw_est, zero, zero, pf_throw_est, dpf_throw_est, zero, tf_throw_est, t-tf_0);
+					}else if ((t > tf_0 + tf_throw_est) && (t <= tf_0 + tf_throw_est + tf_brake)){
+						traj_cartesian = interpolator_cartesian(pf_throw_est, dpf_throw_est, zero, pf_brake_est, zero, zero, tf_brake, t-tf_0-tf_throw_est);
+					} else {
+						traj_cartesian.pos = pf_brake_est;
+						traj_cartesian.vel = zero;
+						traj_cartesian.acc = zero;
 					}
 				}
 				// ----- publishing ----- //
