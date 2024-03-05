@@ -33,8 +33,8 @@
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
     <arg name="bag_path"    default="/home/tommy/bagfiles"/>
-    <arg name="bag_name"    default="$(arg bag_path)/rosbag_CTmodNoAdp"/>
-    <arg name="duration"    default="40"/>
+    <arg name="bag_name"    default="$(arg bag_path)/rosbag_NewmodOSAdp2"/>
+    <arg name="duration"    default="60"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
 

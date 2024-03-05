@@ -15,7 +15,7 @@ namespace panda_controllers{
         }
 
         /* Inizializing the Kp and Kv gains */
-    	double kp1, kp2, kp3, kv1, kv2, kv3;
+    	double kp1, kp2, kp3, kv1, kv2, kv3, kn1, kn2, kn3;
 
         /* Chek corretta acquisizione dei parametri del computed torqued*/
         if (!node_handle.getParam("kp1", kp1) || 
@@ -44,14 +44,30 @@ namespace panda_controllers{
         Kp(5,5) = kp3; 
 
         /* Assegno valori Kvi*/
-        Kv = Eigen::MatrixXd::Identity(7, 7);
+        Kv = Eigen::MatrixXd::Identity(6, 6);
         Kv(0,0) = kv1; 
         Kv(1,1) = kv1; 
         Kv(2,2) = kv1; 
-        Kv(3,3) = kv1; 
+        Kv(3,3) = kv2; 
         Kv(4,4) = kv2; 
         Kv(5,5) = kv2;
-        Kv(6,6) = kv3; 
+        // Kv(6,6) = kv3; 
+
+          if (!node_handle.getParam("kn1", kn1) || 
+		!node_handle.getParam("kn2", kn2) ||
+		!node_handle.getParam("kn3", kn3)) {
+		    ROS_ERROR("Computed Torque: Could not get parameter kpi or kv!");
+		    return false;
+	    }
+
+        Kn = Eigen::MatrixXd::Identity(7, 7);
+        Kn(0,0) = kn1; 
+        Kn(1,1) = kn1; 
+        Kn(2,2) = kn1; 
+        Kn(3,3) = kn1; 
+        Kn(4,4) = kn2; 
+        Kn(5,5) = kn2;
+        Kn(6,6) = kn3; 
 
         /*Set parametri Lambda*/
         Lambda.setIdentity();
@@ -214,6 +230,9 @@ namespace panda_controllers{
 
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
+        
+        dot_error_q.setZero(); 
+        dot_error_Nq0.setZero();
         // buffer_dq.push_back(dot_q_curr);
 
         /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
@@ -280,20 +299,14 @@ namespace panda_controllers{
 
         // Jacobians
         /* Compute pseudo-inverse of J and its derivative */ 
-       
-        // Analytical Jacobians
-        // Ja = L * J;
-        // Ja_dot = L_dot * J + L * J_dot;
         J = fastRegMat.getJac_gen();
         J_dot = fastRegMat.getDotJac_gen();
-	    // J_pinv = fastRegMat.getPinvJac_gen();
+	    //J_pinv = fastRegMat.getPinvJac_gen();
         J_pinv = J.transpose()*((J*J.transpose()).inverse()); // pseudo-inversa destra di J
-        // J_T_pinv = J_pinv.transpose(); // pseudo-inversa sinistra di J trasposto
+        //J_T_pinv = J_pinv.transpose(); // pseudo-inversa sinistra di J trasposto
         J_T_pinv = ((J*J.transpose()).inverse())*J; // pseudo-inversa sinistra di J trasposto
 	    J_dot_pinv = fastRegMat.getDotPinvJac_gen();
-        // Ja_pinv =  Ja.transpose()*((Ja*Ja.transpose()).inverse());
-        // Ja_T_pinv = ((Ja*Ja.transpose()).inverse())*Ja; // pseudo-inversa sinistra di J trasposto
-	    
+        
         
         // ROS_INFO_STREAM("Differenza jacobiano:" << J-J);
 
@@ -351,10 +364,11 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot;//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
+        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; //+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot + (I7.setIdentity() - J_pinv*J)*(q_c-q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
 
         dot_error_q = dot_qr - dot_q_curr;
+        dot_error_Nq0 = dot_error_q - J_pinv*dot_error; //errore derivata nullo(si vuole a zero per adesso)
 
         /* Sempre stessi valori dei guadagni*/
     	Kp_xi = Kp;
@@ -368,16 +382,24 @@ namespace panda_controllers{
 
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         dot_q_curr = calcolaMedia(buffer_dq);
-
-
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
         //Media dei dati nella finestra del filtro
         ddot_q_curr = calcolaMedia(buffer_ddq);
+      
+        aggiungiDato(buffer_dqr, dot_qr, WIN_LEN);
+        dot_qr_est = calcolaMedia(buffer_dqr);
+        aggiungiDato(buffer_ddqr, ddot_qr, WIN_LEN);
+        ddot_qr_est = calcolaMedia(buffer_ddqr);
+        
+
+        // aggiungiDatoXi(buffer_dot_error, dot_error, WIN_LEN);
+        // //Media dei dati nella finestra del filtro
+        // dot_error_est = calcolaMediaXi(buffer_dot_error);
 
         /* Update and Compute Regressor */
 	    // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*ee_vel_cmd_tot, J_pinv*ee_acc_cmd_tot - J_pinv*J_dot*J_pinv*ee_vel_cmd_tot);
         // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*tmp_conversion1*ee_vel_cmd_tot, J_pinv*(tmp_conversion1*ee_acc_cmd_tot + tmp_conversion2*ee_vel_cmd_tot - J_dot*J_pinv*tmp_conversion1*ee_vel_cmd_tot));
-	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr_est, ddot_qr_est);
         Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
@@ -397,7 +419,6 @@ namespace panda_controllers{
 
         tau_J = tau_cmd + G;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
-
         // Media dei dati nella finestra del filtro
         tau_J = calcolaMedia(buffer_tau);
         
@@ -431,10 +452,10 @@ namespace panda_controllers{
         
         
         /*Matrici nello spazio operativo*/
-        MestXi = J_T_pinv*Mest*J_pinv;
-        // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
-        CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
-        GestXi = J_T_pinv*Gest;
+        // MestXi = J_T_pinv*Mest*J_pinv;
+        // // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
+        // CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
+        // GestXi = J_T_pinv*Gest;
        
 
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
@@ -446,12 +467,12 @@ namespace panda_controllers{
         // F_cmd = MestXi*ddot_error.setZero() + CestXi*dot_error  + GestXi + Kp*error + Kv*dot_error + MestXi*J_dot*J_pinv*error - J_T_pinv*(Cest*dot_q_curr + Mest*ddot_q_curr);  // legge disperazione 
 
         // /* command torque to joint */
-        // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr);
-        // tau_cmd = (1.0*(q_c-q_curr) - 1.0*dot_q_curr); 
-        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + Kv_xi*dot_error_q - G + Dest*dot_qr;
-        // tau_cmd = -Mest*J_pinv*J_dot*dot_q_curr + Mest*J_pinv*ee_acc_cmd_tot + J.transpose()*Kv*dot_error + J.transpose()*Kp*error + Cest*dot_q_curr + Gest - G;
-
+        // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr); 
+        // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + 10*dot_error_Nq0 - J.transpose()*J_T_pinv*10*dot_error_Nq0;
+        tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0;// - J.transpose()*J_T_pinv*Kn*dot_error_Nq0;
+        // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J_pinv*Kv_xi*J_T_pinv*dot_error_q - G;
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
+        //ROS_INFO_STREAM(dot_error_Nq0);
 	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
@@ -472,7 +493,7 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link5, param_tot.segment(48, PARAM+FRICTION));
         fillMsgLink(msg_log.link6, param_tot.segment(60, PARAM+FRICTION));
         fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
-        fillMsg(msg_log.tau_cmd, tau_cmd);
+        fillMsg(msg_log.tau_cmd, dot_error_Nq0);
 
         msg_config.header.stamp  = time_now; // publico tempo attuale nodo
         msg_config.xyz.x = T0EE.translation()(0); 
@@ -500,6 +521,23 @@ namespace panda_controllers{
     // Funzione per il calcolo della media
     Eigen::Matrix<double,7, 1> CTModOS::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
         Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
+        for (const auto& vettore : buffer_) {
+            media += vettore;
+        }
+        media /= buffer_.size();
+        return media;
+    }
+
+    void CTModOS::aggiungiDatoXi(std::vector<Eigen::Matrix<double,6, 1>>& buffer_, const Eigen::Matrix<double,6, 1>& dato_, int lunghezza_finestra) {
+        buffer_.push_back(dato_);
+        if (buffer_.size() > lunghezza_finestra) {
+            buffer_.erase(buffer_.begin());
+        }
+    }
+
+    // Funzione per il calcolo della media
+    Eigen::Matrix<double,6, 1> CTModOS::calcolaMediaXi(const std::vector<Eigen::Matrix<double,6, 1>>& buffer_) {
+        Eigen::Matrix<double,6, 1> media = Eigen::Matrix<double,6, 1>::Zero();
         for (const auto& vettore : buffer_) {
             media += vettore;
         }
