@@ -201,6 +201,9 @@ private:
     Eigen::Matrix<double,6,NJ> J_T_pinv;
 	Eigen::Matrix<double,NJ,6> J_dot_pinv;
 
+    Eigen::Matrix<double,NJ,NJ> N1;
+    Eigen::Matrix<double,NJ,NJ> N_inv;
+
     Eigen::Matrix<double,6,NJ> Ja;
     Eigen::Matrix<double,6,NJ> Ja_dot;
 	Eigen::Matrix<double,NJ,6> Ja_pinv;

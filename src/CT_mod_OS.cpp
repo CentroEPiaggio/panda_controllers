@@ -70,10 +70,10 @@ namespace panda_controllers{
         Kn(6,6) = kn3; 
 
         /*Set parametri Lambda*/
-        Lambda.setIdentity();
-	    for(int i=0;i<6;i++){
-		    Lambda(i,i) = gainLambda[i];
-	    }
+        // Lambda.setIdentity();
+	    // for(int i=0;i<6;i++){
+		//     Lambda(i,i) = gainLambda[i];
+	    // }
 
 
         /* Assigning the time (dt definito come variabile double in computed_torque.h) */
@@ -222,18 +222,14 @@ namespace panda_controllers{
         /* Getting Robot State in order to get q_curr and dot_q_curr */
 	    robot_state = state_handle_->getRobotState();
         T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
-
+        
         /* Mapping actual joints position, actual joints velocity, Mass matrix and Coriolis vector onto Matrix form  */
 	    q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
-	    dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
-        // J = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
-
+        dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
-        
         dot_error_q.setZero(); 
         dot_error_Nq0.setZero();
-        // buffer_dq.push_back(dot_q_curr);
 
         /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
 	   	ee_pos_cmd = T0EE.translation();
@@ -276,15 +272,13 @@ namespace panda_controllers{
         Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
         Eigen::VectorXd tmp_position(6), tmp_velocity(6);
 
-
-        /* Solito mappaggio già visto nell'inizializzazione*/
         robot_state = state_handle_->getRobotState();
 	    G = Eigen::Map<Eigen::Matrix<double, 7, 1>> (model_handle_->getGravity().data());
 
-        // jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 
-       /* Actual position and velocity of the joints */
+        /* Actual position and velocity of the joints */
         T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // matrice di trasformazione omogenea che mi fa passare da s.d.r base a s.d.r EE
+
         q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; // ricavo accelerazione corrente del giunto attraverso definizione 
@@ -299,16 +293,17 @@ namespace panda_controllers{
 
         // Jacobians
         /* Compute pseudo-inverse of J and its derivative */ 
-        J = fastRegMat.getJac_gen();
+        J = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+        // J = fastRegMat.getJac_gen();
         J_dot = fastRegMat.getDotJac_gen();
 	    //J_pinv = fastRegMat.getPinvJac_gen();
         J_pinv = J.transpose()*((J*J.transpose()).inverse()); // pseudo-inversa destra di J
         //J_T_pinv = J_pinv.transpose(); // pseudo-inversa sinistra di J trasposto
         J_T_pinv = ((J*J.transpose()).inverse())*J; // pseudo-inversa sinistra di J trasposto
+        N1 = (I7.setIdentity() - J_pinv*J);
+        N_inv = ((N1.transpose()*N1).inverse())*N1.transpose();
 	    J_dot_pinv = fastRegMat.getDotPinvJac_gen();
         
-        
-        // ROS_INFO_STREAM("Differenza jacobiano:" << J-J);
 
         /* Compute error translation */
 
@@ -319,9 +314,9 @@ namespace panda_controllers{
 
     	error.head(3) = ee_pos_cmd - ee_position;
     	dot_error.head(3) = ee_vel_cmd - ee_velocity;
-        // ddot_error.head(3) = ee_acc_cmd - ee_acceleration;
         vel_cur.head(3) = ee_velocity;
         // ROS_INFO_STREAM(ee_vel_cmd);
+
 
     	/* Compute error orientation */
 
@@ -345,14 +340,12 @@ namespace panda_controllers{
         //     ROS_INFO_STREAM("velocità angolare corrente:" << ee_omega);
         //     flag = true;
         // }
-        // ddot_error.tail(3) =  ddot_error.head(3) = ee_acc_cmd - ee_acceleration; // da correggere
 
 
         /* Compute reference */
         ee_vel_cmd_tot << ee_vel_cmd, L_tmp.transpose()*ee_ang_vel_cmd;
         ee_acc_cmd_tot << ee_acc_cmd, L_dot_tmp.transpose()*ee_ang_vel_cmd + L_tmp.transpose()*ee_ang_acc_cmd;
-        // ee_vel_cmd_tot << ee_vel_cmd, ee_ang_vel_cmd;
-        // ee_acc_cmd_tot << ee_acc_cmd, ee_ang_acc_cmd;
+        
         
         // tmp_position = ee_vel_cmd_tot + Lambda * error;
         // tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
@@ -365,10 +358,11 @@ namespace panda_controllers{
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
         dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; //+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot + (I7.setIdentity() - J_pinv*J)*(q_c-q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; //+ (I7.setIdentity() - J_pinv*J)*(q_c-q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
 
         dot_error_q = dot_qr - dot_q_curr;
-        dot_error_Nq0 = dot_error_q - J_pinv*dot_error; //errore derivata nullo(si vuole a zero per adesso)
+        // dot_error_Nq0 = (dot_error_q - J_pinv*dot_error); //errore derivata nullo(si vuole a zero per adesso)
+        dot_error_Nq0 = -N1*(dot_q_curr);
 
         /* Sempre stessi valori dei guadagni*/
     	Kp_xi = Kp;
@@ -383,55 +377,43 @@ namespace panda_controllers{
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         dot_q_curr = calcolaMedia(buffer_dq);
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
-        //Media dei dati nella finestra del filtro
         ddot_q_curr = calcolaMedia(buffer_ddq);
       
-        aggiungiDato(buffer_dqr, dot_qr, WIN_LEN);
-        dot_qr_est = calcolaMedia(buffer_dqr);
-        aggiungiDato(buffer_ddqr, ddot_qr, WIN_LEN);
-        ddot_qr_est = calcolaMedia(buffer_ddqr);
+        // aggiungiDato(buffer_dqr, dot_qr, WIN_LEN);
+        // dot_qr_est = calcolaMedia(buffer_dqr);
+        // aggiungiDato(buffer_ddqr, ddot_qr, WIN_LEN);
+        // ddot_qr_est = calcolaMedia(buffer_ddqr);
         
 
-        // aggiungiDatoXi(buffer_dot_error, dot_error, WIN_LEN);
-        // //Media dei dati nella finestra del filtro
-        // dot_error_est = calcolaMediaXi(buffer_dot_error);
-
         /* Update and Compute Regressor */
-	    // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*ee_vel_cmd_tot, J_pinv*ee_acc_cmd_tot - J_pinv*J_dot*J_pinv*ee_vel_cmd_tot);
-        // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*tmp_conversion1*ee_vel_cmd_tot, J_pinv*(tmp_conversion1*ee_acc_cmd_tot + tmp_conversion2*ee_vel_cmd_tot - J_dot*J_pinv*tmp_conversion1*ee_vel_cmd_tot));
-	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr_est, ddot_qr_est);
+	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
         Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
 
         Y_D.setZero();
         Y_D_norm.setZero();
-        
         for (int i = 0; i < 7; ++i) {
             Y_D(i, i * 2) = dot_qr(i); // Imposta 1 sulla diagonale principale
             Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            // Y_D(i, i * 2 + 1) = dot_qr(i)*fabs(dot_q_curr(i));
             Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
-            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            // Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*fabs(dot_q_curr(i));    
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale  
         }
         // ROS_INFO_STREAM(Rinv_fric);
 
         tau_J = tau_cmd + G;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
-        // Media dei dati nella finestra del filtro
         tau_J = calcolaMedia(buffer_tau);
         
         err_param = tau_J - Y_norm*param - Y_D_norm*param_frict; 
         // err_param_frict = tau_J - Y_D_norm*param_frict;
        
 	       
-
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 1*Rinv*(Y_mod.transpose()*dot_error_q + 0.05*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param; 
-            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
+            dot_param_frict = 1*Rinv_fric*(Y_D_norm.transpose()*dot_error_q + 0.05*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
 	    }
 
@@ -450,14 +432,11 @@ namespace panda_controllers{
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
 
         
-        
         /*Matrici nello spazio operativo*/
         // MestXi = J_T_pinv*Mest*J_pinv;
         // // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
         // CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
         // GestXi = J_T_pinv*Gest;
-       
-
         // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
         // P = (I7.setIdentity() - J_pinv*J);
 
@@ -469,10 +448,14 @@ namespace panda_controllers{
         // /* command torque to joint */
         // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr); 
         // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + 10*dot_error_Nq0 - J.transpose()*J_T_pinv*10*dot_error_Nq0;
-        tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0;// - J.transpose()*J_T_pinv*Kn*dot_error_Nq0;
+        tau_cmd = Mest*ddot_qr + (Cest+Dest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q;// - J.transpose()*J_T_pinv*Kn*dot_error_Nq0;
         // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J_pinv*Kv_xi*J_T_pinv*dot_error_q - G;
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-        //ROS_INFO_STREAM(dot_error_Nq0);
+        if (flag){
+            ROS_INFO_STREAM(J_T_pinv*Kn*dot_error_Nq0);
+            flag = false;
+        }
+
 	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
