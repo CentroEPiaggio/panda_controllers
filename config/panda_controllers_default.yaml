@@ -51,7 +51,8 @@ computed_torque_mod_controller:
     kv3: 1.5
     dt: 0.001
     gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
-    gainRparam: [1, 0.1, 0.01, 0.001]                          # gain proportional to [mass, mass*length, mass*length^2] 
+    gainRparam: [1, 1, 1, 1]
+    # gainRparam: [1, 0.1, 0.01, 0.001]                          # gain proportional to [mass, mass*length, mass*length^2] 
     update_param: false
 
 CT_mod_controller_OS:
@@ -77,7 +78,7 @@ CT_mod_controller_OS:
     kn2: 10.0
     kn3: 10.0
     dt: 0.001
-    gainRlinks: [1, 1, 1, 1, 1, 1, 1]                   # gain for R matrix
+    gainRlinks: [0, 0, 0, 0, 0, 0, 1]                   # gain for R matrix
     gainRparam: [1, 0.1, 0.01, 0.001]                   # gain proportional to [mass, mass*length, mass*length^2] 
     gainLambda: [2.0, 2.0, 3.0, 5.0, 5.0, 5.0] 
     update_param: false
@@ -91,7 +92,7 @@ backstepping_controller:
     
     # --- Controller parameters --- #
     gainLambda: [5.0, 5.0, 5.0, 2.0, 2.0, 2.0]       # gain for Lambda matrix
-    gainRlinks: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1]     # gain for R matrix
+    gainRlinks: [1, 1, 1, 1, 1, 1, 1]     # gain for R matrix
     gainRparam: [1.0, 0.1, 0.1, 0.1]                          # gain proportional to [mass, mass*length, mass*length^2] 
     gainKd: [10, 10, 10, 10, 5, 5, 3]                   # gain for Kd matrix
     update_param: false                                 # bool to update inertial parameters

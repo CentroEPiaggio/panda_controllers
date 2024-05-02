@@ -140,6 +140,7 @@ namespace regrob{
 
         casadi::SX jac_B = jacobian(B,q_);
         
+        /* L'errore potrebbe essere qui perchè sembra fare prodotto al contrario??*/
         casadi::SX C123 = reshape(mtimes(jac_B,dq_),n,n);
         casadi::SX C132 = mtimes(dq_sel_,jac_B);
         casadi::SX C231 = C132.T();

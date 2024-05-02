@@ -3,10 +3,9 @@
 
 namespace panda_controllers{
 
-    // Definisco funzione oggetto thuderpanda per inizializzare il nodo di controllo
     bool CTModOS::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
     {
-        this->cvc_nh = node_handle; // cvc_nh definito con tipo ros::NodeHandle in computerd_torque.h
+        this->cvc_nh = node_handle; 
  
         std::string arm_id; //checking up the arm id of the robot     
         if (!node_handle.getParam("arm_id", arm_id)) {
@@ -17,7 +16,7 @@ namespace panda_controllers{
         /* Inizializing the Kp and Kv gains */
     	double kp1, kp2, kp3, kv1, kv2, kv3, kn1, kn2, kn3;
 
-        /* Chek corretta acquisizione dei parametri del computed torqued*/
+        /* Chek paramaters acquisition*/
         if (!node_handle.getParam("kp1", kp1) || 
 		!node_handle.getParam("kp2", kp2) ||
 		!node_handle.getParam("kp3", kp3) || 
@@ -27,40 +26,46 @@ namespace panda_controllers{
 		    ROS_ERROR("Computed Torque: Could not get parameter kpi or kv!");
 		    return false;
 	    }
+        // std::vector<double> gainLambda(DOF);
+        // if (!node_handle.getParam("gainLambda", gainLambda)){
+        //     ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
+		//     return false;
+        // }
+        
+        /*Set parametri Lambda*/
+        // Lambda.setIdentity();
+	    // for(int i=0;i<6;i++){
+		//     Lambda(i,i) = gainLambda[i];
+	    // }
 
-        std::vector<double> gainLambda(6);
-        if (!node_handle.getParam("gainLambda", gainLambda)){
-            ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
-		    return false;
-        }
-
-        /* Assegno valori Kpi (valori assunti attraverso file panda_controllers_default.yaml quando si fa load nel launch)*/
-        Kp = Eigen::MatrixXd::Identity(6, 6);
+        /* Assign Kp values*/
+        Kp = Eigen::MatrixXd::Identity(DOF, DOF);
         Kp(0,0) = kp1; 
         Kp(1,1) = kp1; 
         Kp(2,2) = kp1; 
-        Kp(3,3) = kp3; 
-        Kp(4,4) = kp3; 
-        Kp(5,5) = kp3; 
+        Kp(3,3) = kp2; 
+        Kp(4,4) = kp2; 
+        Kp(5,5) = kp2; 
 
-        /* Assegno valori Kvi*/
-        Kv = Eigen::MatrixXd::Identity(6, 6);
+        /* Assign Kv values*/
+        Kv = Eigen::MatrixXd::Identity(DOF, DOF);
         Kv(0,0) = kv1; 
         Kv(1,1) = kv1; 
         Kv(2,2) = kv1; 
         Kv(3,3) = kv2; 
         Kv(4,4) = kv2; 
         Kv(5,5) = kv2;
-        // Kv(6,6) = kv3; 
 
-          if (!node_handle.getParam("kn1", kn1) || 
+
+        if (!node_handle.getParam("kn1", kn1) || 
 		!node_handle.getParam("kn2", kn2) ||
 		!node_handle.getParam("kn3", kn3)) {
 		    ROS_ERROR("Computed Torque: Could not get parameter kpi or kv!");
 		    return false;
 	    }
-
-        Kn = Eigen::MatrixXd::Identity(7, 7);
+        
+        /* Assign Kn values*/
+        Kn = Eigen::MatrixXd::Identity(NJ, NJ);
         Kn(0,0) = kn1; 
         Kn(1,1) = kn1; 
         Kn(2,2) = kn1; 
@@ -69,33 +74,27 @@ namespace panda_controllers{
         Kn(5,5) = kn2;
         Kn(6,6) = kn3; 
 
-        /*Set parametri Lambda*/
-        // Lambda.setIdentity();
-	    // for(int i=0;i<6;i++){
-		//     Lambda(i,i) = gainLambda[i];
-	    // }
 
-
-        /* Assigning the time (dt definito come variabile double in computed_torque.h) */
+        /* Assigning the time */
 	    if (!node_handle.getParam("dt", dt)) {
 		    ROS_ERROR("Computed Torque: Could not get parameter dt!");
 		    return false;
 	    }
 
-        /* Chek per il acquisizione corretta del nome dei giunti del franka*/
+        /* Chek joint names acquisition*/
         std::vector<std::string> joint_names;
 	    if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
 		    ROS_ERROR("Computed Torque: Error in parsing joints name!");
 		    return false;
 	    }
 
-        /* Coppia di gestione errore su corretta acquisizione e crezione di model_handel_ */
+        /* check model_interface error */
 	    franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
 	    if (model_interface == nullptr) {
 		    ROS_ERROR_STREAM("Computed Torque: Error getting model interface from hardware!");
 		    return false;
 	    }   
-        /* Chek errori sul model_handle(necessario per usare i calcoli della dinamica del seriale)*/
+        /* Chek model_handle error acquisition*/
         try {
 		    model_handle_.reset(new franka_hw::FrankaModelHandle(model_interface->getHandle(arm_id + "_model")));
 	    } catch (hardware_interface::HardwareInterfaceException& ex) {
@@ -103,7 +102,7 @@ namespace panda_controllers{
 		    return false;
 	    }
 	    
-        /* Coppia di gestione errore ma questa volta sulla corretta acquisizione dell'oggetto state_handle_ */
+        /* Same check */
         franka_hw::FrankaStateInterface* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
     	if (state_interface == nullptr) {
 	    	ROS_ERROR_STREAM("Computed Torque: Error getting state interface from hardware");
@@ -116,14 +115,13 @@ namespace panda_controllers{
 		    return false;
 	    }
 
-        /*Gestione di non so quale errore (in tutti i seguenti errori le variabili assumono valore direttamente facendo riferimento a hardware del robot)*/
+        
         hardware_interface::EffortJointInterface* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
 	    if (effort_joint_interface == nullptr) {
 		    ROS_ERROR_STREAM("Computed Torque: Error getting effort joint interface from hardware!");
 		    return false;
 	    }
 
-        /* Gestione errore sul joint_handles_ (per ogni giunto si controlla se vi è errore su trasmissione del comando) */
         for (size_t i = 0; i < 7; ++i) {
 		    try {
 		    	joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
@@ -134,7 +132,7 @@ namespace panda_controllers{
 	    	}
 	    }
 
-         /* Verifica corretta acquisizizone(da dove?) dei parametri inerziali del robot(stimati) */
+         /* Initial parameters acquisition */
         for(int i=0; i<NJ; i++){
             double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz, d1, d2;
             if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
@@ -149,23 +147,20 @@ namespace panda_controllers{
                 !node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz) ||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/d1", d1)||
                 !node_handle.getParam("link"+std::to_string(i+1)+"/d2", d2)){
-                
                 ROS_ERROR("Computed_torque: Error in parsing inertial parameters!");
                 return 1;
             }
-            param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz; // inserisco ad ogni passo i parametri in unica colonna in ordine
+            param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
             param_frict.segment((FRICTION)*i, FRICTION) << d1, d2;
 	    }
 
-        /* Credo serva a settare il parametri dinamici del sistema (nel file backsteppinh non è usato)?*/
+        /* Param_dyn initial calculation*/
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);
         
-        /* Inizializing the R gains (da capire in che modo si attribuiscono i valori) to update parameters*/
+        /* Inizializing the R gains to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
 	    Eigen::Matrix<double,PARAM,PARAM> Rlink;
         Eigen::Matrix<double,FRICTION,FRICTION> Rlink_fric;
-
-        // Gestione di errore nel caso in cui parametri non trovati dal nodo di controllo
 	    if (!node_handle.getParam("gainRlinks", gainRlinks) ||
 	    	!node_handle.getParam("gainRparam", gainRparam) ||
 	    	!node_handle.getParam("update_param", update_param_flag)) {
@@ -174,7 +169,7 @@ namespace panda_controllers{
 		    return false;
 	    }
 
-        /* setting della matrice di pesi R per legge di aggiornamento dei parametri */
+        /* setting R weight */
         Rlink.setZero();
         Rlink(0,0) = gainRparam[0];
         Rlink(1,1) = gainRparam[1];
@@ -192,7 +187,7 @@ namespace panda_controllers{
         Rlink_fric(1,1) = gainRparam[2];
 
 
-        /* Calcolo la matrice inversa di R utile per la legge di controllo */
+        /* Inverse matrix R calculation */
         Rinv.setZero();
         Rinv_fric.setZero();
         for (int i = 0; i<NJ; i++){	
@@ -206,12 +201,23 @@ namespace panda_controllers{
 
         /*Start command subscriber and publisher */
         this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
-        this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this);  
-        this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //dà informazione a topic loggin l'errore che si commette 
-        this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //dà informazione sulla configurazione usata
+        this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
+        this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
+        this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
    
-        /* Initialize regressor object (oggetto thunderpanda) */
+        /* Initialize regressor object*/
         fastRegMat.init(NJ);
+
+        /*Initialize Stack Procedure*/
+        l = 0;
+        t = 0;
+        epsilon = 0.1;
+        // H.setZero(70,490);
+        // E.setZero(490);
+        H.setZero(10,70);
+        E.setZero(70); 
+        Y_stack_sum.setZero();
+        redY_stack_sum.setZero();
 
         return true;
     }
@@ -228,16 +234,15 @@ namespace panda_controllers{
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
+
         dot_error_q.setZero(); 
         dot_error_Nq0.setZero();
 
-        /* Secure Initialization (all'inizio il comando ai giunti corrisponde a stato attuale -> errore iniziale pari a zero) */
+        /* Secure Initialization  */
 	   	ee_pos_cmd = T0EE.translation();
 	    ee_rot_cmd = T0EE.linear();
-	
     	ee_vel_cmd.setZero();
 	    ee_acc_cmd.setZero();
-
 	    ee_ang_vel_cmd.setZero();
 	    ee_ang_acc_cmd.setZero();
         
@@ -250,7 +255,7 @@ namespace panda_controllers{
 	    ddot_qr.setZero();
 
 
-        // definizionw vettore fine corsa
+        // Vector center of limit's joints
         q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
         /* Defining the NEW gains */
@@ -260,66 +265,62 @@ namespace panda_controllers{
         /* Update regressor */
         dot_param.setZero();
         dot_param_frict.setZero();
-        fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
-        fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y_mod attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
+
+        fastRegMat.setInertialParam(param_dyn); // To compute Extimate Matrix M,G,C
+        fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr); // To compute jacobian and regressor
 
     }
 
 
     void CTModOS::update(const ros::Time&, const ros::Duration& period){
 
-	    Eigen::Matrix<double,6,6> tmp_conversion0, tmp_conversion1, tmp_conversion2;
-        Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
-        Eigen::VectorXd tmp_position(6), tmp_velocity(6);
+	    Eigen::Matrix<double,DOF,DOF> tmp_conversion0, tmp_conversion1, tmp_conversion2;
+        Eigen::VectorXd ee_vel_cmd_tot(DOF), ee_acc_cmd_tot(DOF);
+        Eigen::VectorXd tmp_position(DOF), tmp_velocity(DOF);
 
         robot_state = state_handle_->getRobotState();
-	    G = Eigen::Map<Eigen::Matrix<double, 7, 1>> (model_handle_->getGravity().data());
+	    G = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
+        T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // Homogeneous Transformation Matrix
 
 
-        /* Actual position and velocity of the joints */
-        T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // matrice di trasformazione omogenea che mi fa passare da s.d.r base a s.d.r EE
-
+        /* Actual position, velocity and acceleration of the joints */
         q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
-        ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; // ricavo accelerazione corrente del giunto attraverso definizione 
-        dot_q_curr_old = dot_q_curr; // aggiorno il valore di dot_q_curr_old per il prossimo update
+        ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; 
+        dot_q_curr_old = dot_q_curr; 
 
-        /* tau_J_d is the desired link-side joint torque sensor signals "without gravity" (un concetto più teorico ideale per inseguimento dato da franka?)*/
-	    tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
+        /* tau_J_d is the desired link-side joint torque sensor signals "without gravity" */
+	    tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
 
-       
         /* Update pseudo-inverse of J and its derivative */
     	fastRegMat.setArguments(q_curr,dot_q_curr);
 
-        // Jacobians
+
         /* Compute pseudo-inverse of J and its derivative */ 
-        J = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+        J = Eigen::Map<Eigen::Matrix<double, DOF, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
         // J = fastRegMat.getJac_gen();
         J_dot = fastRegMat.getDotJac_gen();
 	    //J_pinv = fastRegMat.getPinvJac_gen();
-        J_pinv = J.transpose()*((J*J.transpose()).inverse()); // pseudo-inversa destra di J
-        //J_T_pinv = J_pinv.transpose(); // pseudo-inversa sinistra di J trasposto
-        J_T_pinv = ((J*J.transpose()).inverse())*J; // pseudo-inversa sinistra di J trasposto
+        J_pinv = J.transpose()*((J*J.transpose()).inverse()); // Right pseudo-inverse of J
+        //J_T_pinv = J_pinv.transpose(); // Left pseudo-inverse of J'
+        J_T_pinv = ((J*J.transpose()).inverse())*J; // Left pseudo-inverse of J'
+        J_dot_pinv = fastRegMat.getDotPinvJac_gen();
+
+        /* NullSpace Calculation*/
         N1 = (I7.setIdentity() - J_pinv*J);
-        N_inv = ((N1.transpose()*N1).inverse())*N1.transpose();
-	    J_dot_pinv = fastRegMat.getDotPinvJac_gen();
-        
-
+	    
         /* Compute error translation */
-
     	ee_position = T0EE.translation();
 	    ee_velocity = J.topRows(3)*dot_q_curr;
         ee_acceleration = J.topRows(3)*ddot_q_curr + J_dot.topRows(3)*dot_q_curr;
 
-
     	error.head(3) = ee_pos_cmd - ee_position;
     	dot_error.head(3) = ee_vel_cmd - ee_velocity;
-        vel_cur.head(3) = ee_velocity;
-        // ROS_INFO_STREAM(ee_vel_cmd);
+        // vel_cur.head(3) = ee_velocity;
+    
 
 
     	/* Compute error orientation */
-
   	    ee_rot = T0EE.linear();
 	    ee_omega = J.bottomRows(3)*dot_q_curr;
         
@@ -332,23 +333,15 @@ namespace panda_controllers{
         L.block(3, 3, 3, 3) = L_tmp;
         L_dot.setZero();
         L_dot.block(3, 3, 3, 3) = L_dot_tmp;
-        vel_cur.tail(3) = L_tmp*ee_omega;
-	
+        
+        // vel_cur.tail(3) = L_tmp*ee_omega;
 	    error.tail(3) = vect(Rs_tilde);
 	    dot_error.tail(3) = L_tmp.transpose()*ee_ang_vel_cmd-L_tmp*ee_omega;
-        // if (flag){
-        //     ROS_INFO_STREAM("velocità angolare corrente:" << ee_omega);
-        //     flag = true;
-        // }
 
 
         /* Compute reference */
         ee_vel_cmd_tot << ee_vel_cmd, L_tmp.transpose()*ee_ang_vel_cmd;
         ee_acc_cmd_tot << ee_acc_cmd, L_dot_tmp.transpose()*ee_ang_vel_cmd + L_tmp.transpose()*ee_ang_acc_cmd;
-        
-        
-        // tmp_position = ee_vel_cmd_tot + Lambda * error;
-        // tmp_velocity = ee_acc_cmd_tot + Lambda * dot_error;
         
         tmp_conversion0.setIdentity();
         tmp_conversion0.block(3, 3, 3, 3) = L_tmp;
@@ -357,23 +350,26 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; //+ N*dot_q0_d che è la velocità desiderato nel nullo che si pone pari a zero per adesso
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; //+ (I7.setIdentity() - J_pinv*J)*(q_c-q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
+        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
 
-        dot_error_q = dot_qr - dot_q_curr;
+        /* Error definition in Joints Space*/
         // dot_error_Nq0 = (dot_error_q - J_pinv*dot_error); //errore derivata nullo(si vuole a zero per adesso)
+        dot_error_q = dot_qr - dot_q_curr;
         dot_error_Nq0 = -N1*(dot_q_curr);
 
-        /* Sempre stessi valori dei guadagni*/
     	Kp_xi = Kp;
     	Kv_xi = Kv;
 
+        /* Friction matrix online creation*/
         Dest.setZero();
         for(int i = 0; i < 7; ++i){
             Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr[i]);
             // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
         }
 
+
+        /* Application of FIR to velocity and acceleration*/
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         dot_q_curr = calcolaMedia(buffer_dq);
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
@@ -387,37 +383,80 @@ namespace panda_controllers{
 
         /* Update and Compute Regressor */
 	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-        Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
+        Y_mod = fastRegMat.getReg_gen(); // Regressor computetion
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
+
+        /*Reduced regressor bulid(only link 7 parameters)*/
+        // redY_norm.block(0,) << Y_norm.block(0,NJ-1,NJ,1), Y_norm.block(0,2*NJ-1,NJ,1), Y_norm.block(0,3*NJ-1,NJ,1), Y_norm.block(0,4*NJ-1,NJ,1), Y_norm.block(0,5*NJ-1,NJ,1), Y_norm.block(0,6*NJ-1,NJ,1), Y_norm.block(0,7*NJ-1,NJ,1);
+        
+
+        /* Application of FIR to tau*/
+        tau_J = tau_cmd + G;
+        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
+        tau_J = calcolaMedia(buffer_tau);
+        // redtau_J = tau_J;
 
         Y_D.setZero();
         Y_D_norm.setZero();
         for (int i = 0; i < 7; ++i) {
-            Y_D(i, i * 2) = dot_qr(i); // Imposta 1 sulla diagonale principale
-            Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale
-            Y_D_norm(i, i * 2) = dot_q_curr(i); // Imposta 1 sulla diagonale principale
-            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i)); // Imposta q_i sulla colonna successiva alla diagonale  
-        }
-        // ROS_INFO_STREAM(Rinv_fric);
 
-        tau_J = tau_cmd + G;
-        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
-        tau_J = calcolaMedia(buffer_tau);
-        
-        err_param = tau_J - Y_norm*param - Y_D_norm*param_frict; 
-        // err_param_frict = tau_J - Y_D_norm*param_frict;
-       
-	       
-        /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
-        if (update_param_flag){
-            dot_param = 1*Rinv*(Y_mod.transpose()*dot_error_q + 0.05*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            /*Friction regressor*/
+            Y_D(i, i * 2) = dot_qr(i); 
+            Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); 
+            Y_D_norm(i, i * 2) = dot_q_curr(i); 
+            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i));   
+        }
+
+        // ROS_INFO_STREAM(Rinv_fric);
+        redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
+        redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
+        param7 = param.segment((NJ-1)*PARAM, PARAM);
+
+        // for (int i = 0; i < 10; ++i) {
+            /*Reduced regressor bulid(only link 7 parameters)*/
+            // redY_norm.block(0,i,NJ,1) = Y_norm.block(0,(i+1)*NJ-1,NJ,1);
+
+            /*Reduced tau*/
+            // redtau_J = redtau_J - Y_norm.block(0,i*NJ,NJ,NJ-1)*param.segment(i*NJ,NJ-1);
+            // param7(i) = param(i*NJ-1);
+        // }
+        // ROS_INFO_STREAM(redY_norm.transpose());
+
+        /* Update parameters law*/
+        if (update_param_flag){             
+            
+            /*Compute H*/
+            // stackCompute(Y_norm, H, l, tau_J, E);
+            redStackCompute(redY_norm, H, l, redtau_J, E);
+            // Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+            // ROS_INFO_STREAM(solver_V.singularValues());
+            
+            redY_stack_sum = H*E - H*H.transpose()*param7;
+            
+            // for (int i = 0; i < 10; ++i) {
+            //     Y_stack_sum((i+1)*NJ-1) = redY_stack_sum(i);
+            // }
+
+            Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
+            // Y_stack_sum = H*E - H*H.transpose()*param; 
+                
+            
+            /* Residual computation */
+            // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
+            // ROS_INFO_STREAM(l); 
+            
+            
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 1.0*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        param = param + dt*dot_param; 
-            dot_param_frict = 1*Rinv_fric*(Y_D_norm.transpose()*dot_error_q + 0.05*Y_D_norm.transpose()*(err_param));
-            param_frict = param_frict + dt*dot_param_frict;
+            // Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_Y(Y_norm.transpose()*Y_norm);
+            // ROS_INFO_STREAM(Y_mod.transpose());
+            // dot_param_frict = 0.1*Rinv_fric*(Y_D_norm.transpose()*dot_error_q + 0.1*Y_D_norm.transpose()*(err_param));
+            // param_frict = param_frict + dt*dot_param_frict;
+            
 	    }
 
-         /*Riordino parametri per ogni link*/
+         /*Reshape parameters vector*/
         for(int i = 0; i < 7; ++i){
             param_tot.segment(i*(PARAM+FRICTION),PARAM) = param.segment(i*(PARAM),PARAM);
             param_tot.segment(i*(PARAM+FRICTION) + PARAM,FRICTION) = param_frict.segment(i*FRICTION,FRICTION);
@@ -425,11 +464,12 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law */
-        regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
-        Mest = fastRegMat.getMass_gen(); // matrice di massa stimata usando regressore
-        Cest = fastRegMat.getCoriolis_gen(); // matrice di coriolis stimata usando regressore
-        Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
+        regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters
+        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); 
+
+        Mest = fastRegMat.getMass_gen(); // Estimate Mass Matrix
+        Cest = fastRegMat.getCoriolis_gen(); // Estimate Coriollis Matrix
+        Gest = fastRegMat.getGravity_gen(); // Estimate Gravity Matrix
 
         
         /*Matrici nello spazio operativo*/
@@ -437,33 +477,24 @@ namespace panda_controllers{
         // // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
         // CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
         // GestXi = J_T_pinv*Gest;
-        // ROS_INFO_STREAM("Differenza jacobiano:" << cond);
-        // P = (I7.setIdentity() - J_pinv*J);
+      
 
         // /*Command in operative space*/
-        // F_cmd = MestXi*tmp_conversion1*ee_acc_cmd_tot + CestXi*tmp_conversion1*ee_vel_cmd_tot + Kp*error + Kv*dot_error + MestXi*tmp_conversion2*ee_vel_cmd_tot;
         // F_cmd = MestXi*ee_acc_cmd_tot + CestXi*ee_vel_cmd_tot + Kp*error + Kv*dot_error;
-        // F_cmd = MestXi*ddot_error.setZero() + CestXi*dot_error  + GestXi + Kp*error + Kv*dot_error + MestXi*J_dot*J_pinv*error - J_T_pinv*(Cest*dot_q_curr + Mest*ddot_q_curr);  // legge disperazione 
+        
 
         // /* command torque to joint */
-        // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr); 
-        // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + 10*dot_error_Nq0 - J.transpose()*J_T_pinv*10*dot_error_Nq0;
-        tau_cmd = Mest*ddot_qr + (Cest+Dest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q;// - J.transpose()*J_T_pinv*Kn*dot_error_Nq0;
-        // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_qr + Gest + J.transpose()*Kp_xi*error + J_pinv*Kv_xi*J_T_pinv*dot_error_q - G;
-        // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-        if (flag){
-            ROS_INFO_STREAM(J_T_pinv*Kn*dot_error_Nq0);
-            flag = false;
-        }
-
-	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+        tau_cmd = Mest*ddot_qr + (Cest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q; // (- J.transpose()*J_T_pinv*Kn*dot_error_Nq0);
+        
+        /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
+        tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
 	     	joint_handles_[i].setCommand(tau_cmd[i]);
 	    }
 
-        /* Publish messages (errore di posizione e velocità, coppia comandata ai giunti, parametri dinamici dei vari giunti stimati)*/
+        /* Publish messages */
         time_now = ros::Time::now();
         msg_log.header.stamp = time_now;
 
@@ -478,13 +509,13 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
         fillMsg(msg_log.tau_cmd, dot_error_Nq0);
 
-        msg_config.header.stamp  = time_now; // publico tempo attuale nodo
+        msg_config.header.stamp  = time_now; 
         msg_config.xyz.x = T0EE.translation()(0); 
         msg_config.xyz.y = T0EE.translation()(1);
         msg_config.xyz.z = T0EE.translation()(2);
 
-        this->pub_err_.publish(msg_log); // publico su nodo logging, i valori dei parametri aggiornati con la legge di controllo, e e dot_e (in pratica il vettori di stato del problema aumentato) 
-        this->pub_config_.publish(msg_config); // publico la configurazione dell'EE?
+        this->pub_err_.publish(msg_log); 
+        this->pub_config_.publish(msg_config); 
 
     }
 
@@ -494,7 +525,7 @@ namespace panda_controllers{
     }
 
 
-    void CTModOS::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
+    void CTModOS::aggiungiDato(std::vector<Eigen::Matrix<double,NJ, 1>>& buffer_, const Eigen::Matrix<double,NJ, 1>& dato_, int lunghezza_finestra) {
         buffer_.push_back(dato_);
         if (buffer_.size() > lunghezza_finestra) {
             buffer_.erase(buffer_.begin());
@@ -502,8 +533,8 @@ namespace panda_controllers{
     }
 
     // Funzione per il calcolo della media
-    Eigen::Matrix<double,7, 1> CTModOS::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
-        Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
+    Eigen::Matrix<double,NJ, 1> CTModOS::calcolaMedia(const std::vector<Eigen::Matrix<double,NJ, 1>>& buffer_) {
+        Eigen::Matrix<double,NJ, 1> media = Eigen::Matrix<double,NJ, 1>::Zero();
         for (const auto& vettore : buffer_) {
             media += vettore;
         }
@@ -511,7 +542,7 @@ namespace panda_controllers{
         return media;
     }
 
-    void CTModOS::aggiungiDatoXi(std::vector<Eigen::Matrix<double,6, 1>>& buffer_, const Eigen::Matrix<double,6, 1>& dato_, int lunghezza_finestra) {
+    void CTModOS::aggiungiDatoXi(std::vector<Eigen::Matrix<double,DOF, 1>>& buffer_, const Eigen::Matrix<double,DOF, 1>& dato_, int lunghezza_finestra) {
         buffer_.push_back(dato_);
         if (buffer_.size() > lunghezza_finestra) {
             buffer_.erase(buffer_.begin());
@@ -519,7 +550,7 @@ namespace panda_controllers{
     }
 
     // Funzione per il calcolo della media
-    Eigen::Matrix<double,6, 1> CTModOS::calcolaMediaXi(const std::vector<Eigen::Matrix<double,6, 1>>& buffer_) {
+    Eigen::Matrix<double,DOF, 1> CTModOS::calcolaMediaXi(const std::vector<Eigen::Matrix<double,DOF, 1>>& buffer_) {
         Eigen::Matrix<double,6, 1> media = Eigen::Matrix<double,6, 1>::Zero();
         for (const auto& vettore : buffer_) {
             media += vettore;
@@ -539,12 +570,108 @@ namespace panda_controllers{
         return delta;
     }
 
+    // void CTModOS::stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E){
+    //     const int P = 70;
+    //     const double epsilon = 0.1;
+    //     Eigen::Matrix<double, NJ, NJ*PARAM> Y_old;
+
+    //     if (l <= (P-1)){
+    //         if ((Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(Y.transpose()).norm() >= epsilon){
+    //             H.block(0,l*NJ,P,NJ) = Y.transpose();
+    //             E.segment(l*NJ,NJ) = tau_J;
+    //             l = l+1;
+    //             // ROS_INFO_STREAM(H*H.transpose());
+    //         }
+                                
+    //     }else{
+    //         if ((Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(Y.transpose()).norm() >= epsilon){
+    //             Eigen::MatrixXd Th = H;
+                
+    //             // Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
+    //             // double V = (solver_V.singularValues()).minCoeff();
+    //             double V = (Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+
+    //             Eigen::VectorXd S(P);
+    //             for (int i = 0; i < P; ++i) {
+    //                 H.block(0,i*NJ,P,NJ) = Y.transpose();
+    //                 // Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM/NJ, NJ*PARAM/NJ>> solver_S(H*H.transpose());
+    //                 // S(i) = (solver_S.singularValues()).minCoeff();
+    //                 H = Th;
+
+    //                 /*Information Approach(minor compute load?)*/
+    //                 S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+    //             }
+    //             double Vmax = S.maxCoeff();
+    //             Eigen::Index m; //index max eigvalues 
+    //             S.maxCoeff(&m);
+                
+
+    //             if(Vmax >= V){
+    //                 H.block(0,m*NJ,P,NJ) = Y.transpose();
+    //                 E.segment(m*NJ,NJ) = tau_J;
+    //             }else{
+    //                 H = Th;
+    //                 // E = Te;
+    //             }
+    //         }
+    //     }
+    // }
+
+    void CTModOS::redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E){
+        const int P = 10;
+        const double epsilon = 0.1;
+
+        if (l <= (P-1)){
+            if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+                E.segment(l*NJ,NJ) = red_tau_J;
+                l = l+1;
+                // ROS_INFO_STREAM(H*H.transpose());
+            }
+                                
+        }else{
+            if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                Eigen::MatrixXd Th = H;
+                // Eigen::MatrixXd Te = E;
+                
+                Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
+                double V = (solver_V.singularValues()).minCoeff();
+                // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
+
+                Eigen::VectorXd S(P);
+                for (int i = 0; i < P; ++i) {
+                    H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                    Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                    S(i) = (solver_S.singularValues()).minCoeff();
+                    H = Th;
+                    // ROS_INFO_STREAM(solver_S.singularValues());
+
+                    /*Information Approach(minor compute load?)*/
+                    // S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+                }
+                double Vmax = S.maxCoeff();
+                Eigen::Index m; //index max eigvalues 
+                S.maxCoeff(&m);
+                
+
+                if(Vmax >= V){
+                    H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                    E.segment(m*NJ,NJ) = red_tau_J;
+                }
+                // else{
+                //     H = Th;
+                //     E = Te;
+                // }
+            }
+        }
+    }
+
     /* Check for the effort commanded */
-    Eigen::Matrix<double, 7, 1> CTModOS::saturateTorqueRate(
-	const Eigen::Matrix<double, 7, 1>& tau_d_calculated,
-	const Eigen::Matrix<double, 7, 1>& tau_J_d)
+    Eigen::Matrix<double, NJ, 1> CTModOS::saturateTorqueRate(
+	const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,
+	const Eigen::Matrix<double, NJ, 1>& tau_J_d)
     {
-	    Eigen::Matrix<double, 7, 1> tau_d_saturated;
+	    Eigen::Matrix<double, NJ, 1> tau_d_saturated;
 	    for (size_t i = 0; i < 7; i++) {
 
 		    double difference = tau_d_calculated[i] - tau_J_d[i];

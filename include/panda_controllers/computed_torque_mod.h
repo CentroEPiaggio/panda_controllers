@@ -3,6 +3,7 @@
 #include <array> 
 #include <string>
 #include <vector>
+#include <nlopt.hpp>
 #include <math.h>
 #include <Eigen/Dense>
 
@@ -112,6 +113,10 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> err_param;
         Eigen::Matrix<double, 7, 1> err_param_frict;
         
+        std::vector<double> lb;
+        std::vector<double> ub;
+        std::vector<double> initial_guess;
+        std::vector<double> x_opt;
         
         /* Error and dot error feedback */
         
@@ -180,6 +185,9 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
         double deltaCompute (double a);
         
+        /*Function cost*/
+        double objective_function (const std::vector<double> &x, std::vector<double> &grad, void *data);
+
         /* ROS variables */
         
         ros::NodeHandle cvc_nh;

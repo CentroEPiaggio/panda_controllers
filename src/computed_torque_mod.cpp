@@ -185,6 +185,12 @@ namespace panda_controllers{
         /* Initialize regressor object (oggetto thunderpanda) */
         fastRegMat.init(NJ);
 
+        /*Resize*/
+        lb.resize(7);
+        ub.resize(7);
+        initial_guess.resize(7);
+        x_opt.resize(7);
+
         return true;
     }
 
@@ -330,6 +336,7 @@ namespace panda_controllers{
 	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
+        ROS_INFO_STREAM(Y_norm.transpose());
 
 
         /*Calcolo a meno del regressore di attrito*/
@@ -360,10 +367,44 @@ namespace panda_controllers{
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
-	        param = param + dt*dot_param;
+            param = param + dt*dot_param;
             dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
 	    }
+
+        /*Imposto problema di ottimo*/
+        // nlopt::opt opt(nlopt::algorithm::GN_CRS2_LM, 7); // Creazione Algoritmo di ottimizzazione
+
+        // imposto funzione obiettivo da massimizzare
+        // opt.set_max_objective(objective_function, NULL);
+
+        // Limite inferiore e superiore e intial guess
+        // for(int i = 0; i < NJ; ++i){
+        //     lb[i] = ddot_q_curr[i] - 0.02;
+        //     ub[i] = ddot_q_curr[1] + 0.02;
+        //     x_opt[i] = ddot_q_curr[i];
+        // }
+        // opt.set_lower_bounds(lb);
+        // opt.set_upper_bounds(ub);
+
+        /*Initial guess(x_opt è variabile che il problema di ottimo deve trovare)*/
+        
+        // double numcost;
+
+        //Ottimizzazione 
+        // nlopt::result result = opt.optimize(x_opt, numcost);
+
+        // if (result >= 0) {
+        // // std::cout << "Ottimizzazione completata con successo!" << std::endl;
+        // // std::cout << "Massimo valore della norma al quadrato di Y: " << -numcost<< std::endl;
+        // // std::cout << "Valore ottimale di ddq: ";
+        //     for (int i = 0; i < 7; ++i) {
+        //         std::cout << x_opt[i] << " ";
+        //     }
+        // std::cout << std::endl;
+        // } else {
+        //     std::cout << "Ottimizzazione fallita!" << std::endl;
+        // }
 
         /*Riordino parametri per ogni link*/
         for(int i = 0; i < 7; ++i){
@@ -480,6 +521,20 @@ namespace panda_controllers{
     void ComputedTorqueMod::setFlagUpdate(const panda_controllers::flag::ConstPtr& msg){
         update_param_flag = msg->flag;
     }
+
+    // Funzione obiettivo da massimizzare
+    // double ComputedTorqueMod::objective_function(const std::vector<double> &ddq, std::vector<double> &grad, void *data) {
+    //     // Estrai q e dq dal puntatore passato come dati
+    //     std::vector<double> *q_dq_ptr = reinterpret_cast<std::vector<double>*>(data);
+    //     const std::vector<double> &q = (*q_dq_ptr); // q
+    //     const std::vector<double> &dq = (*(q_dq_ptr + 1)); // dq
+
+    //     // Calcola Y dato q, dq e ddq
+    //     double Y = calculate_Y(q, dq, ddq);
+
+    //     // Restituisci il negativo di Y in modo da massimizzare la sua norma
+    //     return -Y;
+    // }
 
     template <size_t N>
     void ComputedTorqueMod::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_) {

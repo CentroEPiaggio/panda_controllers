@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <nlopt.hpp>
 #include <Eigen/Dense>
 
 #include <controller_interface/multi_interface_controller.h>
@@ -38,6 +39,10 @@
 # define    NJ 7	// number of joints
 #endif
 
+#ifndef     DOF
+# define    DOF 6	// degrees of freedom
+#endif
+
 #ifndef     PARAM
 # define    PARAM 10	// number of parameters for each link
 #endif
@@ -61,48 +66,51 @@ public:
     void update(const ros::Time&, const ros::Duration& period);
 
 private:
-  
-    bool flag = true;           // flag for check of the desired command velocity
-    
-    /* Definig the timing */
-    
+
+    bool flag = true;           // flag for check of the desired command velocity    
     double dt;
+    int l;
+    int t;
+    double epsilon; // information trashold 
+
     ros::Time time_now;
     
 
     /* Robot state handle */
-
     franka::RobotState robot_state;
     
     /* Franka ROS matrices */
-
-    Eigen::Matrix<double, 6, NJ> jacobian;
+    Eigen::Matrix<double, DOF, NJ> jacobian;
 	Eigen::Affine3d T0EE;
     
 
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
-    
     Eigen::Matrix<double, NJ, 1> tau_limit;
     Eigen::Matrix<double, NJ, 1> q_min_limit;
     Eigen::Matrix<double, NJ, 1> q_max_limit;
     Eigen::Matrix<double, NJ, 1> q_dot_limit;
     
-    /* Gain Matrices */
-    Eigen::Matrix<double, 6, 6> Lambda; 
-    Eigen::Matrix<double, 6, 6> Kp; 
-    Eigen::Matrix<double, 6, 6> Kv;
-    Eigen::Matrix<double, 7, 7> Kn;
-    Eigen::Matrix<double, 6, 6> Kp_xi; 
-    Eigen::Matrix<double, 6, 6> Kv_xi;
+    /* Gain Matrices in OS*/
+    Eigen::Matrix<double, DOF, DOF> Lambda; 
+    Eigen::Matrix<double, DOF, DOF> Kp; 
+    Eigen::Matrix<double, DOF, DOF> Kv;
+    Eigen::Matrix<double, DOF, DOF> Kp_xi; 
+    Eigen::Matrix<double, DOF, DOF> Kv_xi;
+
+    /* Gain Matrice in NullSpacde*/
+    Eigen::Matrix<double, NJ, NJ> Kn;
+    
+    /*Proof PE*/
+    Eigen::Matrix<double, NJ*PARAM, 1> v;
+    Eigen::Matrix<double, NJ*PARAM, 1> v_dot;
+    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> v_diag;
    
      /* Gain for parameters */
-
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
     Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
     bool update_param_flag;
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
-
     Eigen::Matrix<double, NJ, 1> q_curr;
     Eigen::Matrix<double, NJ, 1> q_c; // vettore giunti meta corsa
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
@@ -117,30 +125,27 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
     
     Eigen::Matrix<double, NJ, 1> err_param;
-    Eigen::Matrix<double, 7, 1> err_param_frict;
 
     Eigen::Matrix<double, NJ, 1> tau_cmd;
     Eigen::Matrix<double, NJ, 1> tau_J;
-    Eigen::Matrix<double, 6, 1> F_cmd; // Forza commandata agente sull'EE
-    Eigen::Matrix<double, 6, 1> vel_cur;
-    Eigen::Matrix<double, NJ, 1> tau_tilde;
+    Eigen::Matrix<double, NJ, 1> redtau_J;
+    // Eigen::Matrix<double, DOF, 1> F_cmd; // Forza commandata agente sull'EE
+    Eigen::Matrix<double, DOF, 1> vel_cur;
     
     /* Error and dot error feedback */
-    
-    Eigen::Matrix<double, 6, 1> error;
-    Eigen::Matrix<double, 6, 1> dot_error;
-    Eigen::Matrix<double, 6, 1> dot_error_est;
-    Eigen::Matrix<double, 6, 1> ddot_error;
+    Eigen::Matrix<double, DOF, 1> error;
+    Eigen::Matrix<double, DOF, 1> dot_error;
+    Eigen::Matrix<double, DOF, 1> dot_error_est;
+    Eigen::Matrix<double, DOF, 1> ddot_error;
 
     Eigen::Vector3d ee_position, ee_velocity, ee_acceleration;
     Eigen::Vector3d ee_omega;
 
     Eigen::Matrix<double,3,3> ee_rot;
     Eigen::Matrix<double,3,3> Rs_tilde;
-    Eigen::Matrix<double,6,6> L, L_dot;
+    Eigen::Matrix<double,DOF,DOF> L, L_dot;
 
     /* Used for saving the last command position and command velocity, and old values to calculate the estimation */
-    
     Eigen::Matrix<double, 3, 1> ee_pos_cmd;             // desired command position 
     Eigen::Matrix<double, 3, 1> ee_vel_cmd;             // desired command velocity 
     Eigen::Matrix<double, 3, 1> ee_acc_cmd;             // desired command acceleration 
@@ -150,17 +155,18 @@ private:
     Eigen::Matrix<double, 3, 1> ee_ang_vel_cmd;         // desired command velocity 
     Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
+    /* FIR variables*/
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
-     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
-      std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
     const int WIN_LEN = 6;
 
     /* Parameter vector */
-
     Eigen::Matrix<double, NJ*PARAM, 1> param;
+    Eigen::Matrix<double, PARAM, 1> param7;
     Eigen::Matrix<double, NJ*PARAM, 1> param_init;
     Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
     Eigen::Matrix<double, NJ*PARAM, 1> param_dyn;
@@ -168,62 +174,61 @@ private:
     Eigen::Matrix<double, NJ*(FRICTION), 1> dot_param_frict;
     Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_tot;
 
-    /* Mass Matrix and Coriolis vector */
-        
-    Eigen::Matrix<double, 7, 7> M;
-    Eigen::Matrix<double, 7, 1> C; 
-    Eigen::Matrix<double, 7, 1> G;
+    /* Mass Matrix and Coriolis vector */     
+    Eigen::Matrix<double, NJ, NJ> M;
+    Eigen::Matrix<double, NJ, 1> C; 
+    Eigen::Matrix<double, NJ, 1> G;
 
     /* Mass Matrix and Coriolis vector with regressor calculation*/
-    Eigen::Matrix<double, 7, 7> Mest;
-    Eigen::Matrix<double, 7, 7> Cest;
-    Eigen::Matrix<double, 7, 7> I7;
-    Eigen::Matrix<double, 7, 1> Gest;
-    Eigen::Matrix<double, 7, 7> Dest; // Matrice stimata degli attriti
+    Eigen::Matrix<double, NJ, NJ> Mest;
+    Eigen::Matrix<double, NJ, NJ> Cest;
+    Eigen::Matrix<double, NJ, NJ> I7;
+    Eigen::Matrix<double, NJ, 1> Gest;
+    Eigen::Matrix<double, NJ, 7> Dest; // Friction Matrix
     
     /* Mass Matrix and Coriolis vector with regressor calculation in operative space*/
-    Eigen::Matrix<double, 6, 6> MestXi;
-    Eigen::Matrix<double, 6, 1> hestXi;
-    Eigen::Matrix<double, 6, 6> CestXi;
-    Eigen::Matrix<double, 6, 1> GestXi;
+    Eigen::Matrix<double, DOF, DOF> MestXi;
+    Eigen::Matrix<double, DOF, 1> hestXi;
+    Eigen::Matrix<double, DOF, DOF> CestXi;
+    Eigen::Matrix<double, DOF, 1> GestXi;
 
     /* Regressor Matrix */
     
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
+    Eigen::Matrix<double, NJ, PARAM> redY_norm;
+    Eigen::MatrixXd H; // Memory stack
+    Eigen::VectorXd E; // Memory stack
+    Eigen::Matrix<double, NJ*PARAM, 1> Y_stack_sum;
+    Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
 	
 	/* Pseudo-inverse of jacobian and its derivative matrices */
-	Eigen::Matrix<double,6,NJ> J;
-    Eigen::Matrix<double,6,NJ> J_dot;
-	Eigen::Matrix<double,NJ,6> J_pinv;
-    Eigen::Matrix<double,6,NJ> J_T_pinv;
-	Eigen::Matrix<double,NJ,6> J_dot_pinv;
-
-    Eigen::Matrix<double,NJ,NJ> N1;
-    Eigen::Matrix<double,NJ,NJ> N_inv;
-
-    Eigen::Matrix<double,6,NJ> Ja;
-    Eigen::Matrix<double,6,NJ> Ja_dot;
-	Eigen::Matrix<double,NJ,6> Ja_pinv;
-    Eigen::Matrix<double,6,NJ> Ja_T_pinv;
-	Eigen::Matrix<double,NJ,6> Ja_dot_pinv;
-
-    Eigen::Matrix<double,NJ,NJ> P; // proiettore nel nullo
+	Eigen::Matrix<double,DOF,NJ> J;
+    Eigen::Matrix<double,DOF,NJ> J_dot;
+	Eigen::Matrix<double,NJ,DOF> J_pinv;
+    Eigen::Matrix<double,DOF,NJ> J_T_pinv;
+	Eigen::Matrix<double,NJ,DOF> J_dot_pinv;
+    
+    Eigen::Matrix<double,NJ,NJ> N1; // NullSpace Projector
+    Eigen::Matrix<double,NJ,NJ> P; // Projector
+    
     /* Object Regressor Slotine Li*/
-
     regrob::thunderPanda fastRegMat;
 
-    /* Check the effort limits */
-    
     /*Filter function*/
-    void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
-    Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
-    void aggiungiDatoXi(std::vector<Eigen::Matrix<double, 6, 1>>& buffer_, const Eigen::Matrix<double, 6, 1>& dato_, int lunghezza_finestra_);
-    Eigen::Matrix<double, 6, 1> calcolaMediaXi(const std::vector<Eigen::Matrix<double, 6, 1>>& buffer_);
+    void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);
+    Eigen::Matrix<double, NJ, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_);
+    void aggiungiDatoXi(std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_, const Eigen::Matrix<double, DOF, 1>& dato_, int lunghezza_finestra_);
+    Eigen::Matrix<double, DOF, 1> calcolaMediaXi(const std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_);
+    
     double deltaCompute (double a);
 
+    /* Fuction Stack building*/
+    // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
+    void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    
     Eigen::Matrix<double, NJ, 1> saturateTorqueRate (
         const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,
         const Eigen::Matrix<double, NJ, 1>& tau_J_d);
@@ -231,11 +236,9 @@ private:
     Eigen::Matrix<double, NJ, 1> tau_J_d;
 
     /* Import parameters */
-
     static constexpr double kDeltaTauMax {1.0};
     
     /* ROS variables */
-    
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Subscriber sub_flag_update_;
@@ -243,7 +246,6 @@ private:
     ros::Publisher pub_config_;
 
     /* Setting Command Callback*/
-    
     void setCommandCB(const desTrajEE::ConstPtr& msg);
 
     /*Setting Flag Callback*/
@@ -253,8 +255,7 @@ private:
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
     std::vector<hardware_interface::JointHandle> joint_handles_;
 
-    /* Message */
-    
+    /* Message */   
     template <size_t N>
     void fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_);
     void fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_);

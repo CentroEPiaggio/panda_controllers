@@ -5,7 +5,7 @@
     <arg name="package"         default="panda_controllers" />
     
     <!-- set -->
-    <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, CT_mod_controller_OS, CT_mod_controller_OS --> 
+    <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, computed_torque_mod_controller, CT_mod_controller_OS --> 
     <arg name="command_name"    default="command_cartesian" /> <!-- command_cartesian, command_joints, com_joints_sin_node -->
 
     <!-- flag -->
@@ -33,7 +33,7 @@
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
     <arg name="bag_path"    default="/home/tommy/bagfiles"/>
-    <arg name="bag_name"    default="$(arg bag_path)/rosbag_NewmodOSRes005"/>
+    <arg name="bag_name"    default="$(arg bag_path)/rosbag_ICL"/>
     <arg name="duration"    default="80"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
