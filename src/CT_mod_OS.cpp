@@ -1,6 +1,10 @@
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/CT_mod_OS.h> //library of the computed torque 
 
+
+// Dichiarazione di objective_wrapper
+// double objective_wrapper(const std::vector<double> &x, std::vector<double> &grad, void *data);
+
 namespace panda_controllers{
 
     bool CTModOS::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
@@ -153,6 +157,7 @@ namespace panda_controllers{
             param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
             param_frict.segment((FRICTION)*i, FRICTION) << d1, d2;
 	    }
+        param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.014045526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
 
         /* Param_dyn initial calculation*/
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);
@@ -202,8 +207,11 @@ namespace panda_controllers{
         /*Start command subscriber and publisher */
         this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
+        // this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true
+        
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
+        this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
    
         /* Initialize regressor object*/
         fastRegMat.init(NJ);
@@ -218,6 +226,7 @@ namespace panda_controllers{
         E.setZero(70); 
         Y_stack_sum.setZero();
         redY_stack_sum.setZero();
+        H_vec.resize(700);
 
         return true;
     }
@@ -381,20 +390,20 @@ namespace panda_controllers{
         // ddot_qr_est = calcolaMedia(buffer_ddqr);
         
 
+
         /* Update and Compute Regressor */
 	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
         Y_mod = fastRegMat.getReg_gen(); // Regressor computetion
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
 
-        /*Reduced regressor bulid(only link 7 parameters)*/
-        // redY_norm.block(0,) << Y_norm.block(0,NJ-1,NJ,1), Y_norm.block(0,2*NJ-1,NJ,1), Y_norm.block(0,3*NJ-1,NJ,1), Y_norm.block(0,4*NJ-1,NJ,1), Y_norm.block(0,5*NJ-1,NJ,1), Y_norm.block(0,6*NJ-1,NJ,1), Y_norm.block(0,7*NJ-1,NJ,1);
-        
 
         /* Application of FIR to tau*/
         tau_J = tau_cmd + G;
+        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
         tau_J = calcolaMedia(buffer_tau);
+        // ROS_INFO_STREAM(tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM)-Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM)*param_real);
         // redtau_J = tau_J;
 
         Y_D.setZero();
@@ -412,6 +421,7 @@ namespace panda_controllers{
         redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
         param7 = param.segment((NJ-1)*PARAM, PARAM);
+        // ROS_INFO_STREAM(param7);
 
         // for (int i = 0; i < 10; ++i) {
             /*Reduced regressor bulid(only link 7 parameters)*/
@@ -425,14 +435,21 @@ namespace panda_controllers{
 
         /* Update parameters law*/
         if (update_param_flag){             
-            
+    
+        
             /*Compute H*/
             // stackCompute(Y_norm, H, l, tau_J, E);
             redStackCompute(redY_norm, H, l, redtau_J, E);
             // Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
             // ROS_INFO_STREAM(solver_V.singularValues());
+
+            /*Casting in vettore*/
+            H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
             
-            redY_stack_sum = H*E - H*H.transpose()*param7;
+            // redY_stack_sum = H*E - H*H.transpose()*param7;
+            redY_stack_sum = H*H.transpose()*(param_real-param7);
+            // ROS_INFO_STREAM(H*H.transpose()*param_real -  H*E);
+            // ROS_INFO_STREAM(redtau_J - redY_norm*param7);
             
             // for (int i = 0; i < 10; ++i) {
             //     Y_stack_sum((i+1)*NJ-1) = redY_stack_sum(i);
@@ -444,7 +461,7 @@ namespace panda_controllers{
             
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
-            // ROS_INFO_STREAM(l); 
+            // ROS_INFO_STREAM(Y_stack_sum); 
             
             
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 1.0*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
@@ -474,15 +491,9 @@ namespace panda_controllers{
         
         /*Matrici nello spazio operativo*/
         // MestXi = J_T_pinv*Mest*J_pinv;
-        // // hestXi = J_pinv.transpose()*(Cest*dot_q_curr + Gest) - MestXi*J_dot*dot_q_curr;
         // CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
         // GestXi = J_T_pinv*Gest;
       
-
-        // /*Command in operative space*/
-        // F_cmd = MestXi*ee_acc_cmd_tot + CestXi*ee_vel_cmd_tot + Kp*error + Kv*dot_error;
-        
-
         // /* command torque to joint */
         tau_cmd = Mest*ddot_qr + (Cest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q; // (- J.transpose()*J_T_pinv*Kn*dot_error_Nq0);
         
@@ -514,6 +525,12 @@ namespace panda_controllers{
         msg_config.xyz.y = T0EE.translation()(1);
         msg_config.xyz.z = T0EE.translation()(2);
 
+        fillMsg(msg_opt.q_cur, q_curr);
+        fillMsg(msg_opt.dot_q_curr, dot_q_curr);
+        fillMsg(msg_opt.ddot_q_curr, ddot_q_curr);
+        fillMsg(msg_opt.H_stack, H_vec);
+
+        this->pub_opt_.publish(msg_opt);
         this->pub_err_.publish(msg_log); 
         this->pub_config_.publish(msg_config); 
 
@@ -632,7 +649,7 @@ namespace panda_controllers{
         }else{
             if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
                 Eigen::MatrixXd Th = H;
-                // Eigen::MatrixXd Te = E;
+                Eigen::MatrixXd Te = E;
                 
                 Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
                 double V = (solver_V.singularValues()).minCoeff();
@@ -656,15 +673,67 @@ namespace panda_controllers{
 
                 if(Vmax >= V){
                     H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                    // Te = E;
                     E.segment(m*NJ,NJ) = red_tau_J;
+                    // ROS_INFO_STREAM(Te-E);
                 }
-                // else{
-                //     H = Th;
-                //     E = Te;
-                // }
+                else{
+                    H = Th;
+                    E = Te;
+                }
             }
         }
     }
+    
+
+    // void CTModOS::solveOptimizationProblem(const UserData &udata){
+        
+    //     nlopt::opt opt(nlopt::algorithm::LN_COBYLA, 7); // Specifica l'algoritmo di ottimizzazione
+        
+    //     opt.set_min_objective([this](const std::vector<double> &x, std::vector<double> &grad) -> double {
+    //         return this->objective(x, grad);
+    //     });
+
+    // }
+
+    // double CTModOS::objective(const std::vector<double> &x, std::vector<double> &grad){
+    //     regrob::thunderPanda fastRegMat2;
+    //     fastRegMat2.init(NJ);
+
+    //     UserData *udata = reinterpret_cast<UserData*>(data);
+    //     CTModOS* instance = udata->instance;
+    //     Eigen::MatrixXd H_true;
+    //     Eigen::VectorXd q;
+    //     Eigen::VectorXd dq;
+    //     Eigen::VectorXd xe;
+
+    //     /*Recasting in Eigen*/
+    //     for(int i=0; i<10; ++i){
+    //         q(i) = udata->q[i];
+    //         dq(i) = udata->dq[i];
+    //         xe(i) = x[i];
+    //     }
+
+    //     for(int i=0; i<70; ++i){
+    //         H_true.block(0,i,PARAM,1) << udata->H[i], udata->H[i+1], udata->H[i+2], udata->H[i+3], udata->H[i+4], udata->H[i+5], udata->H[i+6], udata->H[i+7], udata->H[i+8], udata->H[i+9];
+    //     }
+
+    //     fastRegMat2.setArguments(q, dq, dq, xe);
+    //     Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg_gen();
+    //     Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
+
+    //     redStackCompute(redY, H_true, l);
+    //     Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_opt(H_true*H_true.transpose());
+        
+    //     return -(solver_opt.singularValues()).minCoeff();
+    // }
+
+    /*Funzione di comodo per far leggere CTMod::OS al problema*/
+    // double objective_wrapper(const std::vector<double> &x, std::vector<double> &grad, void *data) {
+    //     UserData *udata = reinterpret_cast<UserData*>(data);
+    //     CTModOS ct_mod_os;
+    //     return ct_mod_os.objective(x, grad, udata);
+    // }
 
     /* Check for the effort commanded */
     Eigen::Matrix<double, NJ, 1> CTModOS::saturateTorqueRate(

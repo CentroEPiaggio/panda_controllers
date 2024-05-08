@@ -5,6 +5,7 @@ set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(nlopt_DIR nlopt)
 
 find_package(catkin REQUIRED COMPONENTS
 	controller_interface
@@ -24,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
+find_package(nlopt REQUIRED)
 #find_package(Boost REQUIRED)
 
 #find_package(CasADi REQUIRED) # for regressor
@@ -38,6 +40,7 @@ add_message_files(FILES
 	link_params.msg
 	flag.msg
 	Vec7D.msg
+	udata.msg
 )
 ## to create msg, specify dependecies
 generate_messages(
@@ -49,6 +52,7 @@ generate_messages(
 include_directories(
 	${catkin_INCLUDE_DIRS} 
 	${EIGEN3_INCLUDE_DIRS}
+	${nlopt_INCLUDE_DIRS}
 	#${Boost_INCLUDE_DIRS}
 #	${CasADi_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -139,6 +143,18 @@ target_link_libraries(com_joints_sin_node
 	${catkin_LIBRARIES}
 )
 add_dependencies(com_joints_sin_node
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+
+add_executable(command_opt
+	src/command_opt.cpp
+)
+target_link_libraries(command_opt
+	${catkin_LIBRARIES}
+	${nlopt_LIBRARIES}
+)
+add_dependencies(command_opt
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )

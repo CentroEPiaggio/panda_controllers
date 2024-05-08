@@ -42,9 +42,9 @@
 	</include>
 	
 	<!-- to start rosbag -->
-	<include file="$(find panda_controllers)/launch/rosbag_BS.launch" if="$(arg rosbag_BS)" >
+	<!-- <include file="$(find panda_controllers)/launch/rosbag_BS.launch" if="$(arg rosbag_BS)" >
 		<arg name="controller_name" value="$(arg controller_name)" />
 		<arg name="clik"            value="$(arg clik)" />
-	</include>
+	</include> -->
 	
 </launch>
