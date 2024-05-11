@@ -5,7 +5,9 @@ set(CMAKE_BUILD_TYPE Release)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(nlopt_DIR nlopt)
+# SET(NLOPT_LIBRARY "/home/tommy/nlopt-2.7.1/build/libnlopt.so")
+# SET(NLOPT_LIBRARIES "/home/tommy/nlopt-2.7.1/build/libnlopt.so.0" "/home/tommy/nlopt-2.7.1/build//libnlopt.so.0.10.0")
+# set(nlopt_DIR nlopt)
 
 find_package(catkin REQUIRED COMPONENTS
 	controller_interface
@@ -25,7 +27,14 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
-find_package(nlopt REQUIRED)
+find_package(NLopt REQUIRED CONFIG)
+
+# Stampa il percorso alle directory di inclusione della libreria Nlopt
+# message(STATUS "NLopt include directories: ${EIGEN3_INCLUDE_DIRS}")
+
+# Stampa le librerie Nlopt
+# message(STATUS "NLopt libraries: ${NLOPT_LIBRARIES}")
+# find_package(nlopt REQUIRED)
 #find_package(Boost REQUIRED)
 
 #find_package(CasADi REQUIRED) # for regressor
@@ -52,7 +61,7 @@ generate_messages(
 include_directories(
 	${catkin_INCLUDE_DIRS} 
 	${EIGEN3_INCLUDE_DIRS}
-	${nlopt_INCLUDE_DIRS}
+	${NLOPT_INCLUDE_DIRS}
 	#${Boost_INCLUDE_DIRS}
 #	${CasADi_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -149,10 +158,12 @@ add_dependencies(com_joints_sin_node
 
 add_executable(command_opt
 	src/command_opt.cpp
+	src/ThunderPanda.cpp
+	src/gen_regr_fun.cpp
 )
 target_link_libraries(command_opt
 	${catkin_LIBRARIES}
-	${nlopt_LIBRARIES}
+	${NLOPT_LIBRARIES}
 )
 add_dependencies(command_opt
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
@@ -181,6 +192,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
 	${Franka_INCLUDE_DIRS}
 	${EIGEN3_INCLUDE_DIRS}
 	${catkin_INCLUDE_DIRS}
+	# ${nlopt_INCLUDE_DIRS}
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
 	include

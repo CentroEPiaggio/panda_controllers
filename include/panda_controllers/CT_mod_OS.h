@@ -68,14 +68,14 @@ public:
     void stopping(const ros::Time&);
     void update(const ros::Time&, const ros::Duration& period);
 
-    struct UserData {
-        std::vector<double> q;
-        std::vector<double> dq;
-        // std::vector<std::vector<double>> H;
-        std::vector<double> H;
-        int l;
-        // CTModOS* instance;
-    };
+    // struct UserData {
+    //     std::vector<double> q;
+    //     std::vector<double> dq;
+    //     // std::vector<std::vector<double>> H;
+    //     std::vector<double> H;
+    //     int l;
+    //     // CTModOS* instance;
+    // };
 
     // double objective(const std::vector<double> &x, std::vector<double> &grad);
     // void solveOptimizationProblem(const UserData &udata);
@@ -132,6 +132,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_qr;
+    Eigen::Matrix<double, NJ, 1> qr;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr_est;
@@ -179,7 +180,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 10;
+    const int WIN_LEN = 6;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -261,6 +262,8 @@ private:
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
     void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
+
+    Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q);
     
     Eigen::Matrix<double, NJ, 1> saturateTorqueRate (
         const Eigen::Matrix<double, NJ, 1>& tau_d_calculated,
@@ -274,6 +277,7 @@ private:
     /* ROS variables */
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
+    ros::Subscriber sub_command_j_;
     ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
@@ -281,6 +285,7 @@ private:
 
     /* Setting Command Callback*/
     void setCommandCB(const desTrajEE::ConstPtr& msg);
+    void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);
 
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);

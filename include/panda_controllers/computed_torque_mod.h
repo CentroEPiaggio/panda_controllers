@@ -27,6 +27,7 @@
 #include "panda_controllers/link_params.h"
 #include "panda_controllers/log_adaptive_joints.h"
 #include "panda_controllers/flag.h"
+#include "panda_controllers/udata.h"
 
 #include "utils/ThunderPanda.h"
 // #include "utils/FiltroPassaBasso.h"
@@ -67,6 +68,7 @@ namespace panda_controllers
         /* Definig the timing */
         
         double dt;
+        int l;
         ros::Time time_now;
        
         Eigen::Affine3d T0EE;
@@ -113,10 +115,9 @@ namespace panda_controllers
         Eigen::Matrix<double, 7, 1> err_param;
         Eigen::Matrix<double, 7, 1> err_param_frict;
         
-        std::vector<double> lb;
-        std::vector<double> ub;
-        std::vector<double> initial_guess;
-        std::vector<double> x_opt;
+        Eigen::MatrixXd H;
+        Eigen::VectorXd E;
+        Eigen::VectorXd H_vec;
         
         /* Error and dot error feedback */
         
@@ -160,6 +161,7 @@ namespace panda_controllers
         
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
+        Eigen::Matrix<double, NJ, PARAM> redY_norm;
         Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
         Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
         // Eigen::Matrix<double, NJ, NJ*(PARAM+FRICTION)> Y_mod_D;
@@ -176,6 +178,7 @@ namespace panda_controllers
             const Eigen::Matrix<double, 7, 1>& tau_J_d);
         
         Eigen::Matrix<double, 7, 1> tau_J_d;
+        Eigen::Matrix<double, 7, 1> redtau_J;
 
         static constexpr double kDeltaTauMax {1.0};
 
@@ -186,7 +189,9 @@ namespace panda_controllers
         double deltaCompute (double a);
         
         /*Function cost*/
-        double objective_function (const std::vector<double> &x, std::vector<double> &grad, void *data);
+        // double objective_function (const std::vector<double> &x, std::vector<double> &grad, void *data);
+
+        void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
 
         /* ROS variables */
         
@@ -195,6 +200,7 @@ namespace panda_controllers
         ros::Subscriber sub_flag_update_;
         ros::Publisher pub_err_;
         ros::Publisher pub_config_;
+        ros::Publisher pub_opt_;
         
         /* Setting Command Callback*/
         
@@ -219,6 +225,7 @@ namespace panda_controllers
 
         panda_controllers::log_adaptive_joints msg_log;
         panda_controllers::point msg_config;
+        panda_controllers::udata msg_opt;
     };
 
 }

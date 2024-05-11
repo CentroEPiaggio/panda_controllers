@@ -177,19 +177,20 @@ namespace panda_controllers{
         q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
         /*Start command subscriber and publisher */
-        this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints", 1, &ComputedTorqueMod::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
+        this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &ComputedTorqueMod::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &ComputedTorqueMod::setFlagUpdate, this);  
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_joints> ("logging", 1); //dà informazione a topic loggin l'errore che si commette 
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //dà informazione sulla configurazione usata
+        this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
    
         /* Initialize regressor object (oggetto thunderpanda) */
         fastRegMat.init(NJ);
 
         /*Resize*/
-        lb.resize(7);
-        ub.resize(7);
-        initial_guess.resize(7);
-        x_opt.resize(7);
+        H_vec.resize(700);
+        H.setZero(10,70);
+        E.setZero(70);
+        l = 0;
 
         return true;
     }
@@ -336,7 +337,8 @@ namespace panda_controllers{
 	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg_gen();
-        ROS_INFO_STREAM(Y_norm.transpose());
+        // ROS_INFO_STREAM(Y_norm.transpose());
+        redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
 
 
         /*Calcolo a meno del regressore di attrito*/
@@ -362,49 +364,20 @@ namespace panda_controllers{
         // Y_mod_D << Y_mod, Y_D; // concatenation
         // Y_norm_D << Y_norm, Y_D; // concatenation
         
-        err_param = tau_J - Y_norm*param - Y_D_norm*param_frict;
+        err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
+            H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
+
+            redStackCompute(redY_norm, H, l, tau_J, E);
+
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
             param = param + dt*dot_param;
-            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
-            param_frict = param_frict + dt*dot_param_frict;
+            // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
+            // param_frict = param_frict + dt*dot_param_frict;
 	    }
 
-        /*Imposto problema di ottimo*/
-        // nlopt::opt opt(nlopt::algorithm::GN_CRS2_LM, 7); // Creazione Algoritmo di ottimizzazione
-
-        // imposto funzione obiettivo da massimizzare
-        // opt.set_max_objective(objective_function, NULL);
-
-        // Limite inferiore e superiore e intial guess
-        // for(int i = 0; i < NJ; ++i){
-        //     lb[i] = ddot_q_curr[i] - 0.02;
-        //     ub[i] = ddot_q_curr[1] + 0.02;
-        //     x_opt[i] = ddot_q_curr[i];
-        // }
-        // opt.set_lower_bounds(lb);
-        // opt.set_upper_bounds(ub);
-
-        /*Initial guess(x_opt è variabile che il problema di ottimo deve trovare)*/
-        
-        // double numcost;
-
-        //Ottimizzazione 
-        // nlopt::result result = opt.optimize(x_opt, numcost);
-
-        // if (result >= 0) {
-        // // std::cout << "Ottimizzazione completata con successo!" << std::endl;
-        // // std::cout << "Massimo valore della norma al quadrato di Y: " << -numcost<< std::endl;
-        // // std::cout << "Valore ottimale di ddq: ";
-        //     for (int i = 0; i < 7; ++i) {
-        //         std::cout << x_opt[i] << " ";
-        //     }
-        // std::cout << std::endl;
-        // } else {
-        //     std::cout << "Ottimizzazione fallita!" << std::endl;
-        // }
 
         /*Riordino parametri per ogni link*/
         for(int i = 0; i < 7; ++i){
@@ -456,6 +429,12 @@ namespace panda_controllers{
         msg_config.xyz.y = T0EE.translation()(1);
         msg_config.xyz.z = T0EE.translation()(2);
 
+        fillMsg(msg_opt.q_cur, q_curr);
+        fillMsg(msg_opt.dot_q_curr, dot_q_curr);
+        fillMsg(msg_opt.ddot_q_curr, ddot_q_curr);
+        fillMsg(msg_opt.H_stack, H_vec);
+
+        this->pub_opt_.publish(msg_opt);
         this->pub_err_.publish(msg_log); // publico su nodo logging, i valori dei parametri aggiornati con la legge di controllo, e e dot_e (in pratica il vettori di stato del problema aumentato) 
         this->pub_config_.publish(msg_config); // publico la configurazione dell'EE?
     }
@@ -463,6 +442,57 @@ namespace panda_controllers{
     void ComputedTorqueMod::stopping(const ros::Time&)
     {
 	//TO DO
+    }
+
+    void ComputedTorqueMod::redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E){
+        const int P = 10;
+        const double epsilon = 0.1;
+
+        if (l <= (P-1)){
+            if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+                E.segment(l*NJ,NJ) = red_tau_J;
+                l = l+1;
+                // ROS_INFO_STREAM(H*H.transpose());
+            }
+                                
+        }else{
+            if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                Eigen::MatrixXd Th = H;
+                Eigen::MatrixXd Te = E;
+                
+                Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
+                double V = (solver_V.singularValues()).minCoeff();
+                // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
+
+                Eigen::VectorXd S(P);
+                for (int i = 0; i < P; ++i) {
+                    H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                    Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                    S(i) = (solver_S.singularValues()).minCoeff();
+                    H = Th;
+                    // ROS_INFO_STREAM(solver_S.singularValues());
+
+                    /*Information Approach(minor compute load?)*/
+                    // S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+                }
+                double Vmax = S.maxCoeff();
+                Eigen::Index m; //index max eigvalues 
+                S.maxCoeff(&m);
+                
+
+                if(Vmax >= V){
+                    H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                    // Te = E;
+                    E.segment(m*NJ,NJ) = red_tau_J;
+                    // ROS_INFO_STREAM(Te-E);
+                }
+                else{
+                    H = Th;
+                    E = Te;
+                }
+            }
+        }
     }
 
 
@@ -512,9 +542,11 @@ namespace panda_controllers{
 
     void ComputedTorqueMod::setCommandCB(const sensor_msgs::JointStateConstPtr& msg)
     {
-        command_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-        command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
         command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+        // command_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+        // command_dot_dot_q_d = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+        command_dot_q_d = command_dot_q_d + dt*command_dot_dot_q_d;
+        command_q_d = command_q_d + dt*command_dot_q_d;
 
     }
 
@@ -522,19 +554,6 @@ namespace panda_controllers{
         update_param_flag = msg->flag;
     }
 
-    // Funzione obiettivo da massimizzare
-    // double ComputedTorqueMod::objective_function(const std::vector<double> &ddq, std::vector<double> &grad, void *data) {
-    //     // Estrai q e dq dal puntatore passato come dati
-    //     std::vector<double> *q_dq_ptr = reinterpret_cast<std::vector<double>*>(data);
-    //     const std::vector<double> &q = (*q_dq_ptr); // q
-    //     const std::vector<double> &dq = (*(q_dq_ptr + 1)); // dq
-
-    //     // Calcola Y dato q, dq e ddq
-    //     double Y = calculate_Y(q, dq, ddq);
-
-    //     // Restituisci il negativo di Y in modo da massimizzare la sua norma
-    //     return -Y;
-    // }
 
     template <size_t N>
     void ComputedTorqueMod::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_) {
