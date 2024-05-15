@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 	ros::Time t;
     double dt = 0.0;
 
-    ros::Duration(0.01).sleep();
+    // ros::Duration(0.01).sleep();
 
 	while (ros::ok()){
     

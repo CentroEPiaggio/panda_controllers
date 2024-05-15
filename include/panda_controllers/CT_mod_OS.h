@@ -101,9 +101,11 @@ private:
 
     // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
     Eigen::Matrix<double, NJ, 1> tau_limit;
+    
     Eigen::Matrix<double, NJ, 1> q_min_limit;
     Eigen::Matrix<double, NJ, 1> q_max_limit;
-    Eigen::Matrix<double, NJ, 1> q_dot_limit;
+    Eigen::Matrix<double, NJ, 1> dq_limit;
+    Eigen::Matrix<double, NJ, 1> ddq_limit;
     
     /* Gain Matrices in OS*/
     Eigen::Matrix<double, DOF, DOF> Lambda; 
@@ -129,13 +131,26 @@ private:
     Eigen::Matrix<double, NJ, 1> q_curr;
     Eigen::Matrix<double, NJ, 1> q_c; // vettore giunti meta corsa
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
+    // Eigen::Matrix<double, NJ, 1> q_curr_old;
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
+    Eigen::Matrix<double, NJ, 1> ddot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_qr;
+    Eigen::Matrix<double, NJ, 1> dot_qr_old;
     Eigen::Matrix<double, NJ, 1> qr;
+    Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr_est;
+
+    /*Variabili di ottimo*/
+    Eigen::Matrix<double, NJ, 1> ddq_opt;
+    Eigen::Matrix<double, NJ, 1> dq_opt;
+    Eigen::Matrix<double, NJ, 1> q_opt;
+
+    /*Inf variable*/
+    double inf1;
+    double inf2;
 
     // Eigen::Matrix<double, NJ, 1> x_eig;
 
@@ -174,13 +189,14 @@ private:
     Eigen::Matrix<double, 3, 1> ee_ang_acc_cmd;         // desired command acceleration 
 
     /* FIR variables*/
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_q;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 6;
+    const int WIN_LEN = 100;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -215,11 +231,14 @@ private:
     
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
+    Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm_pred;
     Eigen::Matrix<double, NJ, PARAM> redY_norm;
     Eigen::VectorXd redY_norm_vec;
     Eigen::MatrixXd H; // Memory stack
+    Eigen::MatrixXd H_old;
     Eigen::VectorXd H_vec; // utile per passare dati a problema di ottimo
     Eigen::VectorXd E; // Memory stack
+    Eigen::VectorXd E_old;
     Eigen::Matrix<double, NJ*PARAM, 1> Y_stack_sum;
     Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
@@ -260,7 +279,7 @@ private:
 
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
-    void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
     Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q);

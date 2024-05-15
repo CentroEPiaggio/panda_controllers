@@ -63,8 +63,8 @@ CT_mod_controller_OS:
     # --- Controller parameters --- #
     # Termini tipo molla
     kp1: 30.0   #default: 120.0
-    kp2: 6.0   #default: 70.0
-    kp3: 6.0    #default: 50.0
+    kp2: 10.0   #default: 70.0
+    kp3: 10.0    #default: 50.0
    
     # termini non tipo smorzatore
     # kv1: 30.0
