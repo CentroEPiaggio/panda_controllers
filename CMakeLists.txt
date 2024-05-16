@@ -91,8 +91,10 @@ add_library(${PROJECT_NAME}
 	src/CT_mod_OS.cpp #Computed Torque modified Operative space
 	src/backstepping.cpp #Backstepping controller
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	src/gen_regr_fun.cpp
-	src/ThunderPanda.cpp
+	# src/gen_regr_fun.cpp
+	# src/ThunderPanda.cpp
+	src/thunder_panda_2.cpp
+	src/panda_2_gen.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -113,7 +115,7 @@ add_dependencies(command_cartesian
 )
 add_executable(CLIK_node
 	src/CLIK_node.cpp
-	src/ThunderPanda.cpp
+	src/thunder_panda_2.cpp
 	src/gen_regr_fun.cpp
 )
 target_link_libraries(CLIK_node
@@ -158,7 +160,7 @@ add_dependencies(com_joints_sin_node
 
 add_executable(command_opt
 	src/command_opt.cpp
-	src/ThunderPanda.cpp
+	src/thunder_panda_2.cpp
 	src/gen_regr_fun.cpp
 )
 target_link_libraries(command_opt

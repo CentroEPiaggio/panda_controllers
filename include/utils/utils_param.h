@@ -16,7 +16,7 @@
 #define     FRICTION 2	// number of parameters for each link
 #endif
 
-namespace regrob{
+namespace thunder_ns{
     
     inline Eigen::Matrix3d hat(const Eigen::Vector3d v){ // Metodo che costruisce la omega anti-simmetrica
         Eigen::Matrix3d vhat;

@@ -157,7 +157,7 @@ namespace panda_controllers{
         param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.014045526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
 
         /* Param_dyn initial calculation*/
-        regrob::reg2dyn(NJ,PARAM,param,param_dyn);
+        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
         
         /* Inizializing the R gains to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
@@ -201,9 +201,9 @@ namespace panda_controllers{
         tau_limit << 87, 87, 87, 87, 12, 12, 12;
         
         /*Start command subscriber and publisher */
-        // this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
+        this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
-        this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
+        // this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
 
         
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
@@ -211,7 +211,7 @@ namespace panda_controllers{
         this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
    
         /* Initialize regressor object*/
-        fastRegMat.init(NJ);
+        // fastRegMat.init(NJ);
 
         /*Initialize Stack Procedure*/
         l = 0;
@@ -288,7 +288,7 @@ namespace panda_controllers{
         dot_param.setZero();
         dot_param_frict.setZero();
 
-        fastRegMat.setInertialParam(param_dyn); // To compute Extimate Matrix M,G,C
+        fastRegMat.setInertialParams(param_dyn); // To compute Extimate Matrix M,G,C
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr); // To compute jacobian and regressor
 
     }
@@ -328,17 +328,17 @@ namespace panda_controllers{
 	    tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
 
         /* Update pseudo-inverse of J and its derivative */
-    	fastRegMat.setArguments(q_curr,dot_q_curr);
+    	fastRegMat.setArguments(q_curr,dot_q_curr, dot_q_curr,ddot_q_curr);
 
         /* Compute pseudo-inverse of J and its derivative */ 
         J = Eigen::Map<Eigen::Matrix<double, DOF, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
         // J = fastRegMat.getJac_gen();
-        J_dot = fastRegMat.getDotJac_gen();
+        J_dot = fastRegMat.getDotJac();
 	    //J_pinv = fastRegMat.getPinvJac_gen();
         J_pinv = J.transpose()*((J*J.transpose()).inverse()); // Right pseudo-inverse of J
         //J_T_pinv = J_pinv.transpose(); // Left pseudo-inverse of J'
         J_T_pinv = ((J*J.transpose()).inverse())*J; // Left pseudo-inverse of J'
-        J_dot_pinv = fastRegMat.getDotPinvJac_gen();
+        J_dot_pinv = fastRegMat.getDotPinvJac();
 
         /* NullSpace Calculation*/
         N1 = (I7.setIdentity() - J_pinv*J);
@@ -353,10 +353,10 @@ namespace panda_controllers{
         // ee_acceleration = J.topRows(3)*ddot_q_curr + J_dot.topRows(3)*dot_q_curr;
         
 
-    	// error.head(3) = ee_pos_cmd - ee_position;
-        // dot_error.head(3) = ee_vel_cmd - ee_velocity;
-        error.head(3) = computeT0EE(qr).translation() - ee_position;
-        dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
+    	error.head(3) = ee_pos_cmd - ee_position;
+        dot_error.head(3) = ee_vel_cmd - ee_velocity;
+        // error.head(3) = computeT0EE(qr).translation() - ee_position;
+        // dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
         
     
         // ROS_INFO_STREAM(ddq_opt);
@@ -364,8 +364,8 @@ namespace panda_controllers{
     	/* Compute error orientation */
   	    ee_rot = T0EE.linear();
 	    ee_omega = J.bottomRows(3)*dot_q_curr;
-        ee_rot_cmd = computeT0EE(qr).linear();
-        ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
+        // ee_rot_cmd = computeT0EE(qr).linear();
+        // ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
 
 
 
@@ -395,8 +395,8 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        // dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
-	    // ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
         // /*?*/
         // qr = qr + dot_qr*dt;
 
@@ -435,9 +435,9 @@ namespace panda_controllers{
 
         /* Update and Compute Regressor */
 	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-        Y_mod = fastRegMat.getReg_gen(); // Regressor computetion
+        Y_mod = fastRegMat.getReg(); // Regressor computetion
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
-        Y_norm = fastRegMat.getReg_gen();
+        Y_norm = fastRegMat.getReg();
 
 
         /* Application of FIR to tau*/
@@ -570,12 +570,12 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law */
-        regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters
-        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); 
+        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters
+        fastRegMat.setInertialParams(param_dyn); 
 
-        Mest = fastRegMat.getMass_gen(); // Estimate Mass Matrix
-        Cest = fastRegMat.getCoriolis_gen(); // Estimate Coriollis Matrix
-        Gest = fastRegMat.getGravity_gen(); // Estimate Gravity Matrix
+        Mest = fastRegMat.getMass(); // Estimate Mass Matrix
+        Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
+        Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
 
         
         /*Matrici nello spazio operativo*/

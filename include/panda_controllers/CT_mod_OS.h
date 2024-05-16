@@ -30,7 +30,8 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/udata.h"
 
-#include "utils/ThunderPanda.h"
+// #include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_cartesian.h"
 #include "utils/utils_param.h"
 
@@ -255,7 +256,8 @@ private:
     Eigen::Matrix<double,NJ,NJ> P; // Projector
     
     /* Object Regressor Slotine Li*/
-    regrob::thunderPanda fastRegMat;
+    // regrob::thunderPanda fastRegMat;
+    thunder_ns::thunder_panda_2 fastRegMat;
 
     /*Data Struct from optimal problem*/
     // struct UserData {
