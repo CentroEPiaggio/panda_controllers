@@ -804,6 +804,8 @@ namespace panda_controllers{
     void CTModOS::setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg)
     {
         q_opt = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
+        dq_opt = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
+        ddq_opt = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
         // inf2 = -q_opt(0);
 
         // ddq_opt = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
@@ -812,8 +814,8 @@ namespace panda_controllers{
 
         if(update_param_flag){
             qr = q_opt;
-        //     dot_qr = dq_opt;
-        //     ddot_qr = ddq_opt;
+            dot_qr = dq_opt;
+            ddot_qr = ddq_opt;
         }
 
     }
