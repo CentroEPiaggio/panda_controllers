@@ -12,7 +12,7 @@
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 
-#include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_cartesian.h"
 
 #include <franka_hw/franka_model_interface.h>
@@ -64,8 +64,8 @@ int main(int argc, char **argv)
     clik.effort.resize(NJ);
 
     /* robot kinematic */
-    regrob::thunderPanda robot_handle;
-    robot_handle.init(NJ);
+    thunder_ns::thunder_panda_2 robot_handle;
+    // robot_handle.init(NJ);
     Eigen::Matrix<double,4,4> T0EE;
     Eigen::Matrix<double,6,NJ> JacEE;
     Eigen::Matrix<double,NJ,6> pJacEE; // Sta per pseudo-inversa
@@ -139,11 +139,11 @@ int main(int argc, char **argv)
         dot_pJacEE = robot_handle.getDotPinvJac_gen();
         */
 
-        robot_handle.setArguments(qr,dot_qr);
-        T0EE = robot_handle.getKin_gen();
-        JacEE = robot_handle.getJac_gen();
-        pJacEE = robot_handle.getPinvJac_gen();
-        dot_pJacEE = robot_handle.getDotPinvJac_gen();
+        robot_handle.setArguments(qr,dot_qr, qr, qr);
+        T0EE = robot_handle.getKin();
+        JacEE = robot_handle.getJac();
+        pJacEE = robot_handle.getPinvJac();
+        dot_pJacEE = robot_handle.getDotPinvJac();
         
         if(!start){
             ee_rot_cmd = T0EE.block(0,0,3,3);

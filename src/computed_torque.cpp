@@ -143,7 +143,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 		param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 	}
 	//std::cout<<"\ninit param:\n"<<param<<"\n";
-	regrob::reg2dyn(NJ,PARAM,param,param_dyn);
+	thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
 	//std::cout<<"\ninit param_dyn:\n"<<param_dyn<<"\n";
 
 	/* Inizializing the R gains to update parameters*/
@@ -200,7 +200,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	this->pub_deb_ = node_handle.advertise<panda_controllers::Vec7D>("debug",1);
 
 	/* Initialize regressor object */
-	fastRegMat.init(NJ);
+	// fastRegMat.init(NJ);
 
 	return true;
 }
@@ -239,7 +239,7 @@ void ComputedTorque::starting(const ros::Time& time)
 	ddot_q_curr_old.setZero();
 	ddot_q_curr.setZero();
 	dot_param.setZero();
-	fastRegMat.setInertialParam(param_dyn);
+	fastRegMat.setInertialParams(param_dyn);
     fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
 }
 
@@ -323,16 +323,16 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	/* Update and Compute Regressor */
 	
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
-	Y = fastRegMat.getReg_gen();
+	Y = fastRegMat.getReg();
 
 	/* tau_J_d is past tau_cmd saturated */
 
 
 	/* Update inertial parameters */
 
-	regrob::reg2dyn(NJ,PARAM,param,param_dyn);
-	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
-	Mest = fastRegMat.getMass_gen(); // inversione potrebbe generare singolarità
+	thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
+	// fastRegMat.setArguments(q_curr,dot_q_curr,dot_q_curr,ddot;
+	Mest = fastRegMat.getMass(); // inversione potrebbe generare singolarità
 	//std::cout<<"\nMest inv: \n"<<Mest.inverse()<<"\n";
 	/* std::cout<<"\n ================================== \n";
 	std::cout<<"\ndet(Mest): "<<Mest.determinant()<<"\n";
@@ -347,11 +347,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	
 	/* update dynamic for control law */
 
-	regrob::reg2dyn(NJ,PARAM,param,param_dyn);					// conversion of updated parameters, nuovo oggetto thunderpsnda
-	fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn);
-	Mest = fastRegMat.getMass_gen();
-	Cest = fastRegMat.getCoriolis_gen();
-	Gest = fastRegMat.getGravity_gen();
+	thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);					// conversion of updated parameters, nuovo oggetto thunderpsnda
+	fastRegMat.setInertialParams(param_dyn);
+	Mest = fastRegMat.getMass();
+	Cest = fastRegMat.getCoriolis();
+	Gest = fastRegMat.getGravity();
 
 	tau_cmd = Mest * command_dot_dot_q_d + Cest*dot_q_curr + Kp_apix * error + Kv_apix * dot_error + Gest - G;  // C->C*dq, legge computed torque
 	

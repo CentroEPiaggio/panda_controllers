@@ -130,7 +130,7 @@ namespace panda_controllers{
 	    }
 
         /* Credo serva a settare il parametri dinamici del sistema (nel file backsteppinh non è usato)?*/
-        regrob::reg2dyn(NJ,PARAM,param,param_dyn);
+        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
         
         /* Inizializing the R gains (da capire in che modo si attribuiscono i valori) to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
@@ -184,7 +184,7 @@ namespace panda_controllers{
         this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
    
         /* Initialize regressor object (oggetto thunderpanda) */
-        fastRegMat.init(NJ);
+        // fastRegMat.init(NJ);
 
         /*Resize*/
         H_vec.resize(700);
@@ -238,7 +238,8 @@ namespace panda_controllers{
         Kv_apix = Kv;
         
         /* Update regressor */
-        fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
+        // fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
+        fastRegMat.setInertialParams(param_dyn);
         fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
     
     }
@@ -334,9 +335,9 @@ namespace panda_controllers{
 
         /* Update and Compute Regressor mod e Regressor Classic*/
 	    fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d);
-	    Y_mod = fastRegMat.getReg_gen(); // calcolo del regressore
+	    Y_mod = fastRegMat.getReg(); // calcolo del regressore
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
-        Y_norm = fastRegMat.getReg_gen();
+        Y_norm = fastRegMat.getReg();
         // ROS_INFO_STREAM(Y_norm.transpose());
         redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
 
@@ -387,11 +388,11 @@ namespace panda_controllers{
         // ROS_INFO_STREAM(param_tot);
 
         /* update dynamic for control law */
-        regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
-        Mest = fastRegMat.getMass_gen(); // matrice di massa stimata usando regressore
-        Cest = fastRegMat.getCoriolis_gen(); // matrice di coriolis stimata usando regressore
-        Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore
+        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
+        fastRegMat.setInertialParams(param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        Mest = fastRegMat.getMass(); // matrice di massa stimata usando regressore
+        Cest = fastRegMat.getCoriolis(); // matrice di coriolis stimata usando regressore
+        Gest = fastRegMat.getGravity(); // modello di gravità stimata usando regressore
 
         /* command torque to joint */
         tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G + Dest*command_dot_q_d; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)

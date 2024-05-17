@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
 find_package(NLopt REQUIRED CONFIG)
+find_package(yaml-cpp REQUIRED)
 
 # Stampa il percorso alle directory di inclusione della libreria Nlopt
 # message(STATUS "NLopt include directories: ${EIGEN3_INCLUDE_DIRS}")
@@ -62,6 +63,7 @@ include_directories(
 	${catkin_INCLUDE_DIRS} 
 	${EIGEN3_INCLUDE_DIRS}
 	${NLOPT_INCLUDE_DIRS}
+	${YAML_CPP_INCLUDE_DIRS}  # Include yaml-cpp directories
 	#${Boost_INCLUDE_DIRS}
 #	${CasADi_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -93,8 +95,8 @@ add_library(${PROJECT_NAME}
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
 	# src/gen_regr_fun.cpp
 	# src/ThunderPanda.cpp
-	src/thunder_panda_2.cpp
 	src/panda_2_gen.cpp
+	src/thunder_panda_2.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -113,18 +115,19 @@ add_dependencies(command_cartesian
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
-add_executable(CLIK_node
-	src/CLIK_node.cpp
-	src/thunder_panda_2.cpp
-	src/gen_regr_fun.cpp
-)
-target_link_libraries(CLIK_node
-	${catkin_LIBRARIES}
-)
-add_dependencies(CLIK_node
-	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-	${catkin_EXPORTED_TARGETS}
-)
+# add_executable(CLIK_node
+# 	src/CLIK_node.cpp
+# 	src/thunder_panda_2.cpp
+# 	# src/gen_regr_fun.cpp
+# 	src/panda_2_gen.cpp
+# )
+# target_link_libraries(CLIK_node
+# 	${catkin_LIBRARIES}
+# )
+# add_dependencies(CLIK_node
+# 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+# 	${catkin_EXPORTED_TARGETS}
+# )
 add_executable(adaptiveFlag_node
 	src/adaptiveFlag_node.cpp
 )
@@ -158,19 +161,20 @@ add_dependencies(com_joints_sin_node
 	${catkin_EXPORTED_TARGETS}
 )
 
-add_executable(command_opt
-	src/command_opt.cpp
-	src/thunder_panda_2.cpp
-	src/gen_regr_fun.cpp
-)
-target_link_libraries(command_opt
-	${catkin_LIBRARIES}
-	${NLOPT_LIBRARIES}
-)
-add_dependencies(command_opt
-	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-	${catkin_EXPORTED_TARGETS}
-)
+# add_executable(command_opt
+# 	src/command_opt.cpp
+# 	src/thunder_panda_2.cpp
+# 	# src/gen_regr_fun.cpp
+# 	src/panda_2_gen.cpp
+# )
+# target_link_libraries(command_opt
+# 	${catkin_LIBRARIES}
+# 	${NLOPT_LIBRARIES}
+# )
+# add_dependencies(command_opt
+# 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+# 	${catkin_EXPORTED_TARGETS}
+# )
 
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
@@ -186,6 +190,7 @@ add_dependencies(trajectory_rviz
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}
 	${catkin_LIBRARIES}
+	yaml-cpp
 	#${Boost_LIBRARIES}
 	#${CASADI_LIB}
 )

@@ -142,7 +142,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	
 	/* Initialize regressor object */
 
-	fastRegMat.init(NJ);
+	// fastRegMat.init(NJ);
 	
 	return true;
 }
@@ -210,12 +210,12 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Update pseudo-inverse of jacobian and its derivative */
 
-	fastRegMat.setArguments(q_curr,dot_q_curr);
+	fastRegMat.setArguments(q_curr,dot_q_curr, dot_qr, ddot_qr);
 
 	/* Compute pseudo-inverse of jacobian and its derivative */
 	
-	mypJacEE = fastRegMat.getPinvJac_gen();
-	mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
+	mypJacEE = fastRegMat.getPinvJac();
+	mydot_pJacEE = fastRegMat.getDotPinvJac();
 
 	/* Compute error translation */
 
@@ -264,7 +264,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	/* Update and Compute Regressor */
 	
 	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-	Yr = fastRegMat.getReg_gen();
+	Yr = fastRegMat.getReg();
 
 	/* tau_J_d is past tau_cmd saturated */
 

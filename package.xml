@@ -15,6 +15,7 @@
 	<build_depend>message_generation</build_depend>
 	<build_depend>std_msgs</build_depend>
 	<build_depend>eigen</build_depend>
+	<build_depend>yaml-cpp</build_depend>
 	<!-- <build_depend>libboost-all-dev</build_depend> -->
 	<!-- <build_depend>casadi</build_depend> -->
 	
@@ -37,6 +38,7 @@
 	<exec_depend>message_runtime</exec_depend>
 	<exec_depend>panda_moveit_config</exec_depend>
 	<exec_depend>rospy</exec_depend>
+	<exec_depend>yaml-cpp</exec_depend>
 
 	<export>
 		<controller_interface plugin="${prefix}/panda_controllers_plugin.xml"/>

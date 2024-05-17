@@ -29,8 +29,8 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/udata.h"
 
-#include "utils/ThunderPanda.h"
-// #include "utils/FiltroPassaBasso.h"
+// #include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_param.h"
 
 #define     DEBUG   0
@@ -169,7 +169,7 @@ namespace panda_controllers
 
         /* Object Regressor Slotine Li*/
 
-        regrob::thunderPanda fastRegMat;
+        thunder_ns::thunder_panda_2 fastRegMat;
 
         /* Check the effort limits */
         

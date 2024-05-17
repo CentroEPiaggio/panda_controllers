@@ -28,7 +28,8 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/Vec7D.h"
 
-#include "utils/ThunderPanda.h"
+// #include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_param.h"
 
 #define     DEBUG   0
@@ -149,7 +150,7 @@ private:
 
     /* Object Regressor Slotine Li*/
 
-    regrob::thunderPanda fastRegMat;
+    thunder_ns::thunder_panda_2 fastRegMat;
 
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);

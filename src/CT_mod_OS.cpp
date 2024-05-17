@@ -331,8 +331,8 @@ namespace panda_controllers{
     	fastRegMat.setArguments(q_curr,dot_q_curr, dot_q_curr,ddot_q_curr);
 
         /* Compute pseudo-inverse of J and its derivative */ 
-        J = Eigen::Map<Eigen::Matrix<double, DOF, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
-        // J = fastRegMat.getJac_gen();
+        // J = Eigen::Map<Eigen::Matrix<double, DOF, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+        J = fastRegMat.getJac();
         J_dot = fastRegMat.getDotJac();
 	    //J_pinv = fastRegMat.getPinvJac_gen();
         J_pinv = J.transpose()*((J*J.transpose()).inverse()); // Right pseudo-inverse of J

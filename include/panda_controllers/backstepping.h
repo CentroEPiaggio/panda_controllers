@@ -28,7 +28,8 @@
 #include "panda_controllers/log_adaptive_cartesian.h"
 #include "panda_controllers/flag.h"
 
-#include "utils/ThunderPanda.h"
+// #include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_cartesian.h"
 
 #define     DEBUG   0      
@@ -136,7 +137,7 @@ private:
 
     /* Object Regressor Slotine Li*/
 
-    regrob::thunderPanda fastRegMat;
+    thunder_ns::thunder_panda_2 fastRegMat;
 
     /* Check the effort limits */
     

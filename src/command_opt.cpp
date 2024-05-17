@@ -12,7 +12,7 @@
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/udata.h"
 
-#include "utils/ThunderPanda.h"
+#include "utils/thunder_panda_2.h"
 #include "utils/utils_cartesian.h"
 
 #include "nlopt.hpp"
@@ -47,7 +47,7 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-regrob::thunderPanda fastRegMat;
+thunder_ns::thunder_panda_2 fastRegMat;
 
 struct UserData {
     // std::vector<double> q;
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     // q_curr.setZero();
     l_idx = 11;
 
-    fastRegMat.init(NJ);
+    // fastRegMat.init(NJ);
 
     // q_max_limit << 2.0, 1.0, 2.0, -0.50, 2.50, 3.0, 2.0;
     // q_min_limit << -2.0, -1.0, -2.0, -2.50, -2.0, 0, -2.0;
@@ -319,7 +319,7 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
     }
 
     fastRegMat.setArguments(q, dq, dq, ddq);
-    Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg_gen();
+    Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg();
     Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
 
     return -redStackCompute(redY, H_true, l);
