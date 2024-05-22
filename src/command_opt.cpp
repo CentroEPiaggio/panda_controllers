@@ -151,10 +151,10 @@ int main(int argc, char **argv)
         std::vector<double> x(7); // variabile soluzione di ottimo che viene inizializzata
         Eigen::VectorXd x_eig(7);
         
-        // udata.l = 11;
-        if (l_idx <= 10){
-            l_idx = l_idx + 2;
-        }
+        udata.l = 11;
+        // if (l_idx <= 10){
+        //     l_idx = l_idx + 2;
+        // }
         
         
         std::vector<double> lb(7), ub(7); // definisco lower and upper bound
@@ -165,6 +165,9 @@ int main(int argc, char **argv)
         // max_acc[0] = 1.0; max_acc[1] = 1.0; max_acc[2] = 1.0; max_acc[3] = 1.0; max_acc[4] = 1.0; max_acc[5] = 1.0; max_acc[6] = 1.0;
         // min_acc[0] = -1.0; min_acc[1] = -1.0; min_acc[2] = -1.0; min_acc[3] = -1.0; min_acc[4] = -1.0; min_acc[5] = -1.0; min_acc[6] = -1.0;
 
+
+        lb[0] = -M_PI; lb[1] = -M_PI; lb[2] = -M_PI_2; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
+        ub[0] = M_PI; ub[1] = M_PI; ub[2] = M_PI_2; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
 
         // cout << "position: "<<q_curr;
         // Sezione cating da Eigen a sdt perchè Eigen non compatibile con libreria di ottimo
@@ -177,8 +180,8 @@ int main(int argc, char **argv)
             // ub[i] = ddq_curr(i)+0.01;
             // lb[i] = q_min_limit(i);
             // ub[i] = q_max_limit(i);
-            lb[i] = -M_PI;
-            ub[i] = M_PI;
+            // lb[i] = -M_PI;
+            // ub[i] = M_PI;
             // ub[i] = (q_max_limit(i)-q_curr(i))/pow(0.001,2) - dq_curr(i)/0.001;
             // lb[i] = (q_min_limit(i)-q_curr(i))/pow(0.001,2) - dq_curr(i)/0.001;
 

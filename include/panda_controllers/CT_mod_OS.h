@@ -125,6 +125,7 @@ private:
    
      /* Gain for parameters */
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
+    Eigen::Matrix<double, NJ*(PARAM+FRICTION), NJ*(PARAM+FRICTION)> Rinv_tot;
     Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
     bool update_param_flag;
 
@@ -197,7 +198,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 300;
+    const int WIN_LEN = 100;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -209,6 +210,8 @@ private:
     Eigen::Matrix<double, NJ*(FRICTION), 1> param_frict;
     Eigen::Matrix<double, NJ*(FRICTION), 1> dot_param_frict;
     Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_tot;
+    Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> param_tot_2;
+    Eigen::Matrix<double, NJ*(PARAM+FRICTION), 1> dot_param_tot;
 
     /* Mass Matrix and Coriolis vector */     
     Eigen::Matrix<double, NJ, NJ> M;
@@ -231,16 +234,18 @@ private:
     /* Regressor Matrix */
     
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
+    Eigen::Matrix<double, NJ, NJ*(PARAM+FRICTION)> Y_mod_tot;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm_pred;
     Eigen::Matrix<double, NJ, PARAM> redY_norm;
     Eigen::VectorXd redY_norm_vec;
     Eigen::MatrixXd H; // Memory stack
-    Eigen::MatrixXd H_old;
+    // Eigen::MatrixXd H_old;
     Eigen::VectorXd H_vec; // utile per passare dati a problema di ottimo
     Eigen::VectorXd E; // Memory stack
-    Eigen::VectorXd E_old;
+    // Eigen::VectorXd E_old;
     Eigen::Matrix<double, NJ*PARAM, 1> Y_stack_sum;
+    // Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
     Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
