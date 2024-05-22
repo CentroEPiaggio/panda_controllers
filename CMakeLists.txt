@@ -161,20 +161,21 @@ add_dependencies(com_joints_sin_node
 	${catkin_EXPORTED_TARGETS}
 )
 
-# add_executable(command_opt
-# 	src/command_opt.cpp
-# 	src/thunder_panda_2.cpp
-# 	# src/gen_regr_fun.cpp
-# 	src/panda_2_gen.cpp
-# )
-# target_link_libraries(command_opt
-# 	${catkin_LIBRARIES}
-# 	${NLOPT_LIBRARIES}
-# )
-# add_dependencies(command_opt
-# 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-# 	${catkin_EXPORTED_TARGETS}
-# )
+add_executable(command_opt
+	src/command_opt.cpp
+	src/thunder_panda_2.cpp
+	# src/gen_regr_fun.cpp
+	src/panda_2_gen.cpp
+)
+target_link_libraries(command_opt
+	${catkin_LIBRARIES}
+	${NLOPT_LIBRARIES}
+	yaml-cpp
+)
+add_dependencies(command_opt
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
 
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp

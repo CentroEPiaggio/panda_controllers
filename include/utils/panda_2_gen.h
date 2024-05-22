@@ -33,7 +33,7 @@ extern "C" int dotJac_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, cas
 #define dotJac_fun_SZ_ARG 2
 #define dotJac_fun_SZ_RES 1
 #define dotJac_fun_SZ_IW 0
-#define dotJac_fun_SZ_W 122
+#define dotJac_fun_SZ_W 91
 extern "C" int pinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int pinvJac_fun_alloc_mem(void);
 extern "C" int pinvJac_fun_init_mem(int mem);
@@ -54,7 +54,7 @@ extern "C" int pinvJac_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, ca
 #define pinvJac_fun_SZ_ARG 1
 #define pinvJac_fun_SZ_RES 1
 #define pinvJac_fun_SZ_IW 0
-#define pinvJac_fun_SZ_W 95
+#define pinvJac_fun_SZ_W 94
 extern "C" int pinvJacPos_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int pinvJacPos_fun_alloc_mem(void);
 extern "C" int pinvJacPos_fun_init_mem(int mem);
@@ -75,7 +75,7 @@ extern "C" int pinvJacPos_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res,
 #define pinvJacPos_fun_SZ_ARG 1
 #define pinvJacPos_fun_SZ_RES 1
 #define pinvJacPos_fun_SZ_IW 0
-#define pinvJacPos_fun_SZ_W 62
+#define pinvJacPos_fun_SZ_W 49
 extern "C" int dotPinvJac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotPinvJac_fun_alloc_mem(void);
 extern "C" int dotPinvJac_fun_init_mem(int mem);
@@ -96,7 +96,7 @@ extern "C" int dotPinvJac_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res,
 #define dotPinvJac_fun_SZ_ARG 2
 #define dotPinvJac_fun_SZ_RES 1
 #define dotPinvJac_fun_SZ_IW 0
-#define dotPinvJac_fun_SZ_W 356
+#define dotPinvJac_fun_SZ_W 307
 extern "C" int dotPinvJacPos_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int dotPinvJacPos_fun_alloc_mem(void);
 extern "C" int dotPinvJacPos_fun_init_mem(int mem);
@@ -117,7 +117,7 @@ extern "C" int dotPinvJacPos_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_r
 #define dotPinvJacPos_fun_SZ_ARG 2
 #define dotPinvJacPos_fun_SZ_RES 1
 #define dotPinvJacPos_fun_SZ_IW 0
-#define dotPinvJacPos_fun_SZ_W 187
+#define dotPinvJacPos_fun_SZ_W 135
 extern "C" int kin_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int kin_fun_alloc_mem(void);
 extern "C" int kin_fun_init_mem(int mem);
@@ -138,7 +138,7 @@ extern "C" int kin_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi
 #define kin_fun_SZ_ARG 1
 #define kin_fun_SZ_RES 1
 #define kin_fun_SZ_IW 0
-#define kin_fun_SZ_W 50
+#define kin_fun_SZ_W 43
 extern "C" int jac_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int jac_fun_alloc_mem(void);
 extern "C" int jac_fun_init_mem(int mem);
@@ -159,7 +159,7 @@ extern "C" int jac_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casadi
 #define jac_fun_SZ_ARG 1
 #define jac_fun_SZ_RES 1
 #define jac_fun_SZ_IW 0
-#define jac_fun_SZ_W 62
+#define jac_fun_SZ_W 51
 extern "C" int regr_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int regr_fun_alloc_mem(void);
 extern "C" int regr_fun_init_mem(int mem);
@@ -180,7 +180,7 @@ extern "C" int regr_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define regr_fun_SZ_ARG 4
 #define regr_fun_SZ_RES 1
 #define regr_fun_SZ_IW 0
-#define regr_fun_SZ_W 461
+#define regr_fun_SZ_W 475
 extern "C" int mass_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int mass_fun_alloc_mem(void);
 extern "C" int mass_fun_init_mem(int mem);
@@ -201,7 +201,7 @@ extern "C" int mass_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, casad
 #define mass_fun_SZ_ARG 2
 #define mass_fun_SZ_RES 1
 #define mass_fun_SZ_IW 0
-#define mass_fun_SZ_W 252
+#define mass_fun_SZ_W 247
 extern "C" int coriolis_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int coriolis_fun_alloc_mem(void);
 extern "C" int coriolis_fun_init_mem(int mem);
@@ -222,7 +222,7 @@ extern "C" int coriolis_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, c
 #define coriolis_fun_SZ_ARG 3
 #define coriolis_fun_SZ_RES 1
 #define coriolis_fun_SZ_IW 0
-#define coriolis_fun_SZ_W 1376
+#define coriolis_fun_SZ_W 1343
 extern "C" int gravity_fun(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem);
 extern "C" int gravity_fun_alloc_mem(void);
 extern "C" int gravity_fun_init_mem(int mem);
@@ -243,4 +243,4 @@ extern "C" int gravity_fun_work_bytes(casadi_int *sz_arg, casadi_int* sz_res, ca
 #define gravity_fun_SZ_ARG 2
 #define gravity_fun_SZ_RES 1
 #define gravity_fun_SZ_IW 0
-#define gravity_fun_SZ_W 51
+#define gravity_fun_SZ_W 54

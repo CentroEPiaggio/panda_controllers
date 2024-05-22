@@ -239,7 +239,7 @@ void ComputedTorque::starting(const ros::Time& time)
 	ddot_q_curr_old.setZero();
 	ddot_q_curr.setZero();
 	dot_param.setZero();
-	fastRegMat.setInertialParams(param_dyn);
+	// fastRegMat.setInertialParams(param_dyn);
     fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
 }
 
@@ -348,7 +348,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	/* update dynamic for control law */
 
 	thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);					// conversion of updated parameters, nuovo oggetto thunderpsnda
-	fastRegMat.setInertialParams(param_dyn);
+	// fastRegMat.setInertialParams(param_dyn);
 	Mest = fastRegMat.getMass();
 	Cest = fastRegMat.getCoriolis();
 	Gest = fastRegMat.getGravity();

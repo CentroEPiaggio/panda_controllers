@@ -201,9 +201,9 @@ namespace panda_controllers{
         tau_limit << 87, 87, 87, 87, 12, 12, 12;
         
         /*Start command subscriber and publisher */
-        this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
+        // this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
-        // this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
+        this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
 
         
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
@@ -212,6 +212,7 @@ namespace panda_controllers{
    
         /* Initialize regressor object*/
         // fastRegMat.init(NJ);
+        // fastRegMat.;
 
         /*Initialize Stack Procedure*/
         l = 0;
@@ -288,8 +289,9 @@ namespace panda_controllers{
         dot_param.setZero();
         dot_param_frict.setZero();
 
-        fastRegMat.setInertialParams(param_dyn); // To compute Extimate Matrix M,G,C
-        fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_q_curr); // To compute jacobian and regressor
+        // fastRegMat.setInertialParams(param_dyn); // To compute Extimate Matrix M,G,C
+        fastRegMat.set_inertial_REG(param); 
+        fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr); // To compute jacobian and regressor
 
     }
 
@@ -301,8 +303,10 @@ namespace panda_controllers{
         Eigen::VectorXd tmp_position(DOF), tmp_velocity(DOF);
 
         robot_state = state_handle_->getRobotState();
+        M = Eigen::Map<Eigen::Matrix<double, NJ, NJ>> (model_handle_->getMass().data());
+        C = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getCoriolis().data());
 	    G = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
-        T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data()); // Homogeneous Transformation Matrix
+        T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 
 
         // qr = q_opt;
@@ -313,6 +317,8 @@ namespace panda_controllers{
         q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; 
+        // dot_q_curr.setZero();
+        // ddot_q_curr.setZero();
         // q_curr_old = q_curr;
         dot_q_curr_old = dot_q_curr; 
         ddot_q_curr_old = ddot_q_curr;
@@ -325,7 +331,8 @@ namespace panda_controllers{
         // ROS_INFO_STREAM(T0EE.linear()-computeT0EE(q_curr).linear());
 
         /* tau_J_d is the desired link-side joint torque sensor signals "without gravity" */
-	    tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
+	    // tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
+        tau_J_d = tau_cmd;
 
         /* Update pseudo-inverse of J and its derivative */
     	fastRegMat.setArguments(q_curr,dot_q_curr, dot_q_curr,ddot_q_curr);
@@ -333,9 +340,10 @@ namespace panda_controllers{
         /* Compute pseudo-inverse of J and its derivative */ 
         // J = Eigen::Map<Eigen::Matrix<double, DOF, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
         J = fastRegMat.getJac();
+        // ROS_INFO_STREAM(J -fastRegMat.getJac());
         J_dot = fastRegMat.getDotJac();
-	    //J_pinv = fastRegMat.getPinvJac_gen();
-        J_pinv = J.transpose()*((J*J.transpose()).inverse()); // Right pseudo-inverse of J
+	    J_pinv = fastRegMat.getPinvJac();
+        // J_pinv = J.transpose()*((J*J.transpose()).inverse()); // Right pseudo-inverse of J
         //J_T_pinv = J_pinv.transpose(); // Left pseudo-inverse of J'
         J_T_pinv = ((J*J.transpose()).inverse())*J; // Left pseudo-inverse of J'
         J_dot_pinv = fastRegMat.getDotPinvJac();
@@ -353,10 +361,10 @@ namespace panda_controllers{
         // ee_acceleration = J.topRows(3)*ddot_q_curr + J_dot.topRows(3)*dot_q_curr;
         
 
-    	error.head(3) = ee_pos_cmd - ee_position;
-        dot_error.head(3) = ee_vel_cmd - ee_velocity;
-        // error.head(3) = computeT0EE(qr).translation() - ee_position;
-        // dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
+    	// error.head(3) = ee_pos_cmd - ee_position;
+        // dot_error.head(3) = ee_vel_cmd - ee_velocity;
+        error.head(3) = computeT0EE(qr).translation() - ee_position;
+        dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
         
     
         // ROS_INFO_STREAM(ddq_opt);
@@ -364,10 +372,10 @@ namespace panda_controllers{
     	/* Compute error orientation */
   	    ee_rot = T0EE.linear();
 	    ee_omega = J.bottomRows(3)*dot_q_curr;
-        // ee_rot_cmd = computeT0EE(qr).linear();
-        // ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
+        ee_rot_cmd = computeT0EE(qr).linear();
+        ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
 
-
+        // ROS_INFO_STREAM(T0EE.translation() - computeT0EE(q_curr).translation());
 
         Rs_tilde = ee_rot_cmd*ee_rot.transpose();
         Eigen::Matrix<double,3,3> L_tmp, L_dot_tmp;
@@ -395,8 +403,8 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+        // dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+	    // ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
         // /*?*/
         // qr = qr + dot_qr*dt;
 
@@ -426,12 +434,6 @@ namespace panda_controllers{
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
         ddot_q_curr = calcolaMedia(buffer_ddq);
       
-        // aggiungiDato(buffer_dqr, dot_qr, WIN_LEN);
-        // dot_qr_est = calcolaMedia(buffer_dqr);
-        // aggiungiDato(buffer_ddqr, ddot_qr, WIN_LEN);
-        // ddot_qr_est = calcolaMedia(buffer_ddqr);
-        
-
 
         /* Update and Compute Regressor */
 	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
@@ -441,11 +443,20 @@ namespace panda_controllers{
 
 
         /* Application of FIR to tau*/
+
+        fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
+        fastRegMat.set_inertial_REG(param); 
+
+        Mest = fastRegMat.getMass(); // Estimate Mass Matrix
+        Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
+        Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
+
         tau_J = tau_cmd + G;
         // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
         tau_J = calcolaMedia(buffer_tau);
         // ROS_INFO_STREAM(tau_J - Y_norm*param); // - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM) - Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM)*param_real);
+        // ROS_INFO_STREAM(tau_J - Y_norm*param);
         // redtau_J = tau_J;
 
         Y_D.setZero();
@@ -520,28 +531,7 @@ namespace panda_controllers{
             
             redStackCompute(redY_norm, H, l, redtau_J, E); 
 
-            /*Choose of command*/
-            // if (inf2 > inf1){
-            //     // H = H_old;
-                
-            //     // ROS_INFO_STREAM(q_opt);
-            //     qr = q_opt;
-            //     dot_qr = dq_opt;
-            //     ddot_qr = ddq_opt;
-            //     dot_error_q = dot_qr - dot_q_curr;
-            //     dot_error_Nq0 = -N1*(dot_q_curr);
-            
-            //     ee_rot_cmd = computeT0EE(qr).linear();
-            //     ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
-            //     error.head(3) = computeT0EE(qr).translation() - ee_position;
-            //     dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
-
-            //     Rs_tilde = ee_rot_cmd*ee_rot.transpose();
-            //     error.tail(3) = vect(Rs_tilde);
-	        //     dot_error.tail(3) = L_tmp.transpose()*ee_ang_vel_cmd-L_tmp*ee_omega;
-           
-            // }     
-
+    
             /*Casting in vettore*/
             H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
             
@@ -555,7 +545,7 @@ namespace panda_controllers{
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
     
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.1*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        param = param + dt*dot_param; 
             // dot_param_frict = 0.1*Rinv_fric*(Y_D_norm.transpose()*dot_error_q + 0.1*Y_D_norm.transpose()*(err_param));
             // param_frict = param_frict + dt*dot_param_frict;
@@ -570,12 +560,21 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law */
-        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters
-        fastRegMat.setInertialParams(param_dyn); 
+        // thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters
+        // fastRegMat.setInertial(param_dyn);
+        // fastRegMat.set_inertial_REG(param); 
 
-        Mest = fastRegMat.getMass(); // Estimate Mass Matrix
-        Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
-        Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
+        // Mest = fastRegMat.getMass(); // Estimate Mass Matrix
+        // Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
+        // Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
+        // ROS_INFO_STREAM(Mest-M);
+
+        // Mest = M; // Estimate Mass Matrix
+        // Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
+        // Gest = -Gest; // Estimate Gravity Matrix
+
+        // ROS_INFO_STREAM("vera: "<<M-Mest);
+        // ROS_INFO_STREAM("stimata: "<<Gest);
 
         
         /*Matrici nello spazio operativo*/
@@ -584,7 +583,9 @@ namespace panda_controllers{
         // GestXi = J_T_pinv*Gest;
       
         // /* command torque to joint */
-        tau_cmd = Mest*ddot_qr + (Cest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q; // (- J.transpose()*J_T_pinv*Kn*dot_error_Nq0);
+        tau_cmd = Mest*ddot_qr + Cest*dot_q_curr_old + Cest*dot_error_q + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0 - G;
+        // tau_cmd = M*ddot_qr + C + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;// + Cest*dot_error_q; // (- J.transpose()*J_T_pinv*Kn*dot_error_Nq0);
+        // ROS_INFO_STREAM(tau_cmd - tau_J_d);
 
         /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
         tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
@@ -593,6 +594,7 @@ namespace panda_controllers{
 	    for (size_t i = 0; i < 7; i++) {
 	     	joint_handles_[i].setCommand(tau_cmd[i]);
 	    }
+        // tau_cmd = saturateTorqueRate(tau_cmd+G, tau_J_d);
 
         /* Publish messages */
         time_now = ros::Time::now();
@@ -834,7 +836,7 @@ namespace panda_controllers{
         DH.block(0,1,NJ,1) << 0, -M_PI_2, M_PI_2, M_PI_2, -M_PI_2, M_PI_2, M_PI_2;
         // Riempio sezione distanza "d"
         // DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107;
-        DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107;
+        DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107; // verificato che questi valori corrispondono a DH che usa il robot in simulazione
         // Riempio sezione angolo giunto "theta"
         DH.block(0,3,NJ,1) = q;     
 

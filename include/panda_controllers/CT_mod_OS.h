@@ -197,7 +197,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100;
+    const int WIN_LEN = 300;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;

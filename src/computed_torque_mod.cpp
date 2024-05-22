@@ -239,7 +239,7 @@ namespace panda_controllers{
         
         /* Update regressor */
         // fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
-        fastRegMat.setInertialParams(param_dyn);
+        // fastRegMat.setInertialParams(param_dyn);
         fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
     
     }
@@ -389,7 +389,7 @@ namespace panda_controllers{
 
         /* update dynamic for control law */
         thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setInertialParams(param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        // fastRegMat.setInertialParams(param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
         Mest = fastRegMat.getMass(); // matrice di massa stimata usando regressore
         Cest = fastRegMat.getCoriolis(); // matrice di coriolis stimata usando regressore
         Gest = fastRegMat.getGravity(); // modello di gravità stimata usando regressore
