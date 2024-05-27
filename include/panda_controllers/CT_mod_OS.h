@@ -117,6 +117,8 @@ private:
 
     /* Gain Matrice in NullSpacde*/
     Eigen::Matrix<double, NJ, NJ> Kn;
+
+    std:: string robot_name;
     
     /*Proof PE*/
     Eigen::Matrix<double, NJ*PARAM, 1> v;
@@ -140,6 +142,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> dot_qr_old;
     Eigen::Matrix<double, NJ, 1> qr;
+    Eigen::Matrix<double, NJ, 1> tau_t;
     Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
@@ -305,6 +308,7 @@ private:
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Subscriber sub_command_j_;
+    ros::Subscriber sub_joints;
     ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
@@ -313,6 +317,7 @@ private:
     /* Setting Command Callback*/
     void setCommandCB(const desTrajEE::ConstPtr& msg);
     void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);
+    void jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg);
 
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);

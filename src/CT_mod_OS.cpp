@@ -207,7 +207,7 @@ namespace panda_controllers{
         // this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &CTModOS::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
         this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
-
+        // this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT);
         
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
@@ -252,6 +252,10 @@ namespace panda_controllers{
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
+
+    
+	    // ROS_INFO_STREAM(tau_t-tau_cmd);
+	    
 
         dot_error_q.setZero(); 
         dot_error_Nq0.setZero();
@@ -461,8 +465,8 @@ namespace panda_controllers{
             // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
             // ROS_INFO_STREAM(param_frict((FRICTION)*i,0));
         }
-        ROS_INFO_STREAM(tau_J - Y_norm*param);
-        ROS_INFO_STREAM(dot_q_curr);
+        // ROS_INFO_STREAM(tau_J - Y_norm*param);// - 16*dot_q_curr);
+        // ROS_INFO_STREAM(dot_q_curr);
 
         Y_D.setZero();
         Y_D_norm.setZero();
@@ -503,7 +507,7 @@ namespace panda_controllers{
             redStackCompute(redY_norm, H, l, redtau_J, E);
             // redStackComputeFric(Y_D_norm, H, l, redtau_J, E); 
 
-            /*Casting in vettore*/
+            /*Casting in vettore(mette in colonna da verificare)*/
             H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
             
             redY_stack_sum = H*E - H*H.transpose()*param7;
@@ -538,13 +542,13 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law */
-        // fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
+        fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
         fastRegMat.set_inertial_REG(param); 
 
         Mest = fastRegMat.getMass(); // Estimate Mass Matrix
         Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
         Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
-        // ROS_INFO_STREAM(Mest*ddot_q_curr+Cest*dot_q_curr+Gest - Y_norm*param); // relazione vera
+        // ROS_INFO_STREAM(Mest*ddot_q_curr+Cest*dot_q_curr+Gest - Y_norm*param); // relazione vera SE USO LE VELOCITA FILTRATE
       
         // ROS_INFO_STREAM("vera: "<<M-Mest);
         // ROS_INFO_STREAM("stimata: "<<Gest);
@@ -567,6 +571,7 @@ namespace panda_controllers{
 	    for (size_t i = 0; i < 7; i++) {
 	     	joint_handles_[i].setCommand(tau_cmd[i]-G[i]);
 	    }
+        
         // tau_cmd = saturateTorqueRate(tau_cmd+G, tau_J_d);
 
         /* Publish messages */
@@ -836,6 +841,10 @@ namespace panda_controllers{
         }
 
     }
+
+    // void CTModOS::jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg){
+    //     tau_t = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+    // }
 
     Eigen::Affine3d CTModOS::computeT0EE(const Eigen::VectorXd& q){
        

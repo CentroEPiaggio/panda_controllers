@@ -2,11 +2,6 @@
 #include <eigen3/Eigen/Dense>
 #include <utils/min_jerk.h>
 
-/* TO DO:
-- problem on estimate trajectory continuity
-*/
-
-
 #include <unistd.h>
 #include <cstdlib>
 #include <signal.h>
@@ -14,13 +9,18 @@
 #include <geometry_msgs/PoseStamped.h>
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/flag.h"
+#include "panda_controllers/udata.h"
 
 #include "ros/ros.h"
 // #include "panda_controllers/CommandParams.h"
 // #include "panda_controllers/Commands.h"
 
 #include <sstream>
-// #include <eigen_conversions/eigen_msg.h>
+
+/*Libreria per ottimo*/
+#include "utils/thunder_panda_2.h"
+#include "utils/utils_cartesian.h"
+#include "nlopt.hpp"
 
 // ROS Service and Message Includes
 #include "std_msgs/Float64.h"
@@ -35,6 +35,14 @@
 
 // // #define ROBOT_NAME "/robot/arm"	// real robot
 // #define ROBOT_NAME ""	// simulation
+
+#ifndef     PARAM
+# define    PARAM 10	// number of parameters for each link
+#endif
+
+#ifndef     NJ
+# define    NJ 7	// number of parameters for each link
+#endif
 
 using namespace std;
 
@@ -53,6 +61,10 @@ min_jerk_class min_jerk;
 // franka_throw_class throw_node = franka_throw_class();
 // lissagious parameters
 double ampX, ampY, ampZ, freqX, freqY, freqZ, phiX, phiZ, offX, offY, offZ, liss_T;
+/*Opt variable*/
+Eigen::VectorXd H_vec(700);
+thunder_ns::thunder_panda_2 fastRegMat;
+
 ros::Publisher pub_hand_qbh1;
 ros::Publisher pub_hand_qbh2;
 
@@ -62,17 +74,24 @@ struct traj_struct_joints{
 	Eigen::Matrix<double, 7, 1> acc;
 } traj_joints;
 
-typedef struct traj_struct_cartesian{
+struct traj_struct_cartesian{
 	Eigen::Vector3d pos;
 	Eigen::Vector3d vel;
 	Eigen::Vector3d acc;
 };
 traj_struct_cartesian traj_cartesian;
-// traj_struct_cartesian traj_tmp
+
+struct UserData {
+    std::vector<double> H;
+    int l;
+	double dt;
+} udata;
 
 // ----- FUNCTIONS ----- //
 void qbhand1_move(float);
 void qbhand2_move(float, float);
+double objective(const std::vector<double> &x, std::vector<double> &grad, void *data);
+double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
 // Define the function to be called when ctrl-c (SIGINT) is sent to process
 void signal_callback_handler(int signum){
@@ -91,16 +110,18 @@ void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
 	init_q = true;
 }
 
+void udataCallback(const panda_controllers::udata::ConstPtr& msg){
+
+	for(int i = 0; i<70; ++i){
+		H_vec.segment(i*PARAM, PARAM) << msg->H_stack[i*PARAM], msg->H_stack[i*PARAM+1], msg->H_stack[i*PARAM+2], msg->H_stack[i*PARAM+3], msg->H_stack[i*PARAM+4], msg->H_stack[i*PARAM+5], msg->H_stack[i*PARAM+6], msg->H_stack[i*PARAM+7], msg->H_stack[i*PARAM+8], msg->H_stack[i*PARAM+9];
+	}
+
+}
+
 // void interpolator_joints(Eigen::Matrix<double, 7, 1> pos_i, Eigen::Matrix<double, 7, 1> pos_f, double tf, double t){
 // 	traj_joints.pos << pos_i + (pos_i - pos_f)*(15*pow((t/tf),4) - 6*pow((t/tf),5) -10*pow((t/tf),3));
 // 	traj_joints.vel << (pos_i - pos_f)*(60*(pow(t,3)/pow(tf,4)) - 30*(pow(t,4)/pow(tf,5)) -30*(pow(t,2)/pow(tf,3)));
 // 	traj_joints.acc << (pos_i - pos_f)*(180*(pow(t,2)/pow(tf,4)) - 120*(pow(t,3)/pow(tf,5)) -60*(t/pow(tf,3)));
-// }
-
-// void interpolator_cartesian(Eigen::Vector3d pos_i, Eigen::Vector3d pos_f, double tf, double t){
-// 	traj_cartesian.pos << pos_i + (pos_i - pos_f)*(15*pow((t/tf),4) - 6*pow((t/tf),5) -10*pow((t/tf),3));
-// 	traj_cartesian.vel << (pos_i - pos_f)*(60*(pow(t,3)/pow(tf,4)) - 30*(pow(t,4)/pow(tf,5)) -30*(pow(t,2)/pow(tf,3)));
-// 	traj_cartesian.acc << (pos_i - pos_f)*(180*(pow(t,2)/pow(tf,4)) - 120*(pow(t,3)/pow(tf,5)) -60*(t/pow(tf,3)));
 // }
 
 traj_struct_cartesian interpolator_cartesian(Eigen::Vector3d pos_i, Eigen::Vector3d d_pos_i, Eigen::Vector3d dd_pos_i, Eigen::Vector3d pos_f, Eigen::Vector3d d_pos_f, Eigen::Vector3d dd_pos_f, double tf, double t){
@@ -156,29 +177,78 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 	}
 }
 
-// void demo_inf_XY(Eigen::Vector3d pos_i, double t){
-// 	Eigen::Vector3d tmp;
-// 	tmp << sin(t)/8, sin(t/2)/4, 0;
-// 	traj.pos << pos_i + tmp;
-// 	traj.vel << cos(t)/8, cos(t/2)/8, 0;
-// 	traj.acc << -sin(t)/8, -sin(t/2)/16, 0;
-// }
+/*Funzione obiettivo problema di ottimo*/
+double objective(const std::vector<double> &x, std::vector<double> &grad, void *data){
 
-// void demo_inf_XYZ(Eigen::Vector3d pos_i, double t,double zf,double tf){
-// 	Eigen::Vector3d tmp;
-// 	tmp << sin(t)/8, sin(t/2)/4, ((zf-pos_i(2))/tf)*t;
-// 	traj.pos << pos_i + tmp;
-// 	traj.vel << cos(t)/8, cos(t/2)/8, (zf-pos_i(2))/tf;
-// 	traj.acc << -sin(t)/8, -sin(t/2)/16, 0;
-// }
+    UserData *udata = reinterpret_cast<UserData*>(data);
+    Eigen::MatrixXd H_true;
+    Eigen::VectorXd q(7);
+    Eigen::VectorXd dq(7);
+    Eigen::VectorXd ddq(7);
+    int l;
+    double t;
 
-// void demo_circle_xy(Eigen::Vector3d pos_i, double t,double zf,double tf){
-//   Eigen::Vector3d tmp;
-//   tmp << 0.1*cos(t), 0.1*sin(t), ((zf-pos_i(2))/tf)*t;
-//   traj.pos << pos_i + tmp;
-//   traj.vel << -0.1*sin(t), 0.1*cos(t), (zf-pos_i(2))/tf;
-//   traj.acc << -0.1*cos(t), -0.1*sin(t), 0;
-// }
+    H_true.resize(10,70);
+    l = udata->l;
+    t = udata->dt;
+
+	/*Traiettoria sinusoidale ottima*/
+    q << 0.0+0.30*sin(1.5*(x[0])*t), 0.0+0.30*sin(2*(x[1])*t), 0.0+0.30*sin(2*(x[2])*t), -1.5+0.30*sin(2*(x[3])*t), 0.0+0.60*sin(2*(x[4])*t), 1.5+0.60*sin(2*(x[5])*t), 0.0+0.60*sin(2*(x[6])*t);
+    dq << 1.5*(x[0])*0.30*cos(1.5*(x[0])*t), 2*(x[1])*0.30*cos(2*(x[1])*t), 2*(x[2])*0.30*cos(2*(x[2])*t), 2*(x[3])*0.30*cos(2*(x[3])*t), 2*(x[4])*0.60*cos(2*(x[4])*t), 2*(x[5])*0.60*cos(2*(x[5])*t), 2*(x[6])*0.60*cos(2*(x[6])*t);
+    ddq << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*t), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*t), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*t), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*t), -pow(2*(x[4]),2)*0.60*sin(2*(x[4])*t), -pow(2*(x[5]),2)*0.60*sin(2*(x[5])*t), -pow(2*(x[6]),2)*0.60*sin(2*(x[6])*t);
+    
+    for(int i=0; i<70; ++i){
+        H_true.block(0,i,PARAM,1) << udata->H[i*PARAM], udata->H[i*PARAM+1], udata->H[i*PARAM+2], udata->H[i*PARAM+3], udata->H[i*PARAM+4], udata->H[i*PARAM+5], udata->H[i*PARAM+6], udata->H[i*PARAM+7], udata->H[i*PARAM+8], udata->H[i*PARAM+9];
+    }
+	
+    fastRegMat.setArguments(q, dq, dq, ddq);
+    Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg();
+    Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
+
+    return -redStackCompute(redY, H_true, l);
+}
+
+double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l){
+    const int P = 10;
+    const double epsilon = 0.1;
+    double Vmax = 0;
+
+    if (l <= (P-1)){
+        if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+            H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+            double V_max = (solver_V.singularValues()).minCoeff();
+        }
+                            
+    }else{
+        if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+            Eigen::MatrixXd Th = H;
+            
+            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+            double V = (solver_V.singularValues()).minCoeff();
+
+            Eigen::VectorXd S(P);
+            for (int i = 0; i < P; ++i) {
+                H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                S(i) = (solver_S.singularValues()).minCoeff();
+                H = Th;
+            }
+            Vmax = S.maxCoeff();
+            Eigen::Index m; //index max eigvalues 
+            S.maxCoeff(&m);
+            
+
+            if(Vmax >= V){
+                H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+            }else{
+                Vmax = V;
+            }
+        }
+    }
+    return Vmax;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -267,18 +337,22 @@ int main(int argc, char **argv)
 	// ----- Subscriber and Publishers ----- //
 	// ros::Publisher pub_traj = node_handle.advertise<panda_controllers::Commands>(robot_name + "/computed_torque_controller/command", 1000);
 	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
-	// ros::Publisher pub_throw_flag = node_handle.advertise<std_msgs::Int32>("/throw_node/throw_state", 1);
-	// ros::Publisher pub_pos_des = node_handle.advertise<geometry_msgs::PoseStamped>("/throw_node/throw_pos_des", 1);
 	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>(robot_name + "/franka_state_controller/joint_states", 1, &jointsCallback);
 	ros::Subscriber sub_franka = node_handle.subscribe<franka_msgs::FrankaState>(robot_name + "/franka_state_controller/franka_states", 1, &frankaCallback);
+	/*Sub per calcolo traiettoria ottima*/
+	ros::Subscriber sub_config_opt = node_handle.subscribe<panda_controllers::udata>("/CT_mod_controller_OS/opt_data", 1, &udataCallback);
 	pub_hand_qbh1 = node_handle.advertise<trajectory_msgs::JointTrajectory>("/robot/gripper/qbhand1/control/qbhand1_synergy_trajectory_controller/command", 1);
 	pub_hand_qbh2 = node_handle.advertise<trajectory_msgs::JointTrajectory>("/robot/gripper/qbhand2m1/control/qbhand2m1_synergies_trajectory_controller/command", 1);
 	// ros::Subscriber sub_pose =  node_handle.subscribe("/franka_state_controller/franka_ee_pose", 1, &poseCallback);
+	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
 	ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/adaptiveFlag", 1);
+	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
 
 	// ----- Messages ----- //
 	panda_controllers::flag adaptive_flag_msg;
+	panda_controllers::flag opt_flag_msg;
 	panda_controllers::desTrajEE traj_msg;
+	sensor_msgs::JointState traj_opt_msg;
 
 	// creating trajectory message
 	// panda_controllers::Commands command_msg;
@@ -348,6 +422,13 @@ int main(int argc, char **argv)
 	int choice_2 = 0;
 	int executing = 0;
 
+	/* Inizializzazione grandezze ottimo*/
+	udata.H.resize(700);
+	std::vector<double> lb(7), ub(7);
+	std::vector<double> x(7);
+	lb[0] = -M_PI; lb[1] = -M_PI; lb[2] = -M_PI_2; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
+	ub[0] = M_PI; ub[1] = M_PI; ub[2] = M_PI_2; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
+
 	while (ros::ok()){
 		if (executing == 0){
 			cout<<"choice:   (1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos) "<<endl;
@@ -399,7 +480,7 @@ int main(int argc, char **argv)
 				tf = tf_throw + tf_brake;
 			}else if (choice == 5){
 				// --- estimate --- //
-				cout<<"estimation type:   (1: lissajous,  2: min-jerk,     0: cancel) "<<endl;
+				cout<<"estimation type:   (1: lissajous,  2: min-jerk,  3:traj_opt ,0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 1){
 					// trajectory center
@@ -425,6 +506,8 @@ int main(int argc, char **argv)
 					p_end = pf_brake_est;
 					executing = 4;
 					tf = tf_0 + tf_throw_est + tf_brake;
+				} else if (choice_2 == 3){
+					executing = 5;
 				}
 			}else if (choice == 6){
 				cout<<"adaptive:   (0: disable,  1: enable,     other: cancel) "<<endl;
@@ -505,20 +588,65 @@ int main(int argc, char **argv)
 						traj_cartesian.vel = zero;
 						traj_cartesian.acc = zero;
 					}
-				}
-				// ----- publishing ----- //
-				traj_msg.header.stamp = ros::Time::now();
-				traj_msg.position.x = traj_cartesian.pos(0);
-				traj_msg.position.y = traj_cartesian.pos(1);
-				traj_msg.position.z = traj_cartesian.pos(2);
-				traj_msg.velocity.x = traj_cartesian.vel(0);
-				traj_msg.velocity.y = traj_cartesian.vel(1);
-				traj_msg.velocity.z = traj_cartesian.vel(2);
-				traj_msg.acceleration.x = traj_cartesian.acc(0);
-				traj_msg.acceleration.y = traj_cartesian.acc(1);
-				traj_msg.acceleration.z = traj_cartesian.acc(2);
-				pub_traj_cartesian.publish(traj_msg);  
+				} else if (executing == 5){
+					
+					for(int i = 0; i < 700; ++i){
+						udata.H[i] = H_vec(i);
+					}
+					double dt = (ros::Time::now() - t_init).toSec();
+					udata.dt = dt;
 
+					for(int i=0; i < 7; ++i){
+            			x[i] = 0;
+					}
+					udata.l = 11;
+					nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ);
+
+					opt.set_xtol_rel(1e-4);
+					opt.set_lower_bounds(lb); // setto limite inferiore
+					opt.set_upper_bounds(ub); // setto limite superiore 
+					opt.set_min_objective(objective, &udata);  // definisco costo da massimizzare
+				
+
+					// Ottimizzazione
+					double minf;
+					nlopt::result result = opt.optimize(x, minf);
+
+					/*Traiettoria ottima ottenuta*/
+					traj_joints.pos << 0.0+0.30*sin(1.5*(x[0])*dt), 0.0+0.30*sin(2*(x[1])*dt), 0.0+0.30*sin(2*(x[2])*dt), -1.5+0.30*sin(2*(x[3])*dt), 0.0+0.30*sin(2*(x[4])*dt), 1.5+0.30*sin(2*(x[5])*dt), 0.0+0.30*sin(2*(x[6])*dt);
+					traj_joints.vel << 1.5*(x[0])*0.30*cos(1.5*(x[0])*dt), 2*(x[1])*0.30*cos(2*(x[1])*dt), 2*(x[2])*0.30*cos(2*(x[2])*dt), 2*(x[3])*0.30*cos(2*(x[3])*dt), 2*(x[4])*0.30*cos(2*(x[4])*dt), 2*(x[5])*0.30*cos(2*(x[5])*dt), 2*(x[6])*0.30*cos(2*(x[6])*dt);
+					traj_joints.acc << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*dt), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*dt), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*dt), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*dt), -pow(2*(x[4]),2)*0.30*sin(2*(x[4])*dt), -pow(2*(x[5]),2)*0.30*sin(2*(x[5])*dt), -pow(2*(x[6]),2)*0.30*sin(2*(x[6])*dt);
+				}
+			
+
+				// ----- publishing ----- //
+				if (executing == 5){
+					for(int i=0;i<NJ;i++){
+						traj_opt_msg.header.stamp = ros::Time::now();
+						traj_opt_msg.position[i] = traj_joints.pos(i);
+						traj_opt_msg.velocity[i] = traj_joints.vel(i);
+						traj_opt_msg.position[i] = traj_joints.acc(i);
+					}
+					
+					opt_flag_msg.flag = true;
+					pub_flag_opt.publish(opt_flag_msg);
+					pub_cmd_opt.publish(traj_opt_msg);
+				}else{	
+					traj_msg.header.stamp = ros::Time::now();
+					traj_msg.position.x = traj_cartesian.pos(0);
+					traj_msg.position.y = traj_cartesian.pos(1);
+					traj_msg.position.z = traj_cartesian.pos(2);
+					traj_msg.velocity.x = traj_cartesian.vel(0);
+					traj_msg.velocity.y = traj_cartesian.vel(1);
+					traj_msg.velocity.z = traj_cartesian.vel(2);
+					traj_msg.acceleration.x = traj_cartesian.acc(0);
+					traj_msg.acceleration.y = traj_cartesian.acc(1);
+					traj_msg.acceleration.z = traj_cartesian.acc(2);
+					
+					opt_flag_msg.flag = false;
+					pub_flag_opt.publish(opt_flag_msg);
+					pub_traj_cartesian.publish(traj_msg);  
+				}	
 				loop_rate.sleep();
 				t = (ros::Time::now() - t_init).toSec();
 			}

@@ -57,9 +57,7 @@ struct UserData {
     std::vector<double> H;
     int l;
     double dt;
-};
-
-UserData udata;
+} udata;
 
 /*Funzioni necessarie per risoluzione problema di ottimo*/
 
@@ -107,7 +105,7 @@ int main(int argc, char **argv)
     ros::Time t;
     double t_start;
     double dt = 0;
-    double wf = 20;
+    // double wf = 20;
 
     t = ros::Time::now();
     t_start = t.toSec();
@@ -320,7 +318,7 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
      
 }
 
-/*Provare facendo restituire direttamente il valore singolare*/
+
 double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l){
     const int P = 10;
     const double epsilon = 0.1;

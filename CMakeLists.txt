@@ -177,6 +177,24 @@ add_dependencies(command_opt
 	${catkin_EXPORTED_TARGETS}
 )
 
+# add_executable(close_hand_node 
+# 	src/close_hand_node.cpp
+# )
+
+add_executable(adaptive_throw
+ 	src/adaptive_throw.cpp
+	src/min_jerk.cpp
+	src/thunder_panda_2.cpp
+	# src/gen_regr_fun.cpp
+	src/panda_2_gen.cpp
+)
+
+target_link_libraries(adaptive_throw 
+	${catkin_LIBRARIES}
+	${NLOPT_LIBRARIES}
+	yaml-cpp
+)
+
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
 )
