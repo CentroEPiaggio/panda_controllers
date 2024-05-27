@@ -223,8 +223,13 @@ namespace panda_controllers{
         epsilon = 0.1;
         inf1 = 0;
         inf2 = 0;
+       
         H.setZero(10,70);
         E.setZero(70); 
+        /* Friction case stack*/
+        // H.setZero(14,98);
+        // E.setZero(98); 
+
         // H_old.setZero(10,70);
         // E_old.setZero(70); 
         Y_stack_sum.setZero();
@@ -315,19 +320,11 @@ namespace panda_controllers{
 	    G = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
         T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 
-        
-
-        // qr = q_opt;
-        // dot_qr = dq_opt;
-        // ddot_qr = ddq_opt;
 
         /* Actual position, velocity and acceleration of the joints */
         q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; 
-        // dot_q_curr.setZero();
-        // ddot_q_curr.setZero();
-        // q_curr_old = q_curr;
         dot_q_curr_old = dot_q_curr; 
         ddot_q_curr_old = ddot_q_curr;
 
@@ -366,7 +363,7 @@ namespace panda_controllers{
         /* Compute error translation */
     	ee_position = T0EE.translation();
 	    ee_velocity = J.topRows(3)*dot_q_curr;
-        // ee_acceleration = J.topRows(3)*ddot_q_curr + J_dot.topRows(3)*dot_q_curr;
+
         
 
     	// error.head(3) = ee_pos_cmd - ee_position;
@@ -411,11 +408,9 @@ namespace panda_controllers{
         tmp_conversion2.setZero();
         tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
-        dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
-	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
-        // /*?*/
-        // qr = qr + dot_qr*dt;
-
+        // dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+	    // ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+    
 
 
         /* Error definition in Joints Space*/
@@ -426,12 +421,6 @@ namespace panda_controllers{
     	Kp_xi = Kp;
     	Kv_xi = Kv;
 
-        /* Friction matrix online creation*/
-        Dest.setZero();
-        for(int i = 0; i < 7; ++i){
-            Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr[i]);
-            // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
-        }
 
 
         /* Application of FIR to velocity and acceleration*/
@@ -459,13 +448,21 @@ namespace panda_controllers{
         // Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
         // Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
 
-        tau_J = tau_cmd + G;
+        tau_J = tau_cmd;
         // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
         tau_J = calcolaMedia(buffer_tau);
         // ROS_INFO_STREAM(tau_J - Y_norm*param); // - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM) - Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM)*param_real);
-        // ROS_INFO_STREAM(tau_J - Y_norm*param);
-        // redtau_J = tau_J;
+       
+        /* Friction matrix online creation*/
+        Dest.setZero();
+        for(int i = 0; i < 7; ++i){
+            Dest(i,i) = param_frict((FRICTION)*i,0)*dot_q_curr(i) + param_frict((FRICTION)*i+1,0)*deltaCompute(dot_q_curr(i));
+            // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
+            // ROS_INFO_STREAM(param_frict((FRICTION)*i,0));
+        }
+        ROS_INFO_STREAM(tau_J - Y_norm*param);
+        ROS_INFO_STREAM(dot_q_curr);
 
         Y_D.setZero();
         Y_D_norm.setZero();
@@ -473,13 +470,13 @@ namespace panda_controllers{
 
             /*Friction regressor*/
             Y_D(i, i * 2) = dot_qr(i); 
-            Y_D(i, i * 2 + 1) = dot_qr(i)*deltaCompute(dot_q_curr(i)); 
+            Y_D(i, i * 2 + 1) = deltaCompute(dot_q_curr(i)); 
             Y_D_norm(i, i * 2) = dot_q_curr(i); 
-            Y_D_norm(i, i * 2 + 1) = dot_q_curr(i)*deltaCompute(dot_q_curr(i));   
+            Y_D_norm(i, i * 2 + 1) = deltaCompute(dot_q_curr(i));   
         }
-        // ROS_INFO_STREAM(Rinv_tot);
 
-        // ROS_INFO_STREAM(tau_J - Y_norm*param - Y_D_norm*param_frict);
+
+   
 
         // Y_mod_tot.block(0,0,NJ,NJ*PARAM) = Y_norm;
         // Y_mod_tot.block(0,NJ*PARAM,NJ,NJ*FRICTION) = Y_D;
@@ -488,9 +485,12 @@ namespace panda_controllers{
         redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         // redY_norm.block(0, 0,NJ,PARAM) = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         // redY_norm.block(0, 10,NJ,NJ*FRICTION) = Y_norm.block(0,NJ*PARAM,NJ,NJ*FRICTION);
+        
         redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
+        // redtau_J = tau_J - Y_norm*param;//friction case(tutti parametri dinamici corretti)
+        
         param7 = param.segment((NJ-1)*PARAM, PARAM);
-        // ROS_INFO_STREAM(param7);
+        
         // ROS_INFO_STREAM(redY_norm.transpose());
 
         /* Update parameters law*/
@@ -499,59 +499,15 @@ namespace panda_controllers{
             // fastRegMat.setArguments(qr, dot_qr, dot_qr, ddot_qr);
             // Y_norm_pred = fastRegMat.getReg_gen();
 
-            // H_old = H;
-            // E_old = E;
+               
+            redStackCompute(redY_norm, H, l, redtau_J, E);
+            // redStackComputeFric(Y_D_norm, H, l, redtau_J, E); 
 
-            /*Saturation command*/
-            // for(int i = 0; i < NJ; i++){
-            
-            //     /*Saturation position*/
-            //     if((q_opt(i) > q_max_limit(i))){
-            //         qr(i) = q_max_limit(i);
-            //     }else if((q_opt(i) < q_min_limit(i))){
-            //         qr(i) = q_min_limit(i);
-            //     }else{
-            //             qr(i) = q_opt(i);
-            //     }
-                
-            //     /*Saturation velocity*/
-            //     if(std::abs(dq_opt(i)) > dq_limit(i)){
-            //         if(dq_opt(i) < 0){
-            //             dot_qr(i) = -dq_limit(i);
-            //         }else{
-            //             dot_qr(i) = dq_limit(i);    
-            //         }
-            //     }else{
-            //             dot_qr(i) = dq_opt(i);
-            //     }
-
-            //     /*Saturation acceleration*/
-            //     if(std::abs(ddq_opt(i)) > ddq_limit(i)){
-            //         // ROS_INFO_STREAM(ddot_qr(i));
-            //         if(ddq_opt(i) < 0){
-            //             ddot_qr(i) = -ddq_limit(i);
-            //         }else{
-            //             ddot_qr(i) = ddq_limit(i);    
-            //         }
-            //     }else{
-            //             ddot_qr(i) = ddq_opt(i);
-            //     }
-            // }
-            
-            // inf1 = redStackCompute(Y_norm_pred.block(0,(NJ-1)*PARAM,NJ,PARAM), H, l, redtau_J, E);
-            // H = H_old;
-            // E = E_old;
-
-            // ROS_INFO_STREAM(inf2);
-            // ROS_INFO_STREAM(inf1);
-            
-            redStackCompute(redY_norm, H, l, redtau_J, E); 
-
-    
             /*Casting in vettore*/
             H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
             
             redY_stack_sum = H*E - H*H.transpose()*param7;
+            // redY_stack_sum_fric = H*E - H*H.transpose()*param_frict;
             // redY_stack_sum = H*H.transpose()*(param_real-param7);
             // ROS_INFO_STREAM(H*H.transpose()*param_real -  H*E);
             // ROS_INFO_STREAM(redtau_J - redY_norm*param7);
@@ -561,18 +517,18 @@ namespace panda_controllers{
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
     
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.4*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        param = param + dt*dot_param;
             // dot_param_tot = 0.01*Rinv_tot*(Y_mod_tot.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        // param_tot = param_tot + dt*dot_param_tot;
-            // dot_param_frict = 0.1*Rinv_fric*(Y_D_norm.transpose()*dot_error_q + 0.1*Y_D_norm.transpose()*(err_param));
+            // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + redY_stack_sum_fric); //Y_D_norm.transpose()*(err_param));
             // param_frict = param_frict + dt*dot_param_frict;
             
 	    }
 
-        if(t == 200000){
-            param(60) = 0.95;
-        }
+        // if(t == 200000){
+        //     param(60) = 0.95;
+        // }
 
          /*Reshape parameters vector*/
         for(int i = 0; i < 7; ++i){
@@ -582,12 +538,13 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law */
-        fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
+        // fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
         fastRegMat.set_inertial_REG(param); 
 
         Mest = fastRegMat.getMass(); // Estimate Mass Matrix
         Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
         Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
+        // ROS_INFO_STREAM(Mest*ddot_q_curr+Cest*dot_q_curr+Gest - Y_norm*param); // relazione vera
       
         // ROS_INFO_STREAM("vera: "<<M-Mest);
         // ROS_INFO_STREAM("stimata: "<<Gest);
@@ -599,7 +556,7 @@ namespace panda_controllers{
         // GestXi = J_T_pinv*Gest;>
       
         // /* command torque to joint */
-        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0 - G;
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
         // tau_cmd = M*ddot_qr + C + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;// + Cest*dot_error_q; // (- J.transpose()*J_T_pinv*Kn*dot_error_Nq0);
         // ROS_INFO_STREAM(tau_cmd - tau_J_d);
 
@@ -608,7 +565,7 @@ namespace panda_controllers{
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
-	     	joint_handles_[i].setCommand(tau_cmd[i]);
+	     	joint_handles_[i].setCommand(tau_cmd[i]-G[i]);
 	    }
         // tau_cmd = saturateTorqueRate(tau_cmd+G, tau_J_d);
 
@@ -668,32 +625,18 @@ namespace panda_controllers{
         return media;
     }
 
-    void CTModOS::aggiungiDatoXi(std::vector<Eigen::Matrix<double,DOF, 1>>& buffer_, const Eigen::Matrix<double,DOF, 1>& dato_, int lunghezza_finestra) {
-        buffer_.push_back(dato_);
-        if (buffer_.size() > lunghezza_finestra) {
-            buffer_.erase(buffer_.begin());
-        }
-    }
 
-    // Funzione per il calcolo della media
-    Eigen::Matrix<double,DOF, 1> CTModOS::calcolaMediaXi(const std::vector<Eigen::Matrix<double,DOF, 1>>& buffer_) {
-        Eigen::Matrix<double,6, 1> media = Eigen::Matrix<double,6, 1>::Zero();
-        for (const auto& vettore : buffer_) {
-            media += vettore;
-        }
-        media /= buffer_.size();
-        return media;
-    }
 
     double CTModOS::deltaCompute(double a){
-        double delta;
+        double sgn;
         
-        if (fabs(a) < 0.01){
-            delta = 0.0; 
+        if (fabs(a) < 0.001){
+            sgn = 0.0; 
         }else{
-            delta = 1/fabs(a);
+            sgn = a/(fabs(a)+0.01);
+            // sgn = a;
         }
-        return delta;
+        return sgn;
     }
 
     // void CTModOS::stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E){
@@ -761,7 +704,7 @@ namespace panda_controllers{
                 Eigen::MatrixXd Th = H;
                 Eigen::MatrixXd Te = E;
                 
-                Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
+                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
                 double V = (solver_V.singularValues()).minCoeff();
                 // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
 
@@ -785,7 +728,7 @@ namespace panda_controllers{
                     H.block(0,m*NJ,P,NJ) = red_Y.transpose();
                     // Te = E;
                     E.segment(m*NJ,NJ) = red_tau_J;
-                    // ROS_INFO_STREAM(Te-E);
+                    // ROS_INFO_STREAM(Vmax);
                 }
                 else{
                     H = Th;
@@ -797,6 +740,61 @@ namespace panda_controllers{
         return Vmax;
     }
     
+    double CTModOS::redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E){
+        const int P = 14;
+        const double epsilon = 0.1;
+        double Vmax = 0;
+        double V = 0.001;
+
+        if (l <= (P-1)){
+            if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+                E.segment(l*NJ,NJ) = red_tau_J;
+                l = l+1;
+                // ROS_INFO_STREAM(H*H.transpose());
+            }
+                                
+        }else{
+            if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+                Eigen::MatrixXd Th = H;
+                Eigen::MatrixXd Te = E;
+                
+                Eigen::JacobiSVD<Eigen::Matrix<double, NJ*FRICTION, NJ*FRICTION>> solver_V(H*H.transpose());
+                V = (solver_V.singularValues()).minCoeff();
+                // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
+
+                Eigen::VectorXd S(P);
+                for (int i = 0; i < P; ++i) {
+                    H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                    Eigen::JacobiSVD<Eigen::Matrix<double, NJ*FRICTION, NJ*FRICTION>> solver_S(H*H.transpose());
+                    S(i) = (solver_S.singularValues()).minCoeff();
+                    H = Th;
+                    // ROS_INFO_STREAM(solver_S.singularValues());
+
+                    /*Information Approach(minor compute load?)*/
+                    // S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+                }
+                Vmax = S.maxCoeff();
+                Eigen::Index m; //index max eigvalues 
+                S.maxCoeff(&m);
+                
+
+                if(Vmax >= V){
+                    H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                    // Te = E;
+                    E.segment(m*NJ,NJ) = red_tau_J;
+                    // ROS_INFO_STREAM(Vmax);
+                }
+                else{
+                    // Vmax =V;
+                    H = Th;
+                    E = Te;
+                }
+            }
+        }
+        // ROS_INFO_STREAM(Vmax);
+        return Vmax;
+    }
 
     /* Check for the effort commanded */
     Eigen::Matrix<double, NJ, 1> CTModOS::saturateTorqueRate(

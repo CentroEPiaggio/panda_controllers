@@ -198,7 +198,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100;
+    const int WIN_LEN = 300;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -223,7 +223,7 @@ private:
     Eigen::Matrix<double, NJ, NJ> Cest;
     Eigen::Matrix<double, NJ, NJ> I7;
     Eigen::Matrix<double, NJ, 1> Gest;
-    Eigen::Matrix<double, NJ, 7> Dest; // Friction Matrix
+    Eigen::Matrix<double, NJ, 1> Dest; // Friction Matrix
     
     /* Mass Matrix and Coriolis vector with regressor calculation in operative space*/
     Eigen::Matrix<double, DOF, DOF> MestXi;
@@ -245,8 +245,8 @@ private:
     Eigen::VectorXd E; // Memory stack
     // Eigen::VectorXd E_old;
     Eigen::Matrix<double, NJ*PARAM, 1> Y_stack_sum;
-    // Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
     Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
+    Eigen::Matrix<double, 14, 1> redY_stack_sum_fric;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
     Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
 	
@@ -276,8 +276,8 @@ private:
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);
     Eigen::Matrix<double, NJ, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_);
-    void aggiungiDatoXi(std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_, const Eigen::Matrix<double, DOF, 1>& dato_, int lunghezza_finestra_);
-    Eigen::Matrix<double, DOF, 1> calcolaMediaXi(const std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_);
+    // void aggiungiDatoXi(std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_, const Eigen::Matrix<double, DOF, 1>& dato_, int lunghezza_finestra_);
+    // Eigen::Matrix<double, DOF, 1> calcolaMediaXi(const std::vector<Eigen::Matrix<double, DOF, 1>>& buffer_);
     
     double deltaCompute (double a);
 
@@ -287,6 +287,7 @@ private:
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
     double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
     Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q);
