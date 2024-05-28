@@ -72,7 +72,8 @@ struct traj_struct_joints{
 	Eigen::Matrix<double, 7, 1> pos;
 	Eigen::Matrix<double, 7, 1> vel;
 	Eigen::Matrix<double, 7, 1> acc;
-} traj_joints;
+};
+traj_struct_joints traj_joints;
 
 struct traj_struct_cartesian{
 	Eigen::Vector3d pos;
@@ -84,7 +85,7 @@ traj_struct_cartesian traj_cartesian;
 struct UserData {
     std::vector<double> H;
     int l;
-	double dt;
+	double t;
 } udata;
 
 // ----- FUNCTIONS ----- //
@@ -190,7 +191,7 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
 
     H_true.resize(10,70);
     l = udata->l;
-    t = udata->dt;
+    t = udata->t;
 
 	/*Traiettoria sinusoidale ottima*/
     q << 0.0+0.30*sin(1.5*(x[0])*t), 0.0+0.30*sin(2*(x[1])*t), 0.0+0.30*sin(2*(x[2])*t), -1.5+0.30*sin(2*(x[3])*t), 0.0+0.60*sin(2*(x[4])*t), 1.5+0.60*sin(2*(x[5])*t), 0.0+0.60*sin(2*(x[6])*t);
@@ -353,6 +354,11 @@ int main(int argc, char **argv)
 	panda_controllers::flag opt_flag_msg;
 	panda_controllers::desTrajEE traj_msg;
 	sensor_msgs::JointState traj_opt_msg;
+
+	/*Resizie*/
+	traj_opt_msg.position.resize(NJ);
+    traj_opt_msg.velocity.resize(NJ);
+    traj_opt_msg.effort.resize(NJ);
 
 	// creating trajectory message
 	// panda_controllers::Commands command_msg;
@@ -574,7 +580,7 @@ int main(int argc, char **argv)
 					}else{
 						break;
 					}
-				} else if (executing == 4){
+				}else if (executing == 4){
 					// --- Estimating with throw --- //
 					if (t <= tf_0){
 						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p0_throw_est, zero, zero, tf_0, t);
@@ -588,13 +594,17 @@ int main(int argc, char **argv)
 						traj_cartesian.vel = zero;
 						traj_cartesian.acc = zero;
 					}
-				} else if (executing == 5){
-					
+				}else if (executing == 5){
+					ros::spinOnce();
+
 					for(int i = 0; i < 700; ++i){
 						udata.H[i] = H_vec(i);
 					}
-					double dt = (ros::Time::now() - t_init).toSec();
-					udata.dt = dt;
+					// double t = (ros::Time::now() - t_init).toSec();
+					udata.t = t;
+					traj_joints.pos.setZero();
+					traj_joints.vel.setZero();
+					traj_joints.acc.setZero();
 
 					for(int i=0; i < 7; ++i){
             			x[i] = 0;
@@ -613,19 +623,20 @@ int main(int argc, char **argv)
 					nlopt::result result = opt.optimize(x, minf);
 
 					/*Traiettoria ottima ottenuta*/
-					traj_joints.pos << 0.0+0.30*sin(1.5*(x[0])*dt), 0.0+0.30*sin(2*(x[1])*dt), 0.0+0.30*sin(2*(x[2])*dt), -1.5+0.30*sin(2*(x[3])*dt), 0.0+0.30*sin(2*(x[4])*dt), 1.5+0.30*sin(2*(x[5])*dt), 0.0+0.30*sin(2*(x[6])*dt);
-					traj_joints.vel << 1.5*(x[0])*0.30*cos(1.5*(x[0])*dt), 2*(x[1])*0.30*cos(2*(x[1])*dt), 2*(x[2])*0.30*cos(2*(x[2])*dt), 2*(x[3])*0.30*cos(2*(x[3])*dt), 2*(x[4])*0.30*cos(2*(x[4])*dt), 2*(x[5])*0.30*cos(2*(x[5])*dt), 2*(x[6])*0.30*cos(2*(x[6])*dt);
-					traj_joints.acc << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*dt), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*dt), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*dt), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*dt), -pow(2*(x[4]),2)*0.30*sin(2*(x[4])*dt), -pow(2*(x[5]),2)*0.30*sin(2*(x[5])*dt), -pow(2*(x[6]),2)*0.30*sin(2*(x[6])*dt);
+					traj_joints.pos << 0.0+0.30*sin(1.5*(x[0])*t), 0.0+0.30*sin(2*(x[1])*t), 0.0+0.30*sin(2*(x[2])*t), -1.5+0.30*sin(2*(x[3])*t), 0.0+0.30*sin(2*(x[4])*t), 1.5+0.30*sin(2*(x[5])*t), 0.0+0.30*sin(2*(x[6])*t);
+					traj_joints.vel << 1.5*(x[0])*0.30*cos(1.5*(x[0])*t), 2*(x[1])*0.30*cos(2*(x[1])*t), 2*(x[2])*0.30*cos(2*(x[2])*t), 2*(x[3])*0.30*cos(2*(x[3])*t), 2*(x[4])*0.30*cos(2*(x[4])*t), 2*(x[5])*0.30*cos(2*(x[5])*t), 2*(x[6])*0.30*cos(2*(x[6])*t);
+					traj_joints.acc << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*t), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*t), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*t), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*t), -pow(2*(x[4]),2)*0.30*sin(2*(x[4])*t), -pow(2*(x[5]),2)*0.30*sin(2*(x[5])*t), -pow(2*(x[6]),2)*0.30*sin(2*(x[6])*t);
 				}
 			
 
 				// ----- publishing ----- //
 				if (executing == 5){
+					// cout << "traj:"<< traj_joints.pos;
 					for(int i=0;i<NJ;i++){
 						traj_opt_msg.header.stamp = ros::Time::now();
 						traj_opt_msg.position[i] = traj_joints.pos(i);
 						traj_opt_msg.velocity[i] = traj_joints.vel(i);
-						traj_opt_msg.position[i] = traj_joints.acc(i);
+						traj_opt_msg.effort[i] = traj_joints.acc(i);
 					}
 					
 					opt_flag_msg.flag = true;
@@ -651,6 +662,8 @@ int main(int argc, char **argv)
 				t = (ros::Time::now() - t_init).toSec();
 			}
 			executing = 0;
+			opt_flag_msg.flag = false;
+			pub_flag_opt.publish(opt_flag_msg);
 			// reset first_time
 			first_time = true;
 		}

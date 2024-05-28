@@ -9,8 +9,9 @@
 #include <signal.h>
 
 #include "panda_controllers/point.h"
-#include "panda_controllers/desTrajEE.h"
+// #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/udata.h"
+#include "panda_controllers/flag.h"
 
 #include "utils/thunder_panda_2.h"
 #include "utils/utils_cartesian.h"
@@ -98,7 +99,8 @@ int main(int argc, char **argv)
     
 	/* Publisher */
 	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("command_joints_opt", 1);
-	
+	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
+
 	/* Subscriber */
 	ros::Subscriber sub_config = node_handle.subscribe<panda_controllers::udata>("opt_data", 1, &jointsCallback);
 
@@ -112,6 +114,7 @@ int main(int argc, char **argv)
 
     /* Commando di accelerazione*/
     sensor_msgs::JointState command;
+    panda_controllers::flag opt_flag_msg;
     command.position.resize(NJ);
     command.velocity.resize(NJ);
     command.effort.resize(NJ);
@@ -123,6 +126,7 @@ int main(int argc, char **argv)
         qr.setZero();
         dot_qr.setZero();
         ddot_qr.setZero();
+        opt_flag_msg.flag = true;
 
         t = ros::Time::now();
         if (dt == 0)
@@ -170,12 +174,6 @@ int main(int argc, char **argv)
             //     ub[4*i+2*r+1] = ub[4*i+2*r];
             // }
            
-            // lb[i+1]
-
-            // udata.q[i] = q_curr(i);
-            // udata.dq[i] = dq_curr(i);
-            // udata.ddq[i] = ddq_curr(i);
-          
         }    
 
         /*Calcolo dei bound*/
@@ -221,6 +219,7 @@ int main(int argc, char **argv)
             command.effort[i] = ddot_qr(i);
         }
 
+        pub_flag_opt.publish(opt_flag_msg);
         pub_cmd_opt.publish(command);
         loop_rate.sleep();
     }

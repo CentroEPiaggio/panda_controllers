@@ -195,6 +195,12 @@ target_link_libraries(adaptive_throw
 	yaml-cpp
 )
 
+add_dependencies(adaptive_throw
+	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+	${catkin_EXPORTED_TARGETS}
+)
+
+
 add_executable(trajectory_rviz
 	src/trajectory_rviz.cpp
 )
