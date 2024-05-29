@@ -514,6 +514,7 @@ int main(int argc, char **argv)
 					tf = tf_0 + tf_throw_est + tf_brake;
 				} else if (choice_2 == 3){
 					executing = 5;
+					tf = tf_est;
 				}
 			}else if (choice == 6){
 				cout<<"adaptive:   (0: disable,  1: enable,     other: cancel) "<<endl;

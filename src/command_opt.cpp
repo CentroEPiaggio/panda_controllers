@@ -155,8 +155,8 @@ int main(int argc, char **argv)
       
 
 
-        lb[0] = -M_PI; lb[1] = -M_PI; lb[2] = -M_PI_2; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
-        ub[0] = M_PI; ub[1] = M_PI; ub[2] = M_PI_2; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
+        lb[0] = -M_PI; lb[1] = -M_PI; lb[2] = -M_PI_2; lb[3] = -M_PI_2; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
+        ub[0] = M_PI; ub[1] = M_PI; ub[2] = M_PI_2; ub[3] = M_PI_2; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
 
         // cout << "position: "<<q_curr;
         // Sezione cating da Eigen a sdt perchè Eigen non compatibile con libreria di ottimo

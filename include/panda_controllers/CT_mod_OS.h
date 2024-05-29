@@ -145,6 +145,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_qr_old;
     Eigen::Matrix<double, NJ, 1> qr;
     Eigen::Matrix<double, NJ, 1> tau_t;
+    Eigen::Matrix<double, NJ, 1> tau_d;
     Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
@@ -156,8 +157,8 @@ private:
     Eigen::Matrix<double, NJ, 1> q_opt;
 
     /*Inf variable*/
-    double inf1;
-    double inf2;
+    // double inf1;
+    // double inf2;
 
     // Eigen::Matrix<double, NJ, 1> x_eig;
 
@@ -199,11 +200,12 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_q;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
-    std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
-    std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
+    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
+    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
+    std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 300;
+    const int WIN_LEN = 100;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
