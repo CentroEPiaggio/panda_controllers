@@ -64,6 +64,7 @@ double ampX, ampY, ampZ, freqX, freqY, freqZ, phiX, phiZ, offX, offY, offZ, liss
 /*Opt variable*/
 Eigen::VectorXd H_vec(700);
 thunder_ns::thunder_panda_2 fastRegMat;
+Eigen::Matrix<double, NJ, 1> q_c;
 
 ros::Publisher pub_hand_qbh1;
 ros::Publisher pub_hand_qbh2;
@@ -192,11 +193,20 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
     H_true.resize(10,70);
     l = udata->l;
     t = udata->t;
+	q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
+
+	if (!grad.empty()) {
+        for (int i = 0; i < NJ; i++) {
+            grad[i] = 0.0;
+        }
+    }
 
 	/*Traiettoria sinusoidale ottima*/
-    q << 0.0+0.30*sin(1.5*(x[0])*t), 0.0+0.30*sin(2*(x[1])*t), 0.0+0.30*sin(2*(x[2])*t), -1.5+0.30*sin(2*(x[3])*t), 0.0+0.60*sin(2*(x[4])*t), 1.5+0.60*sin(2*(x[5])*t), 0.0+0.60*sin(2*(x[6])*t);
-    dq << 1.5*(x[0])*0.30*cos(1.5*(x[0])*t), 2*(x[1])*0.30*cos(2*(x[1])*t), 2*(x[2])*0.30*cos(2*(x[2])*t), 2*(x[3])*0.30*cos(2*(x[3])*t), 2*(x[4])*0.60*cos(2*(x[4])*t), 2*(x[5])*0.60*cos(2*(x[5])*t), 2*(x[6])*0.60*cos(2*(x[6])*t);
-    ddq << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*t), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*t), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*t), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*t), -pow(2*(x[4]),2)*0.60*sin(2*(x[4])*t), -pow(2*(x[5]),2)*0.60*sin(2*(x[5])*t), -pow(2*(x[6]),2)*0.60*sin(2*(x[6])*t);
+    for(int i = 0; i < NJ; ++i){
+            q(i) = q_c(i) + 0.30*sin(x[i]*t);     
+            dq(i) = x[i]*0.30*cos(x[i]*t);
+            ddq(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+    }
     
     for(int i=0; i<70; ++i){
         H_true.block(0,i,PARAM,1) << udata->H[i*PARAM], udata->H[i*PARAM+1], udata->H[i*PARAM+2], udata->H[i*PARAM+3], udata->H[i*PARAM+4], udata->H[i*PARAM+5], udata->H[i*PARAM+6], udata->H[i*PARAM+7], udata->H[i*PARAM+8], udata->H[i*PARAM+9];
@@ -275,6 +285,8 @@ int main(int argc, char **argv)
 	std::vector<double> P0_THROW_EST;
 	std::vector<double> PF_THROW_EST;
 	std::vector<double> DPF_THROW_EST;
+
+	q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
 	if(!node_handle.getParam("/throw_node/SIMULATION", SIMULATION))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -623,10 +635,12 @@ int main(int argc, char **argv)
 					double minf;
 					nlopt::result result = opt.optimize(x, minf);
 
-					/*Traiettoria ottima ottenuta*/
-					traj_joints.pos << 0.0+0.30*sin(1.5*(x[0])*t), 0.0+0.30*sin(2*(x[1])*t), 0.0+0.30*sin(2*(x[2])*t), -1.5+0.30*sin(2*(x[3])*t), 0.0+0.30*sin(2*(x[4])*t), 1.5+0.30*sin(2*(x[5])*t), 0.0+0.30*sin(2*(x[6])*t);
-					traj_joints.vel << 1.5*(x[0])*0.30*cos(1.5*(x[0])*t), 2*(x[1])*0.30*cos(2*(x[1])*t), 2*(x[2])*0.30*cos(2*(x[2])*t), 2*(x[3])*0.30*cos(2*(x[3])*t), 2*(x[4])*0.30*cos(2*(x[4])*t), 2*(x[5])*0.30*cos(2*(x[5])*t), 2*(x[6])*0.30*cos(2*(x[6])*t);
-					traj_joints.acc << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*t), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*t), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*t), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*t), -pow(2*(x[4]),2)*0.30*sin(2*(x[4])*t), -pow(2*(x[5]),2)*0.30*sin(2*(x[5])*t), -pow(2*(x[6]),2)*0.30*sin(2*(x[6])*t);
+					/*Traiettoria ottima sinusoidale ottenuta*/
+					for(int i = 0; i < 7; ++i){
+						traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
+						traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
+						traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+        			}
 				}
 			
 

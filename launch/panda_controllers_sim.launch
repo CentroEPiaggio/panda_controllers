@@ -13,7 +13,7 @@
 	<arg name="arm_id" 				default="panda" doc="Name of the panda robot to spawn" />
 	
 	<!-- flag -->
-	<arg name="use_gripper" 		default="false" />
+	<arg name="use_gripper" 		default="true" />
 	<arg name="rviz" 				default="false" />
 	<!-- <arg name="clik"            	default="false" /> -->
 	<arg name="rosbag_BS"			value="false" />

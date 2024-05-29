@@ -185,30 +185,31 @@ link6:
   d1 : 0.1
   d2 : 0.01
 
-link7:
-  mass: 1.2
-  m_CoM_x: 0.2
-  m_CoM_y: 0.2
-  m_CoM_z: 0.2
-  Ixx: 0.0
-  Ixy: -0.0004
-  Ixz: -0.0008
-  Iyy: 0.0
-  Iyz: -0.0009
-  Izz: 0.0
-  d1: 0.1
-  d2: 0.01
-
 # link7:
-#   mass: 0.7361
-#   m_CoM_x: 0.0167
-#   m_CoM_y: -0.0085
-#   m_CoM_z: -0.0324
-#   Ixx: 0.0186
-#   Ixy: 0.0032
-#   Ixz: 0.0015
-#   Iyy: 0.0012
-#   Iyz: 0.0023
-#   Izz: 0.0030
+#   mass: 1.2
+#   m_CoM_x: 0.2
+#   m_CoM_y: 0.2
+#   m_CoM_z: 0.2
+#   Ixx: 0.0
+#   Ixy: -0.0004
+#   Ixz: -0.0008
+#   Iyy: 0.0
+#   Iyz: -0.0009
+#   Izz: 0.0
 #   d1: 0.1
 #   d2: 0.01
+
+#After first estimate
+link7:
+  mass: 0.7389
+  m_CoM_x: 0.0078
+  m_CoM_y: -0.0042
+  m_CoM_z: -0.0065
+  Ixx: 0.0095
+  Ixy: 0.0026
+  Ixz: -0.0023
+  Iyy: 0.0105
+  Iyz: -8.6794e-04
+  Izz: 0.0051
+  d1: 0.1
+  d2: 0.01

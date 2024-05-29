@@ -331,9 +331,9 @@ namespace panda_controllers{
         ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; 
         dot_q_curr_old = dot_q_curr; 
         ddot_q_curr_old = ddot_q_curr;
-        tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
+        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         
-        tau_d = -tau_t-tau_cmd;
+        // tau_d = -tau_J-tau_cmd;
 
         // ROS_INFO_STREAM(-tau_J-tau_cmd);
         // ROS_INFO_STREAM(tau_cmd);
@@ -462,16 +462,17 @@ namespace panda_controllers{
         // Cest = fastRegMat.getCoriolis(); // Estimate Coriollis Matrix
         // Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
 
-        tau_J = tau_cmd;
+        // tau_J = tau_cmd;
         // tau_J = M*ddot_q_curr_old+C+G;
-        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
+        tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         // ROS_INFO_STREAM(tau_t - ddot_q_curr);
-        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
+        aggiungiDato(buffer_tau, -tau_J, WIN_LEN);
         tau_J = calcolaMedia(buffer_tau);
-        aggiungiDato(buffer_tau_d, tau_d, WIN_LEN);
-        tau_d = calcolaMedia(buffer_tau_d);
-        // ROS_INFO_STREAM(tau_J - tau_d - Y_norm*param); // - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM) - Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM)*param_real);
-       
+        // aggiungiDato(buffer_tau_d, tau_d, WIN_LEN);
+        // tau_d = calcolaMedia(buffer_tau_d);
+        // ROS_INFO_STREAM(tau_J - Y_norm*param); // - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM) - Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM)*param_real);
+        // ROS_INFO_STREAM(tau_d);
+
         /* Friction matrix online creation*/
         Dest.setZero();
         for(int i = 0; i < 7; ++i){
@@ -504,10 +505,11 @@ namespace panda_controllers{
         // redY_norm.block(0, 0,NJ,PARAM) = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         // redY_norm.block(0, 10,NJ,NJ*FRICTION) = Y_norm.block(0,NJ*PARAM,NJ,NJ*FRICTION);
         
-        redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM) - tau_d;
+        redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
         // redtau_J = tau_J - Y_norm*param;//friction case(tutti parametri dinamici corretti)
         
         param7 = param.segment((NJ-1)*PARAM, PARAM);
+        // ROS_INFO_STREAM(redtau_J - redY_norm*param_real);
         
         // ROS_INFO_STREAM(redY_norm.transpose());
 
@@ -528,16 +530,18 @@ namespace panda_controllers{
             // redY_stack_sum_fric = H*E - H*H.transpose()*param_frict;
             
             // redY_stack_sum = H*H.transpose()*(param_real-param7);
-            // ROS_INFO_STREAM(H*H.transpose()*param_real -  H*E);
-            // ROS_INFO_STREAM(redtau_J - redY_norm*param7);
+            // ROS_INFO_STREAM(H*(H.transpose()*param_real -  E));
+            // ROS_INFO_STREAM(redtau_J - redY_norm*param_real);
             
             Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
+            // ROS_INFO_STREAM(Y_stack_sum);
                   
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
     
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        param = param + dt*dot_param;
+            // ROS_INFO_STREAM(param7-param_real);
             // dot_param_tot = 0.01*Rinv_tot*(Y_mod_tot.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        // param_tot = param_tot + dt*dot_param_tot;
             // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + redY_stack_sum_fric); //Y_D_norm.transpose()*(err_param));
