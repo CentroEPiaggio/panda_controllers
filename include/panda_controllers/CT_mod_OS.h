@@ -28,6 +28,7 @@
 #include "panda_controllers/link_params.h"
 #include "panda_controllers/log_adaptive_cartesian.h"
 #include "panda_controllers/flag.h"
+#include "panda_controllers/rpy.h"
 #include "panda_controllers/udata.h"
 
 // #include "utils/ThunderPanda.h"
@@ -312,6 +313,7 @@ private:
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Subscriber sub_command_j_;
+    ros::Subscriber sub_command_rpy_;
     ros::Subscriber sub_flag_opt_;
     ros::Subscriber sub_joints;
     ros::Subscriber sub_flag_update_;
@@ -323,6 +325,7 @@ private:
     void setCommandCB(const desTrajEE::ConstPtr& msg);
     void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);
     void jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg);
+    void setRPYcmd(const rpy::ConstPtr& msg);
 
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);

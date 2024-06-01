@@ -208,8 +208,9 @@ namespace panda_controllers{
         this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("/CT_mod_controller_OS/adaptiveFlag", 1, &CTModOS::setFlagUpdate, this); // Set adaptive_flag to true  
         this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("/CT_mod_controller_OS/command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
         this->sub_flag_opt_ = node_handle.subscribe<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1, &CTModOS::setFlagOpt, this);
-        this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT, this);
-        
+        // this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT, this);
+        this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
+
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
         this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
@@ -377,6 +378,8 @@ namespace panda_controllers{
         if (update_opt_flag == false){
             error.head(3) = ee_pos_cmd - ee_position;
             dot_error.head(3) = ee_vel_cmd - ee_velocity;
+            // ee_rot_cmd <<0.2, -0.1, 0.5;
+
         } else{
             qr = q_opt;
             dot_qr = dq_opt;
@@ -853,8 +856,12 @@ namespace panda_controllers{
 
     }
 
-    void CTModOS::jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg){
-        tau_t = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+    // void CTModOS::jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg){
+    //     tau_t = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
+    // }
+
+    void CTModOS::setRPYcmd(const panda_controllers::rpy::ConstPtr& msg){
+        ee_rot_cmd << msg->roll, msg->pitch, msg->yaw;
     }
 
     Eigen::Affine3d CTModOS::computeT0EE(const Eigen::VectorXd& q){

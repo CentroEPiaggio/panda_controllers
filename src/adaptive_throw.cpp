@@ -10,6 +10,7 @@
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/flag.h"
 #include "panda_controllers/udata.h"
+#include "panda_controllers/rpy.h"
 
 #include "ros/ros.h"
 // #include "panda_controllers/CommandParams.h"
@@ -19,8 +20,8 @@
 
 /*Libreria per ottimo*/
 #include "utils/thunder_panda_2.h"
-#include "utils/utils_cartesian.h"
 #include "nlopt.hpp"
+#include "utils/utils_cartesian.h"
 
 // ROS Service and Message Includes
 #include "std_msgs/Float64.h"
@@ -82,6 +83,14 @@ struct traj_struct_cartesian{
 	Eigen::Vector3d acc;
 };
 traj_struct_cartesian traj_cartesian;
+
+struct roll_pitch_yaw{
+	double roll;
+	double pitch;
+	double yaw;
+};
+roll_pitch_yaw rpy;
+
 
 struct UserData {
     std::vector<double> H;
@@ -347,16 +356,20 @@ int main(int argc, char **argv)
 		// robot_name = "/robot/arm";
 	}
 
+	/*Inizializzo comando rpy*/
+	rpy.roll = 0; rpy.pitch = 0; rpy.yaw = 0;
+
 	// ----- Subscriber and Publishers ----- //
 	// ros::Publisher pub_traj = node_handle.advertise<panda_controllers::Commands>(robot_name + "/computed_torque_controller/command", 1000);
-	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
 	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>(robot_name + "/franka_state_controller/joint_states", 1, &jointsCallback);
 	ros::Subscriber sub_franka = node_handle.subscribe<franka_msgs::FrankaState>(robot_name + "/franka_state_controller/franka_states", 1, &frankaCallback);
-	/*Sub per calcolo traiettoria ottima*/
 	ros::Subscriber sub_config_opt = node_handle.subscribe<panda_controllers::udata>("/CT_mod_controller_OS/opt_data", 1, &udataCallback);
+	// ros::Subscriber sub_pose =  node_handle.subscribe("/franka_state_controller/franka_ee_pose", 1, &poseCallback);
 	pub_hand_qbh1 = node_handle.advertise<trajectory_msgs::JointTrajectory>("/robot/gripper/qbhand1/control/qbhand1_synergy_trajectory_controller/command", 1);
 	pub_hand_qbh2 = node_handle.advertise<trajectory_msgs::JointTrajectory>("/robot/gripper/qbhand2m1/control/qbhand2m1_synergies_trajectory_controller/command", 1);
-	// ros::Subscriber sub_pose =  node_handle.subscribe("/franka_state_controller/franka_ee_pose", 1, &poseCallback);
+
+	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
+	ros::Publisher pub_rpy = node_handle.advertise<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1);
 	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
 	ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/adaptiveFlag", 1);
 	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
@@ -365,6 +378,7 @@ int main(int argc, char **argv)
 	panda_controllers::flag adaptive_flag_msg;
 	panda_controllers::flag opt_flag_msg;
 	panda_controllers::desTrajEE traj_msg;
+	panda_controllers::rpy rpy_msg;
 	sensor_msgs::JointState traj_opt_msg;
 
 	/*Resizie*/
@@ -404,7 +418,7 @@ int main(int argc, char **argv)
 	Eigen::Vector3d pf_brake;
 	Eigen::Vector3d pf_brake_est;
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
-	Eigen::Vector3d p_saved = p0_est;	// starting point of estimating trajectory
+	Eigen::Vector3d p_saved;	// starting point of desidered position
 	// Eigen::Vector3d p_est_end;	// stopping point of estimating trajectory
 	// Eigen::Vector3d vel_est_end;	// used to save ending velocity of estimating trajectory
 	// Eigen::Vector3d vel_est_start;	// used to save starting velocity of estimating trajectory
@@ -526,7 +540,7 @@ int main(int argc, char **argv)
 					tf = tf_0 + tf_throw_est + tf_brake;
 				} else if (choice_2 == 3){
 					executing = 5;
-					tf = tf_est;
+					tf = tf_est + 1.0;
 				}
 			}else if (choice == 6){
 				cout<<"adaptive:   (0: disable,  1: enable,     other: cancel) "<<endl;
@@ -557,6 +571,8 @@ int main(int argc, char **argv)
 				if (executing == 1){
 					// --- go to --- //
 					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
+					/*ORIENTATION COMMAND SLERP*/
+					rpy.roll = 0.2;  rpy.pitch = 0.0; rpy.yaw = 0.7;
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
@@ -668,7 +684,12 @@ int main(int argc, char **argv)
 					traj_msg.acceleration.x = traj_cartesian.acc(0);
 					traj_msg.acceleration.y = traj_cartesian.acc(1);
 					traj_msg.acceleration.z = traj_cartesian.acc(2);
-					
+
+					rpy_msg.roll = rpy.roll;
+					rpy_msg.pitch = rpy.pitch;
+					rpy_msg.yaw = rpy.yaw;
+					pub_rpy.publish(rpy_msg);
+
 					opt_flag_msg.flag = false;
 					pub_flag_opt.publish(opt_flag_msg);
 					pub_traj_cartesian.publish(traj_msg);  

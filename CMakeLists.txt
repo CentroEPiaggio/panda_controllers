@@ -51,6 +51,7 @@ add_message_files(FILES
 	flag.msg
 	Vec7D.msg
 	udata.msg
+	rpy.msg
 )
 ## to create msg, specify dependecies
 generate_messages(

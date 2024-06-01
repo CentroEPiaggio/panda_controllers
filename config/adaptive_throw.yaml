@@ -15,7 +15,7 @@ throw_node:
   TF_THROW: 1.0
   TF_BRAKE: 0.3
   TF_EST_BRAKE: 0.5
-  TF_EST: 10.0
+  TF_EST: 5.0
   P0_THROW_EST: [0.446667, -0.0552812, 0.2] #[0.4, -0.3, 0.2]
   PF_THROW_EST: [0.468341, 0.306827, 0.426758] #[0.4, 0.1, 0.4] 
   TF_THROW_EST: 1.0
