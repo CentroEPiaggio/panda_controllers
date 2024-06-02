@@ -58,6 +58,8 @@ Eigen::Vector3d p;
 Eigen::Matrix<double, 4, 1> orient;
 Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
 Eigen::Vector3d p_end;	// used to save starting point of tragectory (go to start)
+Eigen::Vector3d pose_start;	// used to save starting point of tragectory (go to start)
+Eigen::Vector3d pose_end;	// used to save starting orientation of EE(go to start)
 min_jerk_class min_jerk;
 // franka_throw_class throw_node = franka_throw_class();
 // lissagious parameters
@@ -143,6 +145,37 @@ traj_struct_cartesian interpolator_cartesian(Eigen::Vector3d pos_i, Eigen::Vecto
 	return traj;
 }
 
+// Funzione per convertire angoli RPY in quaternioni(Ordine rotazione roll-pitch.yaw)
+Eigen::Quaterniond rpyToQuaternion(double roll, double pitch, double yaw) {
+    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+
+    Eigen::Quaterniond q =  rollAngle*yawAngle*pitchAngle;
+    return q;
+}
+
+roll_pitch_yaw slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
+	
+	// Convertire gli angoli Eulero in quaternioni
+    Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2]);
+    Eigen::Quaterniond q_desired = rpyToQuaternion(rpy_desired[0], rpy_desired[1], rpy_desired[2]);
+
+    // Calcolare il fattore di interpolazione normalizzato
+    double t_normalized = t / t_f;
+
+    // Calcolare il quaternione interpolato usando SLERP
+    Eigen::Quaterniond q_interpolated = q_current.slerp(t_normalized, q_desired);
+
+    // Convertire il quaternione interpolato in angoli di Eulero
+    Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(2, 1, 0);
+    roll_pitch_yaw rpy;
+	rpy.roll = euler_angles(0);
+	rpy.pitch = euler_angles(1); 
+	rpy.yaw = euler_angles(2);
+    return rpy;
+}
+
 traj_struct_cartesian estimate_traj(Eigen::Vector3d center, double tf, double t){
 	traj_struct_cartesian traj;
 	double x0,y0,z0;
@@ -184,6 +217,8 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 	if (!ready){
 		p_start = p;
 		p_end = p;
+		pose_start << 0.0, 0.0, 0.0;
+		pose_end = pose_start;
 		ready = true;
 	}
 }
@@ -419,10 +454,8 @@ int main(int argc, char **argv)
 	Eigen::Vector3d pf_brake_est;
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
 	Eigen::Vector3d p_saved;	// starting point of desidered position
-	// Eigen::Vector3d p_est_end;	// stopping point of estimating trajectory
-	// Eigen::Vector3d vel_est_end;	// used to save ending velocity of estimating trajectory
-	// Eigen::Vector3d vel_est_start;	// used to save starting velocity of estimating trajectory
-	// Eigen::Vector3d vel_est_end;	// used to save ending velocity of estimating trajectory
+	Eigen::Vector3d pose_saved;	// starting point of desidered pose
+
 	traj_struct_cartesian traj_est_start;
 	traj_struct_cartesian traj_est_end;
 	traj_struct_cartesian traj_tmp;
@@ -463,9 +496,24 @@ int main(int argc, char **argv)
 
 	while (ros::ok()){
 		if (executing == 0){
-			cout<<"choice:   (1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos) "<<endl;
+			cout<<"choice:   (0: set command,  1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos) "<<endl;
 			cin>>choice;
 			while (!ready) ros::spinOnce();
+			if (choice == 0){
+				cout<<"what:  (1: Position,  2: Orientation,  0: Cancel)"<<endl;
+				cin>>choice_2;
+				if (choice_2 == 1){
+					cout<<"x:"; cin>>p_saved(0);
+					cout<<"y:"; cin>>p_saved(1);
+					cout<<"z:"; cin>>p_saved(2);
+				}else if (choice_2 == 2){
+					cout<<"roll:"; cin>>pose_saved(0); 
+					cout<<"pitch:"; cin>>pose_saved(1); 
+					cout<<"yaw:"; cin>>pose_saved(2);
+				} else{
+					executing = 0;
+				}
+			}
 			if (choice == 1){
 				// --- save q, p --- //
 				init_q = false;
@@ -485,18 +533,31 @@ int main(int argc, char **argv)
 				cin>>tf_est;
 			}else if (choice == 3){
 				// --- go to --- //
-				cout<<"where:   (1: p0_throw,  2: pf_throw,  3: p0_est,  4: p_saved,     0: cancel) "<<endl;
+				cout<<"where:   (1: p0_throw,  2: pf_throw,  3: p0_est,  4: pos_saved,     0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 0){
 					choice = 0;
 				}else {
 					p_start = p_end;
+					pose_start = pose_end;
 					executing = 1;
 					tf = tf_0;
-					if (choice_2 == 1) 			p_end = p0_throw;
-					else if (choice_2 == 2) 	p_end = pf_throw;
-					else if (choice_2 == 3) 	p_end = p0_est;
-					else if (choice_2 == 4) 	p_end = p_saved;
+					if (choice_2 == 1){
+						p_end = p0_throw;
+						pose_end = pose_saved;
+					}
+					else if (choice_2 == 2){
+						p_end = pf_throw;
+						pose_end = pose_saved;
+					}
+					else if (choice_2 == 3) {
+						p_end = p0_est;
+						pose_end.setZero();
+					}	
+					else if (choice_2 == 4) {
+						p_end = p_saved;
+						pose_end = pose_saved;
+					}
 					else {
 						executing = 0;
 						p_end = p_start;
@@ -572,7 +633,9 @@ int main(int argc, char **argv)
 					// --- go to --- //
 					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
 					/*ORIENTATION COMMAND SLERP*/
-					rpy.roll = 0.2;  rpy.pitch = 0.0; rpy.yaw = 0.7;
+					// rpy.roll = 0.0;  rpy.pitch = 0.0; rpy.yaw = 0.0;
+					rpy = slerp(pose_start, pose_end, t, tf);
+					cout << "command:" << rpy.yaw << endl;
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
