@@ -157,7 +157,8 @@ namespace panda_controllers{
         param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.014045526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
 
         /* Param_dyn initial calculation*/
-        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
+        // thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
+        fastRegMat.set_inertial_REG(param);
         
         /* Inizializing the R gains to update parameters*/
 	    std::vector<double> gainRlinks(NJ), gainRparam(3);
@@ -315,7 +316,7 @@ namespace panda_controllers{
 
 
     void CTModOS::update(const ros::Time&, const ros::Duration& period){
-        t = t+1;
+       
 	    Eigen::Matrix<double,DOF,DOF> tmp_conversion0, tmp_conversion1, tmp_conversion2;
         Eigen::VectorXd ee_vel_cmd_tot(DOF), ee_acc_cmd_tot(DOF);
         Eigen::VectorXd tmp_position(DOF), tmp_velocity(DOF);
@@ -541,7 +542,7 @@ namespace panda_controllers{
             
             Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
             // ROS_INFO_STREAM(Y_stack_sum);
-                  
+            
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
     

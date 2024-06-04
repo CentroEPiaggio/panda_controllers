@@ -4,7 +4,7 @@
     <arg name="package"         default="panda_controllers" />
     
     <!-- set -->
-    <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, CT_mod_controller_OS, computed_torque_controller, computed_torque_mod_controller -->
+    <arg name="controller_name" default="computed_torque_mod_controller" /> <!-- backstepping_controller, CT_mod_controller_OS, computed_torque_controller, computed_torque_mod_controller -->
 
     <!-- flags -->
 	<arg name="yaml_file1" default="$(find panda_controllers)/config/trajectory_param.yaml" />

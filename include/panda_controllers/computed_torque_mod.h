@@ -77,7 +77,7 @@ namespace panda_controllers
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
         std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
-        const int WIN_LEN = 6;
+        const int WIN_LEN = 100;
 
 
         // Joint (torque, velocity) limits vector [Nm], from datasheet https://frankaemika.github.io/docs/control_parameters.html
@@ -151,6 +151,7 @@ namespace panda_controllers
         /* Parameter vector */
 
         Eigen::Matrix<double, NJ*(PARAM), 1> param;    // usfull for calculate an estimate of M, C, G (equivale al pigreco)
+        Eigen::Matrix<double, PARAM, 1> param7; 
         Eigen::Matrix<double, NJ*(PARAM), 1> dot_param;
         Eigen::Matrix<double, NJ*(FRICTION), 1> param_frict;
         Eigen::Matrix<double, NJ*(FRICTION), 1> dot_param_frict;
@@ -162,6 +163,8 @@ namespace panda_controllers
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_mod;
         Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
         Eigen::Matrix<double, NJ, PARAM> redY_norm;
+        Eigen::Matrix<double, PARAM, 1> redY_stack_sum;
+        Eigen::Matrix<double, NJ*PARAM, 1> Y_stack_sum;
         Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D;
         Eigen::Matrix<double, NJ, NJ*FRICTION> Y_D_norm;
         // Eigen::Matrix<double, NJ, NJ*(PARAM+FRICTION)> Y_mod_D;
@@ -191,13 +194,15 @@ namespace panda_controllers
         /*Function cost*/
         // double objective_function (const std::vector<double> &x, std::vector<double> &grad, void *data);
 
-        void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+        double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
 
         /* ROS variables */
         
         ros::NodeHandle cvc_nh;
         ros::Subscriber sub_command_;
         ros::Subscriber sub_flag_update_;
+        ros::Subscriber sub_flag_opt_;
+        
         ros::Publisher pub_err_;
         ros::Publisher pub_config_;
         ros::Publisher pub_opt_;
@@ -208,6 +213,7 @@ namespace panda_controllers
         
         /*Setting Flag Callback*/
         void setFlagUpdate(const flag::ConstPtr& msg);
+        
 
         std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
         std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
