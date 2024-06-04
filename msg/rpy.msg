@@ -1,3 +1,3 @@
-float64 roll
-float64 yaw
-float64 pitch
+float64[3] angle
+float64[3] omega
+float64[3] alpha

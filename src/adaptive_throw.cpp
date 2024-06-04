@@ -47,7 +47,7 @@
 
 using namespace std;
 
-#define alpha 0.1
+// #define alpha 0.1
 bool ready = false;
 bool init_q = false;
 bool init_p = false;
@@ -59,7 +59,10 @@ Eigen::Matrix<double, 4, 1> orient;
 Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
 Eigen::Vector3d p_end;	// used to save starting point of tragectory (go to start)
 Eigen::Vector3d pose_start;	// used to save starting point of tragectory (go to start)
-Eigen::Vector3d pose_end;	// used to save starting orientation of EE(go to start)
+Eigen::Vector3d pose_end;	// used to save starting orientation of EE(go to start)	
+Eigen::Vector3d omega_old;	
+Eigen::Quaterniond q_interpolated;
+Eigen::Vector3d angular_velocity;
 min_jerk_class min_jerk;
 // franka_throw_class throw_node = franka_throw_class();
 // lissagious parameters
@@ -86,12 +89,12 @@ struct traj_struct_cartesian{
 };
 traj_struct_cartesian traj_cartesian;
 
-struct roll_pitch_yaw{
-	double roll;
-	double pitch;
-	double yaw;
+struct pose_struct_cartesian{
+	Eigen::Vector3d rpy;
+	Eigen::Vector3d angular_vel;
+	Eigen::Vector3d angular_acc;
 };
-roll_pitch_yaw rpy;
+pose_struct_cartesian pose_cartesian;
 
 
 struct UserData {
@@ -146,34 +149,60 @@ traj_struct_cartesian interpolator_cartesian(Eigen::Vector3d pos_i, Eigen::Vecto
 }
 
 // Funzione per convertire angoli RPY in quaternioni(Ordine rotazione roll-pitch.yaw)
-Eigen::Quaterniond rpyToQuaternion(double roll, double pitch, double yaw) {
+Eigen::Quaterniond rpyToQuaternion(double roll, double pitch, double yaw, bool transf) {
     Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
     Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
     Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
 
-    Eigen::Quaterniond q =  rollAngle*yawAngle*pitchAngle;
+    Eigen::Quaterniond q =  rollAngle*pitchAngle*yawAngle;
+	q.normalize();
     return q;
 }
 
-roll_pitch_yaw slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
+pose_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
 	
 	// Convertire gli angoli Eulero in quaternioni
-    Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2]);
-    Eigen::Quaterniond q_desired = rpyToQuaternion(rpy_desired[0], rpy_desired[1], rpy_desired[2]);
+    Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2], false);
+    Eigen::Quaterniond q_desired = rpyToQuaternion(rpy_desired[0], rpy_desired[1], rpy_desired[2], true);
 
     // Calcolare il fattore di interpolazione normalizzato
     double t_normalized = t / t_f;
 
-    // Calcolare il quaternione interpolato usando SLERP
-    Eigen::Quaterniond q_interpolated = q_current.slerp(t_normalized, q_desired);
+	// calcolo theta
+	// double theta = acos(q_current.dot(q_desired));
 
+	// setto vecchio quaternione di comando
+	Eigen::Quaterniond q_interpolated_old = q_interpolated;
+    
+	// Calcolare il quaternione interpolato usando SLERP
+    q_interpolated = q_current.slerp(t_normalized, q_desired);
+	
+	// Eigen::Quaterniond dq_interpolated;
+	// if ((q_current*q_desired).w() >= 0){
+	// 	Eigen::Quaterniond dq_interpolated = q_current.coeffs();
+	// }
+
+	// Differenza quaternione
+	Eigen::Quaterniond delta_q = q_interpolated*q_interpolated_old.conjugate();
+	Eigen::AngleAxisd angle_axis(delta_q);
+
+	// velocità angolare
+	Eigen::Vector3d angular_velocity_old = angular_velocity;
+	angular_velocity = angle_axis.axis() * angle_axis.angle() / 0.001;
+
+	// accelerazione angolare commandata
+	Eigen::Vector3d angular_acceleration = (angular_velocity - angular_velocity_old) / 0.001;
+    
     // Convertire il quaternione interpolato in angoli di Eulero
-    Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(2, 1, 0);
-    roll_pitch_yaw rpy;
-	rpy.roll = euler_angles(0);
-	rpy.pitch = euler_angles(1); 
-	rpy.yaw = euler_angles(2);
-    return rpy;
+    Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(0, 1, 2);
+
+	// cout << euler_angles << endl;
+    pose_struct_cartesian com;
+	com.rpy = euler_angles;
+	com.angular_vel = angular_velocity; 
+	com.angular_acc = angular_acceleration;
+    
+	return com;
 }
 
 traj_struct_cartesian estimate_traj(Eigen::Vector3d center, double tf, double t){
@@ -217,7 +246,8 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 	if (!ready){
 		p_start = p;
 		p_end = p;
-		pose_start << 0.0, 0.0, 0.0;
+		pose_start = rotation.eulerAngles(0,1,2);
+		cout << pose_start << endl;
 		pose_end = pose_start;
 		ready = true;
 	}
@@ -392,7 +422,9 @@ int main(int argc, char **argv)
 	}
 
 	/*Inizializzo comando rpy*/
-	rpy.roll = 0; rpy.pitch = 0; rpy.yaw = 0;
+	pose_cartesian.rpy.setZero(); 
+	pose_cartesian.angular_vel.setZero(); 
+	pose_cartesian.angular_acc.setZero();
 
 	// ----- Subscriber and Publishers ----- //
 	// ros::Publisher pub_traj = node_handle.advertise<panda_controllers::Commands>(robot_name + "/computed_torque_controller/command", 1000);
@@ -491,8 +523,8 @@ int main(int argc, char **argv)
 	udata.H.resize(700);
 	std::vector<double> lb(7), ub(7);
 	std::vector<double> x(7);
-	lb[0] = -M_PI; lb[1] = -M_PI; lb[2] = -M_PI_2; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
-	ub[0] = M_PI; ub[1] = M_PI; ub[2] = M_PI_2; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
+	lb[0] = -M_PI_2; lb[1] = -M_PI_2; lb[2] = -M_PI; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI;
+	ub[0] = M_PI_2; ub[1] = M_PI_2; ub[2] = M_PI; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI;
 
 	while (ros::ok()){
 		if (executing == 0){
@@ -544,11 +576,12 @@ int main(int argc, char **argv)
 					tf = tf_0;
 					if (choice_2 == 1){
 						p_end = p0_throw;
-						pose_end = pose_saved;
+						pose_end = pose_start+pose_saved;
 					}
 					else if (choice_2 == 2){
 						p_end = pf_throw;
-						pose_end = pose_saved;
+						pose_end = pose_start+pose_saved;
+						// cout << pose_end << endl;
 					}
 					else if (choice_2 == 3) {
 						p_end = p0_est;
@@ -634,8 +667,8 @@ int main(int argc, char **argv)
 					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
 					/*ORIENTATION COMMAND SLERP*/
 					// rpy.roll = 0.0;  rpy.pitch = 0.0; rpy.yaw = 0.0;
-					rpy = slerp(pose_start, pose_end, t, tf);
-					cout << "command:" << rpy.yaw << endl;
+					pose_cartesian = slerp(pose_start, pose_end, t, tf);
+					// cout << "command:" << rpy.pitch << endl;
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
@@ -748,9 +781,15 @@ int main(int argc, char **argv)
 					traj_msg.acceleration.y = traj_cartesian.acc(1);
 					traj_msg.acceleration.z = traj_cartesian.acc(2);
 
-					rpy_msg.roll = rpy.roll;
-					rpy_msg.pitch = rpy.pitch;
-					rpy_msg.yaw = rpy.yaw;
+					rpy_msg.angle[0] = pose_cartesian.rpy(0); // roll
+					rpy_msg.angle[1] = pose_cartesian.rpy(1); // pitch
+					rpy_msg.angle[2] = pose_cartesian.rpy(2); //yaw
+					// rpy_msg.omega[0] = pose_cartesian.angular_vel(0); 
+					// rpy_msg.omega[1] = pose_cartesian.angular_vel(1); 
+					// rpy_msg.omega[2] = pose_cartesian.angular_vel(2);
+					// rpy_msg.alpha[0] = pose_cartesian.angular_acc(0); 
+					// rpy_msg.alpha[1] = pose_cartesian.angular_acc(1); 
+					// rpy_msg.alpha[2] = pose_cartesian.angular_acc(2);
 					pub_rpy.publish(rpy_msg);
 
 					opt_flag_msg.flag = false;
@@ -760,6 +799,7 @@ int main(int argc, char **argv)
 				loop_rate.sleep();
 				t = (ros::Time::now() - t_init).toSec();
 			}
+			pose_saved.setZero();
 			executing = 0;
 			opt_flag_msg.flag = false;
 			pub_flag_opt.publish(opt_flag_msg);

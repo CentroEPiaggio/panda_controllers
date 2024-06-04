@@ -209,7 +209,7 @@ namespace panda_controllers{
         this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("/CT_mod_controller_OS/command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
         this->sub_flag_opt_ = node_handle.subscribe<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1, &CTModOS::setFlagOpt, this);
         // this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT, this);
-        this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
+        // this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
 
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
@@ -264,6 +264,7 @@ namespace panda_controllers{
         /* Secure Initialization  */
 	   	ee_pos_cmd = T0EE.translation();
 	    ee_rot_cmd = T0EE.linear();
+        // ROS_INFO_STREAM(ee_rot_cmd.eulerAngles(0,1,2));
     	ee_vel_cmd.setZero();
 	    ee_acc_cmd.setZero();
 	    ee_ang_vel_cmd.setZero();
@@ -378,6 +379,7 @@ namespace panda_controllers{
         if (update_opt_flag == false){
             error.head(3) = ee_pos_cmd - ee_position;
             dot_error.head(3) = ee_vel_cmd - ee_velocity;
+            // ee_rot_cmd = T0EE.linear()*ee_rot_cmd;
             // ee_rot_cmd <<0.2, -0.1, 0.5;
 
         } else{
@@ -407,11 +409,12 @@ namespace panda_controllers{
         L.block(3, 3, 3, 3) = L_tmp;
         L_dot.setZero();
         L_dot.block(3, 3, 3, 3) = L_dot_tmp;
+        // ROS_INFO_STREAM(ee_rot_cmd - ee_rot);
         
         // vel_cur.tail(3) = L_tmp*ee_omega;
 	    error.tail(3) = vect(Rs_tilde);
 	    dot_error.tail(3) = L_tmp.transpose()*ee_ang_vel_cmd-L_tmp*ee_omega;
-        // ROS_INFO_STREAM(dot_error.tail(3));
+        // ROS_INFO_STREAM(error.tail(3));
 
         if (update_opt_flag == false){
             /* Compute reference Lissajous */
@@ -861,7 +864,17 @@ namespace panda_controllers{
     // }
 
     void CTModOS::setRPYcmd(const panda_controllers::rpy::ConstPtr& msg){
-        ee_rot_cmd << msg->roll, msg->pitch, msg->yaw;
+        // ee_rot_cmd << msg->roll, msg->pitch, msg->yaw;
+        if(update_opt_flag == false){
+            ee_rot_cmd = 
+            Eigen::AngleAxisd(msg->angle[0], Eigen::Vector3d::UnitX()) *
+            Eigen::AngleAxisd(msg->angle[1], Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(msg->angle[2], Eigen::Vector3d::UnitZ());
+
+            // ee_ang_vel_cmd << msg->omega[0], msg->omega[1], msg->omega[2];
+            // ee_ang_acc_cmd << msg->alpha[0], msg->alpha[1], msg->alpha[2];
+        }
+        // ROS_INFO_STREAM(ee_rot_cmd);
     }
 
     Eigen::Affine3d CTModOS::computeT0EE(const Eigen::VectorXd& q){
