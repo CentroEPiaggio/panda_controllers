@@ -1,3 +1,5 @@
 *.kdev4
 *.bag
 bags/
+.vscode/c_cpp_properties.json
+.vscode/settings.json

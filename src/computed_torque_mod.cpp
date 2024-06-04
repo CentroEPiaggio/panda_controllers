@@ -169,7 +169,7 @@ namespace panda_controllers{
         Rinv_fric.setZero();
         for (int i = 0; i<NJ; i++){	
             Rinv.block(i*(PARAM), i*(PARAM), PARAM, PARAM) = gainRlinks[i]*Rlink; // block permette di fare le operazioni blocco per blocco (dubbio su che principio calcola tale inversa).
-            Rinv_fric.block(i*(FRICTION), i*(FRICTION), FRICTION, FRICTION) = gainRlinks[i]*Rlink_fric; 
+            Rinv_fric.block(i*(FRICTION), i*(FRICTION), FRICTION, FRICTION) = gainRlinks[6]*Rlink_fric; // brutto ma serve ------------------------------------------------------------------------------------------------------------------!!!
         }
 
         /* Initialize joint (torque,velocity) limits */
@@ -269,8 +269,8 @@ namespace panda_controllers{
         // q_est = q_est + 0.9*(q_curr - q_est);
         // dot_q_curr = (q_curr - q_est_old)/dt;
 
-        ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
-        dot_q_curr_old = dot_q_curr;
+        // ddot_q_curr = (dot_q_curr - dot_q_curr_old)/dt;
+        // dot_q_curr_old = dot_q_curr;
 
 
         // dq_est.setZero();
@@ -321,9 +321,12 @@ namespace panda_controllers{
         // Filtro velocità e accelerazioni dopo calcolo errore
         aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         dq_est = calcolaMedia(buffer_dq);
-        dot_q_curr = dq_est;
+        // dot_q_curr = dq_est;
+        ddot_q_curr = (dq_est - dot_q_curr_old)/dt;
+        dot_q_curr_old = dq_est;
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
         ddot_q_curr = calcolaMedia(buffer_ddq);
+        
 
         /* Update and Compute Regressor mod e Regressor Classic*/
 	    fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d);
@@ -359,7 +362,7 @@ namespace panda_controllers{
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.001*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // 0.002 legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param;
             dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
@@ -374,7 +377,7 @@ namespace panda_controllers{
 
         /* update dynamic for control law */
         regrob::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        fastRegMat.setArguments(q_curr,dot_q_curr_old,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        fastRegMat.setArguments(q_curr,dot_q_curr,param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
         Mest = fastRegMat.getMass_gen(); // matrice di massa stimata usando regressore
         Cest = fastRegMat.getCoriolis_gen(); // matrice di coriolis stimata usando regressore
         Gest = fastRegMat.getGravity_gen(); // modello di gravità stimata usando regressore

@@ -15,7 +15,7 @@ namespace panda_controllers{
         }
 
         /* Inizializing the Kp and Kv gains */
-    	double kp1, kp2, kp3, kv1, kv2, kv3;
+    	double kp1, kp2, kp3, kv1, kv2, kv3, kn1, kn2, kn3;
 
         /* Chek corretta acquisizione dei parametri del computed torqued*/
         if (!node_handle.getParam("kp1", kp1) || 
@@ -44,14 +44,29 @@ namespace panda_controllers{
         Kp(5,5) = kp3; 
 
         /* Assegno valori Kvi*/
-        Kv = Eigen::MatrixXd::Identity(7, 7);
+        Kv = Eigen::MatrixXd::Identity(6,6);
         Kv(0,0) = kv1; 
         Kv(1,1) = kv1; 
         Kv(2,2) = kv1; 
-        Kv(3,3) = kv1; 
+        Kv(3,3) = kv2; 
         Kv(4,4) = kv2; 
         Kv(5,5) = kv2;
-        Kv(6,6) = kv3; 
+
+          if (!node_handle.getParam("kn1", kn1) || 
+		!node_handle.getParam("kn2", kn2) ||
+		!node_handle.getParam("kn3", kn3)) {
+		    ROS_ERROR("Computed Torque: Could not get parameter kpi or kv!");
+		    return false;
+	    }
+
+        Kn = Eigen::MatrixXd::Identity(7, 7);
+        Kn(0,0) = kn1; 
+        Kn(1,1) = kn1; 
+        Kn(2,2) = kn1; 
+        Kn(3,3) = kn1; 
+        Kn(4,4) = kn2; 
+        Kn(5,5) = kn2;
+        Kn(6,6) = kn3; 
 
         /*Set parametri Lambda*/
         Lambda.setIdentity();
@@ -357,6 +372,7 @@ namespace panda_controllers{
 	    ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot + N*10*(q_c - q_curr);//+ N*dot_q0_d che è l'accelerazione desiderato nel nullo che si pone pari a zero per adesso
 
         dot_error_q = dot_qr - dot_q_curr;
+        dot_error_Nq0 = dot_error_q - J_pinv*dot_error; //errore derivata nullo(si vuole a zero per adesso)
 
         /* Sempre stessi valori dei guadagni*/
     	Kp_xi = Kp;
@@ -412,7 +428,7 @@ namespace panda_controllers{
         if (update_param_flag){
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
 	        param = param + dt*dot_param; 
-            dot_param_frict = 1*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
+            dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
             param_frict = param_frict + dt*dot_param_frict;
 	    }
 
@@ -450,7 +466,8 @@ namespace panda_controllers{
         // /* command torque to joint */
         // tau_cmd = J.transpose()*F_cmd  + Gest - G + 1.0*(I7.setIdentity() - J_pinv*J)*(3.0*(q_c-q_curr) - 3.0*dot_q_curr);
         // tau_cmd = (1.0*(q_c-q_curr) - 1.0*dot_q_curr); 
-        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + Kv_xi*dot_error_q - G + Dest*dot_qr;
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + Kn*dot_error_q - G + Dest*dot_qr;
+        // tau_cmd = Mest*ddot_qr + (Cest + Dest)*dot_q_curr_old + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error - G + Kn*dot_error_Nq0 + Cest*dot_error_q - J.transpose()*J_T_pinv*Kn*dot_error_Nq0;
         // tau_cmd = -Mest*J_pinv*J_dot*dot_q_curr + Mest*J_pinv*ee_acc_cmd_tot + J.transpose()*Kv*dot_error + J.transpose()*Kp*error + Cest*dot_q_curr + Gest - G;
 
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */

@@ -90,9 +90,10 @@ private:
     /* Gain Matrices */
     Eigen::Matrix<double, 6, 6> Lambda; 
     Eigen::Matrix<double, 6, 6> Kp; 
-    Eigen::Matrix<double, 7, 7> Kv;
+    Eigen::Matrix<double, 6, 6> Kv;
+    Eigen::Matrix<double, 7, 7> Kn;
     Eigen::Matrix<double, 6, 6> Kp_xi; 
-    Eigen::Matrix<double, 7, 7> Kv_xi;
+    Eigen::Matrix<double, 6, 6> Kv_xi;
    
      /* Gain for parameters */
 
@@ -110,6 +111,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> dot_error_q;
+Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
     
     Eigen::Matrix<double, NJ, 1> err_param;
     Eigen::Matrix<double, 7, 1> err_param_frict;
@@ -124,6 +126,7 @@ private:
     
     Eigen::Matrix<double, 6, 1> error;
     Eigen::Matrix<double, 6, 1> dot_error;
+Eigen::Matrix<double, 6, 1> dot_error_est;
     Eigen::Matrix<double, 6, 1> ddot_error;
 
     Eigen::Vector3d ee_position, ee_velocity, ee_acceleration;
@@ -147,6 +150,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
+std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
     const int WIN_LEN = 6;
 
     /* Parameter vector */

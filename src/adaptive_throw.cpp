@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 
 	// ----- Subscriber and Publishers ----- //
 	// ros::Publisher pub_traj = node_handle.advertise<panda_controllers::Commands>(robot_name + "/computed_torque_controller/command", 1000);
-	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
+	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1); // backstepping_controller
 	// ros::Publisher pub_throw_flag = node_handle.advertise<std_msgs::Int32>("/throw_node/throw_state", 1);
 	// ros::Publisher pub_pos_des = node_handle.advertise<geometry_msgs::PoseStamped>("/throw_node/throw_pos_des", 1);
 	ros::Subscriber sub_joints =  node_handle.subscribe<sensor_msgs::JointState>(robot_name + "/franka_state_controller/joint_states", 1, &jointsCallback);
@@ -461,7 +461,7 @@ int main(int argc, char **argv)
 						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
 						if (t > tf_throw - HAND_DELAY){
 							if (first_time){
-								qbhand1_move(1.0);
+								qbhand1_move(0.0);
 								first_time = false;
 							}
 						}

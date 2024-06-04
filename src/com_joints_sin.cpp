@@ -74,9 +74,9 @@ int main(int argc, char **argv)
             dt = t.toSec() - t_start;
         }
         
-        qr << 0.0+amp_1*sin(1.5*(omega_sin_1)*dt), 0.0+amp_1*sin(2*(omega_sin_1/2)*dt), 0.0+amp_1*sin(2*(omega_sin_1/4)*dt), -1.5+amp_1*sin(2*(omega_sin_1/4)*dt), 0.0+amp_2*sin(2*(omega_sin_2/6)*dt), 1.5+amp_2*sin(2*(omega_sin_2/6)*dt), 0.0+amp_2*sin(2*(omega_sin_2/8)*dt);
-        dot_qr << 1.5*(omega_sin_1)*amp_1*cos(1.5*(omega_sin_1)*dt), 2*(omega_sin_1/2)*amp_1*cos(2*(omega_sin_1/2)*dt), 2*(omega_sin_1/4)*amp_1*cos(2*(omega_sin_1/4)*dt), 2*(omega_sin_1/4)*amp_1*cos(2*(omega_sin_1/4)*dt), 2*(omega_sin_2/6)*amp_2*cos(2*(omega_sin_2/6)*dt), 2*(omega_sin_2/6)*amp_2*cos(2*(omega_sin_2/6)*dt), 2*(omega_sin_2/8)*amp_2*cos(2*(omega_sin_2/8)*dt);
-        ddot_qr << -pow(1.5*(omega_sin_1),2)*amp_1*sin(1.5*(omega_sin_1)*dt), -pow(2*(omega_sin_1/2),2)*amp_1*sin(2*(omega_sin_1/2)*dt), +pow(2*(omega_sin_1/4),2)*amp_1*sin(2*(omega_sin_1/4)*dt), -pow(2*(omega_sin_1/4),2)*amp_1*sin(2*(omega_sin_1/4)*dt), -pow(2*(omega_sin_2/6),2)*amp_2*sin(2*(omega_sin_2/6)*dt), -pow(2*(omega_sin_2/6),2)*amp_2*sin(2*(omega_sin_2/6)*dt), -pow(2*(omega_sin_2/8),2)*amp_2*sin(2*(omega_sin_2/8)*dt);
+        qr << 0.0+amp_1*sin(1.5*(omega_sin_1)*dt), 0.0+amp_1*sin(2*(omega_sin_1/2)*dt), 0.0+amp_1*sin(2*(omega_sin_1/4)*dt), -1.5+2*amp_1*sin(2*(omega_sin_1/4)*dt), 0.0+2*amp_2*sin(2*(omega_sin_2/6)*dt), 1.5+amp_2*sin(2*(omega_sin_2/6)*dt), 0.0+amp_2*sin(2*(omega_sin_2/8)*dt);
+        dot_qr << 1.5*(omega_sin_1)*amp_1*cos(1.5*(omega_sin_1)*dt), 2*(omega_sin_1/2)*amp_1*cos(2*(omega_sin_1/2)*dt), 2*(omega_sin_1/4)*amp_1*cos(2*(omega_sin_1/4)*dt), 2*2*(omega_sin_1/4)*amp_1*cos(2*(omega_sin_1/4)*dt), 2*2*(omega_sin_2/6)*amp_2*cos(2*(omega_sin_2/6)*dt), 2*(omega_sin_2/6)*amp_2*cos(2*(omega_sin_2/6)*dt), 2*(omega_sin_2/8)*amp_2*cos(2*(omega_sin_2/8)*dt);
+        ddot_qr << -pow(1.5*(omega_sin_1),2)*amp_1*sin(1.5*(omega_sin_1)*dt), -pow(2*(omega_sin_1/2),2)*amp_1*sin(2*(omega_sin_1/2)*dt), +pow(2*(omega_sin_1/4),2)*amp_1*sin(2*(omega_sin_1/4)*dt), -pow(2*(omega_sin_1/4),2)*2*amp_1*sin(2*(omega_sin_1/4)*dt), -pow(2*(omega_sin_2/6),2)*2*amp_2*sin(2*(omega_sin_2/6)*dt), -pow(2*(omega_sin_2/6),2)*amp_2*sin(2*(omega_sin_2/6)*dt), -pow(2*(omega_sin_2/8),2)*amp_2*sin(2*(omega_sin_2/8)*dt);
         
         for(int i=0;i<NJ;i++){
             command.position[i] = qr(i);

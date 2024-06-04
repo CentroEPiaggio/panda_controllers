@@ -10,7 +10,8 @@ throw_node:
   QF_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw end point configuration (not set)
   P0_THROW: [0.446667, -0.0552812, 0.2] #[0.4, -0.4, 0.2]        # must coincide with Q0
   PF_THROW: [0.468341, 0.306827, 0.426758] #[0.4, 0.2, 0.5]         # throwing point
-  P0_EST: [0.4, 0.0, 0.4]           # desired center of estimating point
+  # P0_EST: [0.4, 0.0, 0.4]           # desired center of estimating point
+  P0_EST: [0.599548, -0.0607805, 0.370499]
   DPF_THROW: [0, 0.9, 0.9]              # throwing velocity
   TF_THROW: 1.0
   TF_BRAKE: 0.3
