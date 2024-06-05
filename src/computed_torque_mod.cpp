@@ -177,12 +177,14 @@ namespace panda_controllers{
         q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
         /*Start command subscriber and publisher */
-        this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command_joints_opt", 1, &ComputedTorqueMod::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
-        this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &ComputedTorqueMod::setFlagUpdate, this);  
+        this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("/computed_torque_mod_controller/command_joints_opt", 1, &ComputedTorqueMod::setCommandCB, this);   //it verify with the callback(setCommandCB) that the command joint has been received
+        this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("/computed_torque_mod_controller/adaptiveFlag", 1, &ComputedTorqueMod::setFlagUpdate, this);  
+        // this->sub_flag_opt_ = node_handle.subscribe<panda_controllers::flag>("/computed_torque_mod_controller/optFlag", 1, &ComputedTorqueMod::setFlagOpt, this);
+        
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_joints> ("logging", 1); //dà informazione a topic loggin l'errore che si commette 
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //dà informazione sulla configurazione usata
         this->pub_opt_ = node_handle.advertise<panda_controllers::udata>("opt_data", 1); //Public for optimal problem 
-   
+
         /* Initialize regressor object (oggetto thunderpanda) */
         // fastRegMat.init(NJ);
 
@@ -191,6 +193,9 @@ namespace panda_controllers{
         H.setZero(10,70);
         E.setZero(70);
         l = 0;
+
+        Y_stack_sum.setZero();
+        redY_stack_sum.setZero();
 
         return true;
     }
@@ -236,10 +241,14 @@ namespace panda_controllers{
         /* Defining the NEW gains */
         Kp_apix = Kp;
         Kv_apix = Kv;
+
+        
+        dot_param.setZero();
+        dot_param_frict.setZero();
         
         /* Update regressor */
         // fastRegMat.setInertialParam(param_dyn); // setta i parametri dinamici dell'oggetto fastRegMat e calcola una stima del regressore di M,C e G (che può differire da quella riportata dal franka)
-        // fastRegMat.setInertialParams(param_dyn);
+        fastRegMat.set_inertial_REG(param);
         fastRegMat.setArguments(q_curr, dot_q_curr, command_dot_q_d, command_dot_dot_q_d); // setta i valori delle variabili di giunto di interresse e calcola il regressore Y attuale (oltre a calcolare jacobiani e simili e in maniera ridondante M,C,G)
     
     }
@@ -357,7 +366,7 @@ namespace panda_controllers{
         // ROS_INFO_STREAM("Y_D:" << Y_D << "Dest:" << Dest);
 
         /*Gravità compensata non va nel calcolo del residuo*/
-        tau_J = tau_cmd + G;
+        tau_J = tau_cmd;
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
@@ -366,14 +375,21 @@ namespace panda_controllers{
         // Y_norm_D << Y_norm, Y_D; // concatenation
         
         err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
+        
+        redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
+        redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
+        param7 = param.segment((NJ-1)*PARAM, PARAM);
 
         /* se vi è stato aggiornamento, calcolo il nuovo valore che paramatri assumono secondo la seguente legge*/
         if (update_param_flag){
+            // ROS_INFO("ciao");
             H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
 
             redStackCompute(redY_norm, H, l, tau_J, E);
 
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
+            // dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.2*Y_stack_sum + 0.3*Y_norm.transpose()*(err_param));
             param = param + dt*dot_param;
             // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
             // param_frict = param_frict + dt*dot_param_frict;
@@ -388,24 +404,24 @@ namespace panda_controllers{
         // ROS_INFO_STREAM(param_tot);
 
         /* update dynamic for control law */
-        thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
-        // fastRegMat.setInertialParams(param_dyn); // capire se usare questa variante si setArguments è la stessa cosa
+        // thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);	// conversion of updated parameters, nuovo oggetto thunderpsnda
+        fastRegMat.set_inertial_REG(param); // capire se usare questa variante si setArguments è la stessa cosa
         Mest = fastRegMat.getMass(); // matrice di massa stimata usando regressore
         Cest = fastRegMat.getCoriolis(); // matrice di coriolis stimata usando regressore
         Gest = fastRegMat.getGravity(); // modello di gravità stimata usando regressore
 
         /* command torque to joint */
-        tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest - G + Dest*command_dot_q_d; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
+        tau_cmd = Mest * command_dot_dot_q_d + Cest * command_dot_q_d  + Kp_apix * error + Kv_apix * dot_error + Gest;// + Dest*command_dot_q_d; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
         // tau_cmd = Mest * command_dot_dot_q_d + Cest * dot_q_curr  + Kp_apix * error + Kv_apix * dot_error + Gest - G; // perchè si sottrae G a legge controllo standard?  legge controllo computed torque (usare M,C e G dovrebbe essere la stessa cosa)
 
 
 
         // /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+	    tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d+G);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
-	    	joint_handles_[i].setCommand(tau_cmd[i]);
+	    	joint_handles_[i].setCommand(tau_cmd[i]-G[i]);
 	    }
 
         /* Publish messages (errore di posizione e velocità, coppia comandata ai giunti, parametri dinamici dei vari giunti stimati)*/
@@ -445,9 +461,10 @@ namespace panda_controllers{
 	//TO DO
     }
 
-    void ComputedTorqueMod::redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E){
+    double ComputedTorqueMod::redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E){
         const int P = 10;
         const double epsilon = 0.1;
+        double Vmax = 0;
 
         if (l <= (P-1)){
             if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
@@ -462,7 +479,7 @@ namespace panda_controllers{
                 Eigen::MatrixXd Th = H;
                 Eigen::MatrixXd Te = E;
                 
-                Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
+                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
                 double V = (solver_V.singularValues()).minCoeff();
                 // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
 
@@ -477,7 +494,7 @@ namespace panda_controllers{
                     /*Information Approach(minor compute load?)*/
                     // S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
                 }
-                double Vmax = S.maxCoeff();
+                Vmax = S.maxCoeff();
                 Eigen::Index m; //index max eigvalues 
                 S.maxCoeff(&m);
                 
@@ -486,7 +503,7 @@ namespace panda_controllers{
                     H.block(0,m*NJ,P,NJ) = red_Y.transpose();
                     // Te = E;
                     E.segment(m*NJ,NJ) = red_tau_J;
-                    // ROS_INFO_STREAM(Te-E);
+                    ROS_INFO_STREAM(Vmax);
                 }
                 else{
                     H = Th;
@@ -494,6 +511,8 @@ namespace panda_controllers{
                 }
             }
         }
+        // ROS_INFO_STREAM(Vmax);
+        return Vmax;
     }
 
 

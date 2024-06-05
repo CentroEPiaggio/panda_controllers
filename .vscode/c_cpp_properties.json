@@ -1,0 +1,46 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/frankacrosslab/franka_ws/devel/include/**",
+        "/home/frankacrosslab/darko_ws/devel/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/frankacrosslab/darko_ws/src/dh_gripper_ros/dh_gripper_driver/include/**",
+        "/home/frankacrosslab/franka_ws/src/franka_ros/franka_control/include/**",
+        "/home/frankacrosslab/franka_ws/src/franka_ros/franka_example_controllers/include/**",
+        "/home/frankacrosslab/franka_ws/src/franka_ros/franka_gazebo/include/**",
+        "/home/frankacrosslab/franka_ws/src/franka_ros/franka_gripper/include/**",
+        "/home/frankacrosslab/franka_ws/src/franka_ros/franka_hw/include/**",
+        "/home/frankacrosslab/darko_ws/src/adaptive_control/panda_controllers/include/**",
+        "/home/frankacrosslab/franka_ws/src/panda-softhand/panda_softhand_control/include/**",
+        "/home/frankacrosslab/franka_ws/src/panda-softhand/panda_softhand_safety/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_control/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_driver/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_gazebo/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_hardware_interface/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_msgs/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_srvs/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbdevice-ros/qb_device_utils/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbhand-ros/qb_hand_gazebo/include/**",
+        "/home/frankacrosslab/franka_ws/src/qbhand-ros/qb_hand_hardware_interface/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/src/IMU_ADC/Management/ros/qb_interface_node/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/src/rosserial/rosserial_server/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/src/rosserial/rosserial_test/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/src/pisa-iit-soft-hand/soft_hand_controllers/include/**",
+        "/home/frankacrosslab/catkin_ws_ste_lancio/src/pisa-iit-soft-hand/soft_hand_qb_ros_control/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

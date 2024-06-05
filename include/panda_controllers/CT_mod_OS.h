@@ -88,6 +88,7 @@ private:
     double dt;
     int l;
     int t;
+    int count; 
     double epsilon; // information trashold 
 
     ros::Time time_now;
@@ -113,6 +114,8 @@ private:
     Eigen::Matrix<double, DOF, DOF> Lambda; 
     Eigen::Matrix<double, DOF, DOF> Kp; 
     Eigen::Matrix<double, DOF, DOF> Kv;
+    Eigen::Matrix<double, NJ, NJ> Kp_j; 
+    Eigen::Matrix<double, NJ, NJ> Kv_j;
     Eigen::Matrix<double, DOF, DOF> Kp_xi; 
     Eigen::Matrix<double, DOF, DOF> Kv_xi;
 
@@ -149,6 +152,7 @@ private:
     Eigen::Matrix<double, NJ, 1> tau_d;
     Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
+    Eigen::Matrix<double, NJ, 1> q_d_nullspace_;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr_est;
 
@@ -165,7 +169,7 @@ private:
 
     Eigen::Matrix<double, NJ, 1> dot_error_q;
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
-    
+     Eigen::Matrix<double, NJ, 1> error_q;
     Eigen::Matrix<double, NJ, 1> err_param;
 
     Eigen::Matrix<double, NJ, 1> tau_cmd;
@@ -206,7 +210,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100;
+    const int WIN_LEN = 50;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -246,6 +250,8 @@ private:
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm_pred;
     Eigen::Matrix<double, NJ, PARAM> redY_norm;
+    Eigen::Matrix<double, NJ, PARAM> red_Y;
+    Eigen::Matrix<double, NJ, 1> red_tau_J;
     Eigen::VectorXd redY_norm_vec;
     Eigen::MatrixXd H; // Memory stack
     // Eigen::MatrixXd H_old;
@@ -268,8 +274,10 @@ private:
     Eigen::Matrix<double,NJ,NJ> N1; // NullSpace Projector
     Eigen::Matrix<double,NJ,NJ> P; // Projector
     
-    /* Object Regressor Slotine Li*/
-    // regrob::thunderPanda fastRegMat;
+  
+    /*Stack function calculation*/
+    Eigen::VectorXd S;
+
     thunder_ns::thunder_panda_2 fastRegMat;
 
     /*Data Struct from optimal problem*/
@@ -294,8 +302,8 @@ private:
 
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
-    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
-    double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    // double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
     Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q);

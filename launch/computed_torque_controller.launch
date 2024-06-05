@@ -11,7 +11,7 @@
   </include>
 
   <!-- set controller -->
-	<arg name="controller_name" 	default="computed_torque_mod_controller" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller, CT_mod_controller_OS -->
+	<arg name="controller_name" 	default= "CT_mod_controller_OS" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller, CT_mod_controller_OS -->
 
   <!-- load initial guess parameters -->
   <group ns="$(arg controller_name)">
