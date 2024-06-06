@@ -5,6 +5,7 @@
     
     <!-- set -->
     <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, CT_mod_controller_OS, computed_torque_controller, computed_torque_mod_controller -->
+    <arg name="hand_namespace" default="/robot/gripper"/>
 
     <!-- flags -->
 	<arg name="yaml_file1" default="$(find panda_controllers)/config/trajectory_param.yaml" />
@@ -14,7 +15,15 @@
 
 	<node pkg="panda_controllers"  name="adaptive_throw" type="adaptive_throw" output="screen"/>
 
-     <!-- rosbag -->
+    <!-- Qb hand file-->
+    <group ns="$(arg hand_namespace)">
+        <include file="$(find qb_hand_control)/launch/control_qbhand.launch">
+           <arg name="activate_on_initialization" value="true"/>
+           <arg name="standalone" value="true"/>
+           <arg name="use_controller_gui" value="true"/>
+        </include>
+    </group>  
+    <!-- rosbag -->
     <arg name="t1"      value="/CT_mod_controller_OS/current_config"/>
     <arg name="t2"      value="/CT_mod_controller_OS/debug"/>
     <arg name="t3"      value="/CT_mod_controller_OS/command_cartesian"/>
@@ -26,5 +35,4 @@
     <arg name="duration"    default="80"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
-
 </launch>

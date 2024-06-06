@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="hand_namespace" default="/robot/gripper"/>
+
+
+  <!-- Namespace of the softhand2 -->
+
+  <group ns="$(arg hand_namespace)">
+     <include file="$(find qb_hand_control)/launch/control_qbhand.launch">
+        <arg name="activate_on_initialization" value="true"/>
+        <arg name="standalone" value="true"/>
+        <arg name="use_controller_gui" value="true"/>
+     </include>
+  </group>  
+</launch>

@@ -27,6 +27,17 @@ namespace panda_controllers{
 		    ROS_ERROR("Computed Torque: Could not get parameter kpi or kv!");
 		    return false;
 	    }
+        // std::vector<double> gainLambda(DOF);
+        // if (!node_handle.getParam("gainLambda", gainLambda)){
+        //     ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
+		//     return false;
+        // }
+        
+        /*Set parametri Lambda*/
+        // Lambda.setIdentity();
+	    // for(int i=0;i<6;i++){
+		//     Lambda(i,i) = gainLambda[i];
+	    // }
 
         /* Assign Kp values*/
         Kp = Eigen::MatrixXd::Identity(DOF, DOF);
@@ -146,7 +157,6 @@ namespace panda_controllers{
         param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.014045526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
 
         /* Param_dyn initial calculation*/
-        // thunder_ns::reg2dyn(NJ,PARAM,param,param_dyn);
         fastRegMat.set_inertial_REG(param);
         
         /* Inizializing the R gains to update parameters*/
@@ -218,7 +228,7 @@ namespace panda_controllers{
         this->sub_command_j_ = node_handle.subscribe<sensor_msgs::JointState> ("/CT_mod_controller_OS/command_joints_opt", 1, &CTModOS::setCommandCBJ, this);
         this->sub_flag_opt_ = node_handle.subscribe<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1, &CTModOS::setFlagOpt, this);
         // this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT, this);
-        this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
+        // this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
 
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
@@ -231,9 +241,8 @@ namespace panda_controllers{
         /*Initialize Stack Procedure*/
         l = 0;
         t = 0;
-        count = 10;
-        epsilon = 0.1;
         update_opt_flag = false;
+        count = 0; // cosi primo valore red_Y subito settato
        
         S.setZero(10);
         H.setZero(10,70);
@@ -264,11 +273,13 @@ namespace panda_controllers{
         dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
         dot_q_curr_old = dot_q_curr;
         ddot_q_curr.setZero();
+        q_d_nullspace_ = q_curr;
 
     
 	    // ROS_INFO_STREAM(tau_t-tau_cmd);
 	    
 
+        error_q.setZero(); 
         dot_error_q.setZero(); 
         dot_error_Nq0.setZero();
 
@@ -326,7 +337,7 @@ namespace panda_controllers{
 
 
     void CTModOS::update(const ros::Time&, const ros::Duration& period){
-       
+     
 	    Eigen::Matrix<double,DOF,DOF> tmp_conversion0, tmp_conversion1, tmp_conversion2;
         Eigen::VectorXd ee_vel_cmd_tot(DOF), ee_acc_cmd_tot(DOF);
         Eigen::VectorXd tmp_position(DOF), tmp_velocity(DOF);
@@ -346,7 +357,7 @@ namespace panda_controllers{
         ddot_q_curr_old = ddot_q_curr;
         // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
         
-        // tau_d = -tau_J-tau_cmd;
+        // ROS_INFO_STREAM(tau_J-tau_cmd);
 
         // ROS_INFO_STREAM(-tau_J-tau_cmd);
         // ROS_INFO_STREAM(tau_cmd);
@@ -359,6 +370,7 @@ namespace panda_controllers{
         /* tau_J_d is the desired link-side joint torque sensor signals "without gravity" */
 	    tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
         // tau_J_d = tau_cmd;
+        // ROS_INFO_STREAM(tau_J_d+G-tau_cmd);
 
         /* Update pseudo-inverse of J and its derivative */
     	fastRegMat.setArguments(q_curr,dot_q_curr, dot_q_curr,ddot_q_curr);
@@ -407,7 +419,7 @@ namespace panda_controllers{
             // ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
         }
     
-        // ROS_INFO_STREAM(ddq_opt);
+        // ROS_INFO_STREAM(error);
 
     	/* Compute error orientation */
   	    ee_rot = T0EE.linear();
@@ -451,6 +463,10 @@ namespace panda_controllers{
         // dot_error_Nq0 = (dot_error_q - J_pinv*dot_error); //errore derivata nullo(si vuole a zero per adesso)
         dot_error_q = dot_qr - dot_q_curr;
         dot_error_Nq0 = -N1*(dot_q_curr);
+        // dot_error_Nq0 = (Eigen::MatrixXd::Identity(7, 7) -
+        //             J.transpose() * J_pinv.transpose()) *
+        //                (10 * (q_d_nullspace_ - q_curr) -
+        //                 (2.0 * sqrt(10)) * dot_q_curr);
 
     	Kp_xi = Kp;
     	Kv_xi = Kv;
@@ -520,7 +536,6 @@ namespace panda_controllers{
         // Y_mod_tot.block(0,0,NJ,NJ*PARAM) = Y_norm;
         // Y_mod_tot.block(0,NJ*PARAM,NJ,NJ*FRICTION) = Y_D;
 
-        // ROS_INFO_STREAM(Rinv_fric);
         redY_norm = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         // redY_norm.block(0, 0,NJ,PARAM) = Y_norm.block(0,(NJ-1)*PARAM,NJ,PARAM);
         // redY_norm.block(0, 10,NJ,NJ*FRICTION) = Y_norm.block(0,NJ*PARAM,NJ,NJ*FRICTION);
@@ -529,7 +544,7 @@ namespace panda_controllers{
         // redtau_J = tau_J - Y_norm*param;//friction case(tutti parametri dinamici corretti)
         
         param7 = param.segment((NJ-1)*PARAM, PARAM);
-        // ROS_INFO_STREAM(redtau_J - redY_norm*param_real);
+        // ROS_INFO_STREAM(param7);
         
         // ROS_INFO_STREAM(redY_norm.transpose());
 
@@ -539,10 +554,10 @@ namespace panda_controllers{
             // fastRegMat.setArguments(qr, dot_qr, dot_qr, ddot_qr);
             // Y_norm_pred = fastRegMat.getReg_gen();
 
-               
+            
             redStackCompute(redY_norm, H, l, redtau_J, E);
-            // redStackComputeFric(Y_D_norm, H, l, redtau_J, E); 
-
+            // redStackComputeFric(Y_D_norm, H, l, redtau_J, E);
+      
             /*Casting in vettore(mette in colonna da verificare)*/
             H_vec = Eigen::Map<Eigen::VectorXd> (H.data(), 700);
             
@@ -555,13 +570,14 @@ namespace panda_controllers{
             
             Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
             // ROS_INFO_STREAM(Y_stack_sum);
-            
+                  
             /* Residual computation */
             err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
     
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param); 
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum);// + 0.5*Y_norm.transpose()*(err_param)); 
+            // dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_norm.transpose()*(err_param)); // + 0.1*Y_norm.transpose()*(err_param));
 	        param = param + dt*dot_param;
-            // ROS_INFO_STREAM(param7);
+            ROS_INFO_STREAM(param7);
             // dot_param_tot = 0.01*Rinv_tot*(Y_mod_tot.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        // param_tot = param_tot + dt*dot_param_tot;
             // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + redY_stack_sum_fric); //Y_D_norm.transpose()*(err_param));
@@ -586,7 +602,7 @@ namespace panda_controllers{
         Gest = fastRegMat.getGravity(); // Estimate Gravity Matrix
         // ROS_INFO_STREAM(Mest*ddot_q_curr+Cest*dot_q_curr+Gest - Y_norm*param); // relazione vera SE USO LE VELOCITA FILTRATE
       
-        // ROS_INFO_STREAM("vera: "<<C-Cest*dot_q_curr);
+        // ROS_INFO_STREAM("vera: "<<Mest);
         // ROS_INFO_STREAM("stimata: "<<Gest);
 
         
@@ -595,7 +611,7 @@ namespace panda_controllers{
         // CestXi = (J_T_pinv*Cest - MestXi*J_dot)*J_pinv;
         // GestXi = J_T_pinv*Gest;>
       
-        // /* command torque to joint */
+        // /* command torque to joint */  
         if (update_opt_flag == false){
             tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
         }else{
@@ -606,6 +622,7 @@ namespace panda_controllers{
 
         /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
         tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d+G);
+        // ROS_INFO_STREAM(tau_cmd);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
@@ -684,57 +701,13 @@ namespace panda_controllers{
         return sgn;
     }
 
-    // void CTModOS::stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E){
-    //     const int P = 70;
-    //     const double epsilon = 0.1;
-    //     Eigen::Matrix<double, NJ, NJ*PARAM> Y_old;
-
-    //     if (l <= (P-1)){
-    //         if ((Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(Y.transpose()).norm() >= epsilon){
-    //             H.block(0,l*NJ,P,NJ) = Y.transpose();
-    //             E.segment(l*NJ,NJ) = tau_J;
-    //             l = l+1;
-    //             // ROS_INFO_STREAM(H*H.transpose());
-    //         }
-                                
-    //     }else{
-    //         if ((Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(Y.transpose()).norm() >= epsilon){
-    //             Eigen::MatrixXd Th = H;
-                
-    //             // Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM, NJ*PARAM>> solver_V(H*H.transpose());
-    //             // double V = (solver_V.singularValues()).minCoeff();
-    //             double V = (Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(Y.transpose()).norm();
-
-    //             Eigen::VectorXd S(P);
-    //             for (int i = 0; i < P; ++i) {
-    //                 H.block(0,i*NJ,P,NJ) = Y.transpose();
-    //                 // Eigen::JacobiSVD<Eigen::Matrix<double, NJ*PARAM/NJ, NJ*PARAM/NJ>> solver_S(H*H.transpose());
-    //                 // S(i) = (solver_S.singularValues()).minCoeff();
-    //                 H = Th;
-
-    //                 /*Information Approach(minor compute load?)*/
-    //                 S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
-    //             }
-    //             double Vmax = S.maxCoeff();
-    //             Eigen::Index m; //index max eigvalues 
-    //             S.maxCoeff(&m);
-                
-
-    //             if(Vmax >= V){
-    //                 H.block(0,m*NJ,P,NJ) = Y.transpose();
-    //                 E.segment(m*NJ,NJ) = tau_J;
-    //             }else{
-    //                 H = Th;
-    //                 // E = Te;
-    //             }
-    //         }
-    //     }
-    // }
+    
 
     double CTModOS::redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J_new, Eigen::VectorXd& E){
         const int P = 10;
         const double epsilon = 0.1;
         double Vmax = 0;
+        
 
         if (l <= (P-1)){
             if ((red_Y_new.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y_new.transpose()).norm() >= epsilon){
@@ -745,75 +718,57 @@ namespace panda_controllers{
             }
                                 
         }else{
-            /*Aprroccio braccio reale*/
+
             if (count%10 == 0){
                 red_Y = red_Y_new;
                 red_tau_J = red_tau_J_new;
                 count = 0;
             }
-            count = count+1;
-
+            count = count + 1;
+            
             if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
                 Eigen::MatrixXd Th = H;
                 Eigen::MatrixXd Te = E;
-
                 
                 Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
                 double V = (solver_V.singularValues()).minCoeff();
                 // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
 
-                /*Pezzo classico per simulazione*/
                 // Eigen::VectorXd S(P);
                 // for (int i = 0; i < P; ++i) {
-                //     H.block(0,i*NJ,P,NJ) = red_Y.transpose();
-                //     Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
-                //     S(i) = (solver_S.singularValues()).minCoeff();
-                //     H = Th;
-                // }
-        
-                H.block(0,(count-1)*NJ,P,NJ) = red_Y.transpose();
+                    // H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                H.block(0,count*NJ,P,NJ) = red_Y.transpose();
                 Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                    // S(i) = (solver_S.singularValues()).minCoeff();
                 S(count-1) = (solver_S.singularValues()).minCoeff();
                 H = Th;
-                
+                    // ROS_INFO_STREAM(solver_S.singularValues());
+
+                    /*Information Approach(minor compute load?)*/
+                    // S(i) = (Y.transpose()-H.block(0,i*NJ,P,NJ)).norm()/(Y.transpose()).norm();
+                // }
                 if (count == 10){
                     Vmax = S.maxCoeff();
                     Eigen::Index m; //index max eigvalues 
                     S.maxCoeff(&m);
-
-                    /*Aprroccio braccio reale*/
                     if(Vmax >= V){
                         H.block(0,m*NJ,P,NJ) = red_Y.transpose();
                         E.segment(m*NJ,NJ) = red_tau_J;
-            
                     }else{
                         Vmax = V;
                         H = Th;
                         E = Te;
-                    }    
+                    }
                 }else{
                     Vmax = V;
                     H = Th;
                     E = Te;
                 }
-
-                
-                // if(Vmax >= V){
-                //     H.block(0,m*NJ,P,NJ) = red_Y.transpose();
-                //     // Te = E;
-                //     E.segment(m*NJ,NJ) = red_tau_J;
-                //     // ROS_INFO_STREAM(Vmax);
-                // }
-                // else{
-                //     H = Th;
-                //     E = Te;
-                // }
             }
         }
         // ROS_INFO_STREAM(Vmax);
         return Vmax;
     }
-    
 
     /* Check for the effort commanded */
     Eigen::Matrix<double, NJ, 1> CTModOS::saturateTorqueRate(
@@ -832,9 +787,9 @@ namespace panda_controllers{
 
     void CTModOS::setCommandCB(const panda_controllers::desTrajEE::ConstPtr& msg)
     {
- 	ee_pos_cmd << msg->position.x, msg->position.y, msg->position.z;
-	ee_vel_cmd << msg->velocity.x, msg->velocity.y, msg->velocity.z;
-	ee_acc_cmd << msg->acceleration.x, msg->acceleration.y, msg->acceleration.z;
+        ee_pos_cmd << msg->position.x, msg->position.y, msg->position.z;
+        ee_vel_cmd << msg->velocity.x, msg->velocity.y, msg->velocity.z;
+        ee_acc_cmd << msg->acceleration.x, msg->acceleration.y, msg->acceleration.z;
     }  
 
     void CTModOS::setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg)
@@ -876,14 +831,14 @@ namespace panda_controllers{
         Eigen::Matrix<double, 4, 4> T = Eigen::Matrix<double, 4, 4>::Identity();
 
         // Riempio sezione distanza "a"
-        // DH.block(0,0,NJ,1) << 0, 0, 0.0825, -0.0825, 0, 0.088, 0;
+        
         DH.block(0,0,NJ,1) << 0, 0, 0,0.0825, -0.0825, 0, 0.088;   
         // Riempio sezione angolo "alpha"
         // DH.block(0,1,NJ,1) << -M_PI_2, M_PI_2, M_PI_2, -M_PI_2, M_PI_2, M_PI_2, 0;
         DH.block(0,1,NJ,1) << 0, -M_PI_2, M_PI_2, M_PI_2, -M_PI_2, M_PI_2, M_PI_2;
         // Riempio sezione distanza "d"
         // DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107;
-        DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107; // verificato che questi valori corrispondono a DH che usa il robot in simulazione
+        DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107+0.035; // il + è se vi è la mano
         // Riempio sezione angolo giunto "theta"
         DH.block(0,3,NJ,1) = q;     
 
@@ -901,7 +856,11 @@ namespace panda_controllers{
 
             // Avanzamento perice i 
             T0i.matrix() = T0i.matrix()*T;
-        }  
+        }
+        Eigen::Matrix<double,3,1> offset;
+        offset << 0.13, 0, 0;
+        offset = T0i.linear()*offset;
+        T0i.translation() = T0i.translation()+offset;
         return T0i;
     }
 

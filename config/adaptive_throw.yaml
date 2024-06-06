@@ -1,7 +1,7 @@
 # possible grippers: 0) dh3, 1) hand1, 2) hand2
 throw_node:
   SIMULATION: 0         # use gazebo as robot
-  GRIPPER: 0            # gripper used
+  GRIPPER: 1          # gripper used
   RATE: 1000            # hz of throwing traj
   RATE_CLOSE: 1.9       # hz of closure hand
   HAND_DELAY: 0.5       # 0.2 dh3, 0.6 hand2, 0.4 hand1

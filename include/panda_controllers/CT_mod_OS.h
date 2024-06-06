@@ -250,8 +250,6 @@ private:
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm;
     Eigen::Matrix<double, NJ, NJ*PARAM> Y_norm_pred;
     Eigen::Matrix<double, NJ, PARAM> redY_norm;
-    Eigen::Matrix<double, NJ, PARAM> red_Y;
-    Eigen::Matrix<double, NJ, 1> red_tau_J;
     Eigen::VectorXd redY_norm_vec;
     Eigen::MatrixXd H; // Memory stack
     // Eigen::MatrixXd H_old;
@@ -277,6 +275,8 @@ private:
   
     /*Stack function calculation*/
     Eigen::VectorXd S;
+    Eigen::Matrix<double, NJ, 1> red_tau_J;
+    Eigen::Matrix<double, NJ, PARAM> red_Y;
 
     thunder_ns::thunder_panda_2 fastRegMat;
 
@@ -302,7 +302,7 @@ private:
 
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
-    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J_new, Eigen::VectorXd& E);
     // double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
