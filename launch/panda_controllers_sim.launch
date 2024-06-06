@@ -13,19 +13,19 @@
 	<arg name="arm_id" 				default="panda" doc="Name of the panda robot to spawn" />
 	
 	<!-- flag -->
-	<arg name="use_gripper" 		default="false" />
+	<arg name="use_gripper" 		default="true" />
 	<arg name="rviz" 				default="false" />
 	<!-- <arg name="clik"            	default="false" /> -->
 	<arg name="rosbag_BS"			value="false" />
 	<arg name="rosbag_CT"			value="false" />
     
 	<!-- set controller -->
-	<arg name="controller_name" 	default="computed_torque_mod_controller" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller -->
+	<arg name="controller_name" 	default="CT_mod_controller_OS" /> <!-- backstepping_controller, computed_torque_controller, computed_torque_mod_controller -->
 	
 	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" /> <!-- File che carica valori di costanti quali valori di k e dt -->
 	<group ns="$(arg controller_name)">
-		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG_pW.yaml" /> <!--File che carica parametri dinamici per regressore stimati, ricavati attraverso dati URDF del franka con convernzione D-H -->
+		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG.yaml" /> <!--File che carica parametri dinamici per regressore stimati, ricavati attraverso dati URDF del franka con convernzione D-H -->
 	</group>
 
 	<!-- to load gazebo (and rviz) -->

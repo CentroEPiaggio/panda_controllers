@@ -89,6 +89,7 @@ private:
     int l;
     int t;
     double epsilon; // information trashold 
+    int count;
 
     ros::Time time_now;
     
@@ -272,14 +273,10 @@ private:
     // regrob::thunderPanda fastRegMat;
     thunder_ns::thunder_panda_2 fastRegMat;
 
-    /*Data Struct from optimal problem*/
-    // struct UserData {
-    //     std::vector<double> q;
-    //     std::vector<double> dq;
-    //     // std::vector<std::vector<double>> H;
-    //     std::vector<double> H;
-    //     int l;
-    // };
+    /*Variabili utili per approccio braccio reale*/
+    Eigen::Matrix<double, NJ, 1> red_tau_J;
+    Eigen::Matrix<double, NJ, PARAM> red_Y; 
+    Eigen::VectorXd S;
 
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);
@@ -294,8 +291,8 @@ private:
 
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
-    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
-    double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    // double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
     Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q);
