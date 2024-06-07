@@ -295,11 +295,11 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
 
 	q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
-	if (!grad.empty()) {
-        for (int i = 0; i < NJ; i++) {
-            grad[i] = 0.0;
-        }
-    }
+	// if (!grad.empty()) {
+    //     for (int i = 0; i < NJ; i++) {
+    //         grad[i] = 0.0;
+    //     }
+    // }
 
 	/*Traiettoria sinusoidale ottima*/
     for(int i = 0; i < NJ; ++i){
@@ -414,6 +414,7 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "test_throw");
 	ros::NodeHandle node_handle;
+	bool start = true;
 
 	// std::string robot_name = ROBOT_NAME;
 	float RATE;
@@ -542,6 +543,9 @@ int main(int argc, char **argv)
 	srand(time(NULL));
 	bool first_time = true;
 	bool joint_move = false;
+	bool set_pos = false;
+	bool set_rot = false;
+
 	double tf = 3.0;
 	double rate = RATE;
 	double tf_throw = TF_THROW;
@@ -608,8 +612,8 @@ int main(int argc, char **argv)
 	udata.H.resize(700);
 	std::vector<double> lb(7), ub(7);
 	std::vector<double> x(7), x_old(7);
-	lb[0] = -M_PI_4; lb[1] = -M_PI_4; lb[2] = -M_PI_4; lb[3] = -M_PI_4; lb[4] = -M_PI_4; lb[5] = -M_PI_4; lb[6] = -M_PI_4;
-	ub[0] = M_PI_4; ub[1] = M_PI_4; ub[2] = M_PI_4; ub[3] = M_PI_4; ub[4] = M_PI_4; ub[5] = M_PI_4; ub[6] = M_PI_4;
+	lb[0] = -M_PI_2; lb[1] = -M_PI_2; lb[2] = -M_PI_2; lb[3] = -M_PI_2; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
+	ub[0] = M_PI_2; ub[1] = M_PI_2; ub[2] = M_PI_2; ub[3] = M_PI_2; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
 	int count = 0;
 	for(int i=0; i < 7; ++i){
 		x_old[i] = 0;
@@ -631,10 +635,12 @@ int main(int argc, char **argv)
 					cout<<"x:"; cin>>p_saved(0);
 					cout<<"y:"; cin>>p_saved(1);
 					cout<<"z:"; cin>>p_saved(2);
+					set_pos = true;
 				}else if (choice_2 == 2){
 					cout<<"roll:"; cin>>pose_saved(0); 
 					cout<<"pitch:"; cin>>pose_saved(1); 
 					cout<<"yaw:"; cin>>pose_saved(2);
+					set_rot = true;
 				} else{
 					executing = 0;
 				}
@@ -647,6 +653,10 @@ int main(int argc, char **argv)
 					ros::spinOnce();
 				}
 				q_saved = q;
+				p_saved = p;
+				pose_saved = pose;
+				set_pos = true;
+				set_rot = true;
 			
 				cout<<"q: ["<<q[0]<<", "<<q[1]<<", "<<q[2]<<", "<<q[3]<<", "<<q[4]<<", "<<q[5]<<", "<<q[6]<<"]"<<endl;
 				cout<<"ee_pose: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<", "<<orient[0]<<", "<<orient[1]<<", "<<orient[2]<<", "<<orient[3]<<"]"<<endl;
@@ -703,9 +713,13 @@ int main(int argc, char **argv)
 						joint_move = false;
 					}
 					else if (choice_2 == 6) {
-						p_end = p_saved;
-						pose_end = pose_saved;
+						if (set_pos)
+							p_end = p_saved;
+						if (set_rot)
+							pose_end = pose_saved;
 						joint_move = false;
+						set_pos = false;
+						set_rot = false;
 					}
 					else {
 						executing = 0;
@@ -788,7 +802,6 @@ int main(int argc, char **argv)
 					qbhand2_move(value,0);
 				}
 			}
-			// cout << "ciao"<<endl;
 		}else{
 			// ----- init trajectory cycle ----- //
 			t_init = ros::Time::now();
@@ -894,13 +907,17 @@ int main(int argc, char **argv)
 					double minf;
 					nlopt::result result = opt.optimize(x, minf);
 					// }
+	
 					/*Traiettoria ottima sinusoidale ottenuta*/
 					for(int i = 0; i < 7; ++i){
 						x_old[i] = x[i];
 						traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
 						traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
 						traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+						// if (start)
+						// 	cout << x[i] <<endl;
         			}
+					start = false;
 				}
 			
 
