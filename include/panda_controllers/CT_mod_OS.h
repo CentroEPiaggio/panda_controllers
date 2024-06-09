@@ -117,15 +117,16 @@ private:
     Eigen::Matrix<double, DOF, DOF> Kp_xi; 
     Eigen::Matrix<double, DOF, DOF> Kv_xi;
 
+    /* Gain Matrices in CT*/
+    Eigen::Matrix<double, NJ, NJ> Kp_j; 
+    Eigen::Matrix<double, NJ, NJ> Kv_j; 
+
     /* Gain Matrice in NullSpacde*/
     Eigen::Matrix<double, NJ, NJ> Kn;
 
     std:: string robot_name;
     
-    /*Proof PE*/
-    Eigen::Matrix<double, NJ*PARAM, 1> v;
-    Eigen::Matrix<double, NJ*PARAM, 1> v_dot;
-    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> v_diag;
+   
    
      /* Gain for parameters */
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
@@ -139,7 +140,6 @@ private:
     Eigen::Matrix<double, NJ, 1> q_curr;
     Eigen::Matrix<double, NJ, 1> q_c; // vettore giunti meta corsa
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
-    // Eigen::Matrix<double, NJ, 1> q_curr_old;
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
@@ -158,12 +158,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dq_opt;
     Eigen::Matrix<double, NJ, 1> q_opt;
 
-    /*Inf variable*/
-    // double inf1;
-    // double inf2;
-
-    // Eigen::Matrix<double, NJ, 1> x_eig;
-
+    Eigen::Matrix<double, NJ, 1> error_q;
     Eigen::Matrix<double, NJ, 1> dot_error_q;
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
     
@@ -202,12 +197,10 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_q;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
-    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
-    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100;
+    const int WIN_LEN = 100; // dovrebbe corrispondere a una freq di taglio di circa 100Hz
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -276,7 +269,7 @@ private:
     /*Variabili utili per approccio braccio reale*/
     Eigen::Matrix<double, NJ, 1> red_tau_J;
     Eigen::Matrix<double, NJ, PARAM> red_Y; 
-    Eigen::VectorXd S;
+    // Eigen::VectorXd S;
 
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);
