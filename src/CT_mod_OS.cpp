@@ -434,9 +434,9 @@ namespace panda_controllers{
         aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
         ddot_q_curr = calcolaMedia(buffer_ddq);
         
-        // tau_J = tau_J_d+G; // per lab
-        tau_J = tau_cmd;
-        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data());
+        tau_J = tau_J_d+G; // funziona pure
+        // tau_J = tau_cmd;
+        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data()); // best in simulation
         aggiungiDato(buffer_tau, tau_J, WIN_LEN);
         tau_J = calcolaMedia(buffer_tau);
 
