@@ -213,6 +213,7 @@ private:
     const int WIN_LEN = 100;
 
     /* Parameter vector */
+    Eigen::Matrix<double, NJ, 1> tau_est;
     Eigen::Matrix<double, NJ*PARAM, 1> param;
     Eigen::Matrix<double, PARAM, 1> param7;
     Eigen::Matrix<double, PARAM, 1> param_real;
