@@ -210,7 +210,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100;
+    const int WIN_LEN = 5;
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ, 1> tau_est;

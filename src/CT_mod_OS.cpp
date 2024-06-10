@@ -372,13 +372,13 @@ namespace panda_controllers{
             ddot_qr = ddq_opt;
             
             /*Switch to joints control*/
-            error_q = qr - q_curr;
-            dot_error_q = dot_qr - dot_q_curr;
+            // error_q = qr - q_curr;
+            // dot_error_q = dot_qr - dot_q_curr;
 
-            // error.head(3) = computeT0EE(qr).translation() - ee_position;
-            // dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
-            // ee_rot_cmd = computeT0EE(qr).linear();
-            // ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
+            error.head(3) = computeT0EE(qr).translation() - ee_position;
+            dot_error.head(3) = J.topRows(3)*dot_qr - ee_velocity;
+            ee_rot_cmd = computeT0EE(qr).linear();
+            ee_ang_vel_cmd = J.bottomRows(3)*dot_qr;
         }
     
     	/* Compute error orientation */
@@ -538,12 +538,12 @@ namespace panda_controllers{
         // GestXi = J_T_pinv*Gest;
       
         /* command torque to joint */
-        // tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
-        if (update_opt_flag == false){
-            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
-        }else{
-            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
-        }
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+        // if (update_opt_flag == false){
+        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
+        // }else{
+        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
+        // }
 
         /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
         tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d+G);

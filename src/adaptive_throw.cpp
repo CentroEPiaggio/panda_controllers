@@ -702,8 +702,10 @@ int main(int argc, char **argv)
 					else if (choice_2 == 6) {
 						if (set_pos)
 							p_end = p_saved;
-						// if (set_rot)
-						// 	pose_end = pose_saved;
+                            cout << p_saved << endl;
+						if (set_rot)
+							pose_end = pose_saved;
+                            cout << pose_saved << endl;
 					}
 					else {
 						executing = 0;
@@ -801,6 +803,7 @@ int main(int argc, char **argv)
 				if (executing == 1){
 					// --- go to --- //
 					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
+                    traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf, t);
 					/*ORIENTATION COMMAND SLERP*/
 					pose_cartesian = slerp(pose_start, pose_end, t, tf);
 					// cout << "command:" << rpy.pitch << endl;
@@ -949,8 +952,8 @@ int main(int argc, char **argv)
 				traj_msg.acceleration.z = 0;
 				pub_traj_cartesian.publish(traj_msg);  
 			}
-			p_saved.setZero();
-			pose_saved.setZero();
+			// p_saved.setZero();
+			// pose_saved.setZero();
 			executing = 0;
 			opt_flag_msg.flag = false;
 			pub_flag_opt.publish(opt_flag_msg);
