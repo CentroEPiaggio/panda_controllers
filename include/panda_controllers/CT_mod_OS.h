@@ -89,6 +89,7 @@ private:
     int l;
     int t;
     int count; 
+    double lambda_min;
     double epsilon; // information trashold 
 
     ros::Time time_now;

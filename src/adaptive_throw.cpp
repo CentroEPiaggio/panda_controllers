@@ -93,6 +93,7 @@ struct traj_struct_joints{
 	Eigen::Matrix<double, 7, 1> acc;
 };
 traj_struct_joints traj_joints;
+traj_struct_joints traj_joints_old;
 
 struct traj_struct_cartesian{
 	Eigen::Vector3d pos;
@@ -409,6 +410,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle node_handle;
 	bool start = true;
     int count = 0;
+	double t_smooth = 0;
 
 	// std::string robot_name = ROBOT_NAME;
 	float RATE;
@@ -490,6 +492,10 @@ int main(int argc, char **argv)
 		robot_name = "";
 		// robot_name = "/robot/arm";
 	}
+
+	traj_joints.pos.setZero();
+	traj_joints.vel.setZero();
+	traj_joints.acc.setZero();
 
 	/*Inizializzo comando rpy*/
 	pose_cartesian.rpy.setZero(); 
@@ -671,6 +677,7 @@ int main(int argc, char **argv)
 					/*If precendent move is a joint movement*/					
 					if(joint_move){
 						p_start = computeT0EE(q).translation();
+						pose_start = (computeT0EE(q).linear()).eulerAngles(0,1,2);
 						joint_move = false;
 					}
 
@@ -688,7 +695,7 @@ int main(int argc, char **argv)
 					}
 					else if (choice_2 == 3) {
 						p_end = p0_est;
-						pose_end.setZero();
+						// pose_end.setZero();
 					}	
 					else if (choice_2 == 4) {
 						opt_flag_msg.flag = true;
@@ -698,14 +705,18 @@ int main(int argc, char **argv)
 					else if (choice_2 == 5) {
 						p_end = p_start + p_saved;
 						pose_end = pose_start+pose_saved;
+						p_saved.setZero();
+						pose_saved.setZero();
 					}
 					else if (choice_2 == 6) {
 						if (set_pos)
 							p_end = p_saved;
-                            cout << p_saved << endl;
+							p_saved.setZero();
+                            // cout << p_saved << endl;
 						if (set_rot)
 							pose_end = pose_saved;
-                            cout << pose_saved << endl;
+							pose_saved.setZero();
+                            // cout << pose_saved << endl;
 					}
 					else {
 						executing = 0;
@@ -717,8 +728,8 @@ int main(int argc, char **argv)
 				first_time = true; // used for hand opening
 				pf_brake = pf_throw + dpf_throw*tf_brake/2;
 				if(joint_move){
-						p_start = computeT0EE(q).translation();
-						joint_move = false;
+					p_start = computeT0EE(q).translation();
+					joint_move = false;
 				}else{
 					p_start = p_end;
 				}
@@ -798,6 +809,7 @@ int main(int argc, char **argv)
 			// ----- init trajectory cycle ----- //
 			t_init = ros::Time::now();
 			t = (ros::Time::now() - t_init).toSec();
+			t_smooth = t + 0.010;
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
@@ -862,6 +874,7 @@ int main(int argc, char **argv)
 					for(int i=0; i < 7; ++i){
 						x[i] = x_old[i];
 					}
+					traj_joints_old = traj_joints;
 
 					if (counter%10 == 0){
                         // count = 0;
@@ -887,8 +900,21 @@ int main(int argc, char **argv)
                         for(int i=0; i < 7; ++i){
                             x_old[i] = x[i];
                         }
+						// for(int i = 0; i < 7; ++i){
+						// 	traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
+						// 	traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
+						// 	traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+                    	// }
+						// t_smooth = t + 0.010;
+						// cout << t_smooth <<endl;
+						// cout << traj_joints.pos <<endl;
+						// cout << traj_joints_old.pos <<endl;
 					}
-					    /*Traiettoria ottima sinusoidale ottenuta*/
+					/*Parte di smoothing ai giunti*/
+					// traj_joints = interpolator_joints(traj_joints_old.pos, zero_j, zero_j, traj_joints.pos, zero_j, zero_j, t_smooth, t);
+					
+
+					/*Traiettoria ottima sinusoidale ottenuta*/
                     for(int i = 0; i < 7; ++i){
                         traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
                         traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);

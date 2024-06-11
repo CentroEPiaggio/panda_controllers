@@ -230,6 +230,7 @@ namespace panda_controllers{
         count = 0;
         epsilon = 0.1;
         update_opt_flag = false;
+        lambda_min = 0;
        
         S.setZero(10);
         H.setZero(10,70);
@@ -489,7 +490,7 @@ namespace panda_controllers{
         if (update_param_flag){             
     
             /*Compute new value of stack H and E*/              
-            redStackCompute(redY_norm, H, l, redtau_J, E);
+            lambda_min = redStackCompute(redY_norm, H, l, redtau_J, E);
             // redStackComputeFric(Y_D_norm, H, l, redtau_J, E); 
 
             /*Casting actual stack H in vector for opt problem*/
@@ -569,6 +570,7 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
         fillMsg(msg_log.tau_cmd, tau_J_d+G);
         fillMsg(msg_log.dot_qr, tau_est+redtau_J);
+        msg_log.cond = lambda_min;
 
         msg_config.header.stamp  = time_now; 
         msg_config.xyz.x = T0EE.translation()(0); 
@@ -705,6 +707,9 @@ namespace panda_controllers{
             }
         }
         // ROS_INFO_STREAM(Vmax);
+        // Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_cond(H*H.transpose());
+        // double lmax = (solver_cond.singularValues()).maxCoeff();
+        // return (lmax/Vmax);
         return Vmax;
     }
     
@@ -737,10 +742,6 @@ namespace panda_controllers{
         ddq_opt = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
     
     }
-
-    // void CTModOS::jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg){
-    //     tau_t = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->effort).data());
-    // }
 
     void CTModOS::setRPYcmd(const panda_controllers::rpy::ConstPtr& msg){
         // ee_rot_cmd << msg->roll, msg->pitch, msg->yaw;
