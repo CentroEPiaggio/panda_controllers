@@ -17,3 +17,6 @@ float64[7] tau_tilde
 
 float64[6] error_pos_EE
 float64[6] dot_error_pos_EE
+
+float64 cond
+float64 sing

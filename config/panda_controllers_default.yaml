@@ -16,7 +16,7 @@ computed_torque_controller:
     type: panda_controllers/ComputedTorque
     arm_id: panda
     joint_names: *jointNames
-    cutoff_frequency: 1000
+    cutoff_frequency: 100
     
     # --- Controller parameters --- #
     kp1: 30.0   #default: 120.0
@@ -59,6 +59,7 @@ CT_mod_controller_OS:
     type: panda_controllers/CTModOS
     arm_id: panda
     joint_names: *jointNames
+    cutoff_frequency: 100
     
     # --- Controller parameters --- #
     # Termini tipo molla
@@ -89,7 +90,7 @@ backstepping_controller:
     type: panda_controllers/Backstepping
     arm_id: panda
     joint_names: *jointNames
-    cutoff_frequency: 1000
+    cutoff_frequency: 100
     
     # --- Controller parameters --- #
     gainLambda: [5.0, 5.0, 5.0, 2.0, 2.0, 2.0]       # gain for Lambda matrix

@@ -165,6 +165,7 @@ private:
     Eigen::Matrix<double, NJ, 1> err_param;
 
     Eigen::Matrix<double, NJ, 1> tau_cmd;
+    Eigen::Matrix<double, NJ, 1> tau_cmd_old;
     Eigen::Matrix<double, NJ, 1> tau_J;
     Eigen::Matrix<double, NJ, 1> redtau_J;
     // Eigen::Matrix<double, DOF, 1> F_cmd; // Forza commandata agente sull'EE
@@ -200,7 +201,7 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 100; // dovrebbe corrispondere a una freq di taglio di circa 100Hz
+    const int WIN_LEN = 40; // dovrebbe corrispondere a una freq di taglio di circa 100Hz
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ*PARAM, 1> param;
@@ -269,7 +270,11 @@ private:
     /*Variabili utili per approccio braccio reale*/
     Eigen::Matrix<double, NJ, 1> red_tau_J;
     Eigen::Matrix<double, NJ, PARAM> red_Y; 
+    Eigen::Matrix<double, NJ, 1> tau_est;
+    Eigen::Matrix<double, NJ, 1> tau_err;
     // Eigen::VectorXd S;
+    double sigma_min;
+    double sigma_max;
 
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);

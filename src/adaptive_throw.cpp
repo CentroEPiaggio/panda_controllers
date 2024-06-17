@@ -868,7 +868,7 @@ int main(int argc, char **argv)
 					udata.l = 11;
 					nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ);
 
-					opt.set_xtol_rel(1e-3);
+					opt.set_xtol_rel(1e-4);
 					opt.set_lower_bounds(lb); // setto limite inferiore
 					opt.set_upper_bounds(ub); // setto limite superiore 
 					opt.set_min_objective(objective, &udata);  // definisco costo da massimizzare
