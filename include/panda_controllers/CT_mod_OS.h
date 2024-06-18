@@ -136,6 +136,7 @@ private:
     Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
     bool update_param_flag;
     bool update_opt_flag;
+    bool reset_adp_flag;
 
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
@@ -215,6 +216,7 @@ private:
 
     /* Parameter vector */
     Eigen::Matrix<double, NJ, 1> tau_est;
+    Eigen::Matrix<double, NJ, 1> tau_cmd_old;
     Eigen::Matrix<double, NJ*PARAM, 1> param;
     Eigen::Matrix<double, PARAM, 1> param7;
     Eigen::Matrix<double, PARAM, 1> param_real;
@@ -326,6 +328,7 @@ private:
     ros::Subscriber sub_command_rpy_;
     ros::Subscriber sub_flag_opt_;
     ros::Subscriber sub_joints;
+    ros::Subscriber sub_flag_resetAdp;
     ros::Subscriber sub_flag_update_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
@@ -340,6 +343,7 @@ private:
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);
     void setFlagOpt(const flag::ConstPtr& msg);
+    void setResetFlag(const flag::ConstPtr& msg);
 
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;

@@ -81,6 +81,7 @@ int counter;
 Eigen::Matrix<double, NJ,PARAM*NJ> Y; 
 Eigen::Matrix<double, NJ,PARAM> redY;
 Eigen::VectorXd H_vec(700);
+int l_counter;
 thunder_ns::thunder_panda_2 fastRegMat;
 Eigen::Matrix<double, NJ, 1> q_c;
 
@@ -151,6 +152,7 @@ void udataCallback(const panda_controllers::udata::ConstPtr& msg){
 		H_vec.segment(i*PARAM, PARAM) << msg->H_stack[i*PARAM], msg->H_stack[i*PARAM+1], msg->H_stack[i*PARAM+2], msg->H_stack[i*PARAM+3], msg->H_stack[i*PARAM+4], msg->H_stack[i*PARAM+5], msg->H_stack[i*PARAM+6], msg->H_stack[i*PARAM+7], msg->H_stack[i*PARAM+8], msg->H_stack[i*PARAM+9];
 	}
 	counter = msg->count;
+	l_counter = msg->l;
 
 }
 
@@ -358,8 +360,8 @@ double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::Mat
     }
 	Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_cond(H*H.transpose());
 	double lmax = (solver_cond.singularValues()).maxCoeff();
-    // cout << lmax/Vmax<<endl;
     return (lmax/Vmax);
+	// return -Vmax;
 }
 
     Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q){
@@ -424,9 +426,12 @@ int main(int argc, char **argv)
 	float TF_THROW_EST;
 	std::vector<double> Q0_THROW;
 	std::vector<double> P0_THROW;
+	std::vector<double> POSE0_THROW;
+	std::vector<double> POSE0_EST;
 	std::vector<double> P0_EST;
 	std::vector<double> QF_THROW;
 	std::vector<double> PF_THROW;
+	std::vector<double> POSEF_THROW;
 	std::vector<double> DPF_THROW;
 	std::vector<double> P0_THROW_EST;
 	std::vector<double> PF_THROW_EST;
@@ -455,6 +460,12 @@ int main(int argc, char **argv)
 	if(!node_handle.getParam("/throw_node/P0_THROW", P0_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/P0_EST", P0_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/POSE0_EST", POSE0_EST))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/POSE0_THROW", POSE0_THROW))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/POSEF_THROW", POSEF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/PF_THROW", PF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -515,15 +526,17 @@ int main(int argc, char **argv)
 	ros::Publisher pub_error = node_handle.advertise<franka_msgs::ErrorRecoveryActionGoal>(robot_name + "/franka_control/error_recovery/goal", 1);
 	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
 	ros::Publisher pub_rpy = node_handle.advertise<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1);
-		ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
+	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
 	ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/adaptiveFlag", 1);
 	// ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_mod_controller/command_joints_opt", 1);
 	// ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/computed_torque_mod_controller/adaptiveFlag", 1);
 	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
+	ros::Publisher pub_flag_resetAdp = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/resetFlag", 1);
 
 	// ----- Messages ----- //
 	panda_controllers::flag adaptive_flag_msg;
 	panda_controllers::flag opt_flag_msg;
+	panda_controllers::flag newAdp_flag_msg;
 	panda_controllers::desTrajEE traj_msg;
 	panda_controllers::rpy rpy_msg;
 	sensor_msgs::JointState traj_opt_msg;
@@ -557,9 +570,12 @@ int main(int argc, char **argv)
 	zero_j.setZero();
 	Eigen::Matrix<double, 7, 1> q0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(Q0_THROW.data(), Q0_THROW.size());
 	Eigen::Vector3d p0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
+	Eigen::Vector3d pose0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_THROW.data(), POSE0_THROW.size());
 	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());
-	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());
+	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSEF_THROW.data(), POSEF_THROW.size());
+	Eigen::Vector3d posef_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
 	Eigen::Vector3d p0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_EST.data(), P0_EST.size());
+	Eigen::Vector3d pose0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_EST.data(), POSE0_EST.size());
 	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
 	Eigen::Vector3d p0_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW_EST.data(), P0_THROW_EST.size());
 	Eigen::Vector3d pf_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW_EST.data(), PF_THROW_EST.size());
@@ -620,6 +636,7 @@ int main(int argc, char **argv)
 		if (executing == 0){
 			cout<<"choice:   (0: set command,  1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos,  8: reset error,  9: close/open hand) "<<endl;
 			cin>>choice;
+			newAdp_flag_msg.flag = false;
 			while (!ready) ros::spinOnce();
 			if (choice == 0){
 				cout<<"what:  (1: Position,  2: Orientation,  0: Cancel)"<<endl;
@@ -686,16 +703,18 @@ int main(int argc, char **argv)
 
 					if (choice_2 == 1){
 						p_end = p0_throw;
-						pose_end = pose_start+pose_saved;
+						pose_end = pose0_throw;
+						// pose_end = pose_start+pose_saved;
 					}
 					else if (choice_2 == 2){
 						p_end = pf_throw;
-						pose_end = pose_start+pose_saved;
+						// pose_end = posef_throw;
+						// pose_end = pose_start+pose_saved;
 						// cout << pose_end << endl;
 					}
 					else if (choice_2 == 3) {
 						p_end = p0_est;
-						// pose_end.setZero();
+						pose_end = pose0_est;
 					}	
 					else if (choice_2 == 4) {
 						opt_flag_msg.flag = true;
@@ -783,9 +802,11 @@ int main(int argc, char **argv)
 					// starting adaptive
 					adaptive_flag_msg.header.stamp = ros::Time::now();
 					adaptive_flag_msg.flag = true;
+					newAdp_flag_msg.flag = true;
 					pub_flagAdaptive.publish(adaptive_flag_msg);
 					cout<<"adaptive enabled!"<<endl;
 				}
+				pub_flag_resetAdp.publish(newAdp_flag_msg); // publish of reset H and E
 			}else if (choice == 7){
 				ready = false;
 			}else if (choice == 8){
@@ -884,7 +905,7 @@ int main(int argc, char **argv)
                         }
                     // double t = (ros::Time::now() - t_init).toSec();
                         udata.t = t;
-                        udata.l = 11;
+                        udata.l = l_counter;
                         nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ);
 
                         opt.set_xtol_rel(1e-4);
@@ -901,9 +922,9 @@ int main(int argc, char **argv)
                             x_old[i] = x[i];
                         }
 						// for(int i = 0; i < 7; ++i){
-						// 	traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
-						// 	traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
-						// 	traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+						// 	traj_joints.pos(i) = q_c(i) + 0.20*sin(x[i]*t);     
+						// 	traj_joints.vel(i) = x[i]*0.20*cos(x[i]*t);
+						// 	traj_joints.acc(i) = -x[i]*x[i]*0.20*sin(x[i]*t);      
                     	// }
 						// t_smooth = t + 0.010;
 						// cout << t_smooth <<endl;

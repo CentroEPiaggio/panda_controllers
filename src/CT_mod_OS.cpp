@@ -219,6 +219,7 @@ namespace panda_controllers{
         this->sub_flag_opt_ = node_handle.subscribe<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1, &CTModOS::setFlagOpt, this);
         // this->sub_joints =  node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &CTModOS::jointsCallbackT, this);
         this->sub_command_rpy_ = node_handle.subscribe<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1, &CTModOS::setRPYcmd, this);
+        this->sub_flag_resetAdp = node_handle.subscribe<panda_controllers::flag>("/CT_mod_controller_OS/resetFlag", 1,&CTModOS::setResetFlag, this);
 
         this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1); //Public error variables and tau
         this->pub_config_ = node_handle.advertise<panda_controllers::point>("current_config", 1); //Public Xi,dot_XI,ddot_XI 
@@ -230,6 +231,7 @@ namespace panda_controllers{
         count = 0;
         epsilon = 0.1;
         update_opt_flag = false;
+        reset_adp_flag = false;
         lambda_min = 0;
        
         S.setZero(10);
@@ -373,7 +375,7 @@ namespace panda_controllers{
             ddot_qr = ddq_opt;
             
             /*Switch to joints control*/
-            // error_q = qr - q_curr;
+            error_q = qr - q_curr;
             // dot_error_q = dot_qr - dot_q_curr;
 
             error.head(3) = computeT0EE(qr).translation() - ee_position;
@@ -432,8 +434,8 @@ namespace panda_controllers{
         /* Application of FIR to velocity and acceleration(velocity and torque filter no needed for true robot)*/
         // aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
         // dot_q_curr = calcolaMedia(buffer_dq);
-        // aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
-        // ddot_q_curr = calcolaMedia(buffer_ddq);
+        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
+        ddot_q_curr = calcolaMedia(buffer_ddq);
         
         tau_J = tau_J_d+G; // funziona pure
         // tau_J = tau_cmd;
@@ -447,8 +449,12 @@ namespace panda_controllers{
         fastRegMat.setArguments(q_curr, dot_q_curr, dot_q_curr, ddot_q_curr);
         Y_norm = fastRegMat.getReg();
 
+        err_param = Y_norm*param;
+        aggiungiDato(buffer_tau_d, err_param, 45);
+        err_param = calcolaMedia(buffer_tau_d);
+
         tau_est = Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
-        aggiungiDato(buffer_dq, tau_est, WIN_LEN);
+        aggiungiDato(buffer_dq, tau_est, 45);
         tau_est = calcolaMedia(buffer_dq);
 
         // ROS_INFO_STREAM(tau_J - Y_norm*param);
@@ -477,9 +483,10 @@ namespace panda_controllers{
         
         // redY_norm.block(0, 10,NJ,NJ*FRICTION) = Y_norm.block(0,NJ*PARAM,NJ,NJ*FRICTION);
         // redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM); // equivalent to red_Y*param_reak
-        redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
-        aggiungiDato(buffer_tau, redtau_J, WIN_LEN);
-        redtau_J = calcolaMedia(buffer_tau);
+        // redtau_J = tau_J - Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
+        redtau_J = tau_J - tau_est;
+        // aggiungiDato(buffer_tau, redtau_J, WIN_LEN);
+        // redtau_J = calcolaMedia(buffer_tau);
 
 
         /*Current parameters link 7*/
@@ -488,6 +495,13 @@ namespace panda_controllers{
         
         /* Update parameters law*/
         if (update_param_flag){             
+
+            /*to reset memory H and E after pick object*/
+            // if(reset_adp_flag){
+            //     H.setZero();
+            //     E.setZero();
+            //     reset_adp_flag = false;
+            // }
     
             /*Compute new value of stack H and E*/              
             lambda_min = redStackCompute(redY_norm, H, l, redtau_J, E);
@@ -507,6 +521,7 @@ namespace panda_controllers{
             
             /* Residual computation */
             // err_param = tau_J - Y_norm*param; // - Y_D_norm*param_frict;
+
     
             /*Adaptive law*/
             dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
@@ -539,15 +554,16 @@ namespace panda_controllers{
         // GestXi = J_T_pinv*Gest;
       
         /* command torque to joint */
-        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
-        // if (update_opt_flag == false){
-        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
-        // }else{
-        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
-        // }
+        tau_cmd_old = tau_cmd;
+        // tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+        if (update_opt_flag == false){
+            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
+        }else{
+            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
+        }
 
         /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-        tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d+G);
+        tau_cmd = saturateTorqueRate(tau_cmd, tau_cmd_old);
 
         /* Set the command for each joint */
 	    for (size_t i = 0; i < 7; i++) {
@@ -569,8 +585,10 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link6, param_tot.segment(60, PARAM+FRICTION));
         fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
         fillMsg(msg_log.tau_cmd, tau_J_d+G);
-        fillMsg(msg_log.dot_qr, tau_est+redtau_J);
+        fillMsg(msg_log.tau_tilde, err_param);
+        fillMsg(msg_log.dot_qr, dot_q_curr);
         msg_log.cond = lambda_min;
+        // msg_log.cond = l;
 
         msg_config.header.stamp  = time_now; 
         msg_config.xyz.x = T0EE.translation()(0); 
@@ -581,6 +599,7 @@ namespace panda_controllers{
         // fillMsg(msg_opt.q_cur, q_curr);
         // fillMsg(msg_opt.dot_q_curr, dot_q_curr);
         // fillMsg(msg_opt.ddot_q_curr, ddot_q_curr);
+        msg_opt.l = l;
         msg_opt.count = count;
         fillMsg(msg_opt.H_stack, H_vec); // only this is needed
 
@@ -637,7 +656,7 @@ namespace panda_controllers{
                 H.block(0,l*NJ,P,NJ) = red_Y_new.transpose();
                 E.segment(l*NJ,NJ) = red_tau_J_new;
                 l = l+1;
-                // ROS_INFO_STREAM(H*H.transpose());
+                // ROS_INFO_STREAM(l);
             }
                                 
         }else{
@@ -800,6 +819,10 @@ namespace panda_controllers{
     
     void CTModOS::setFlagOpt(const panda_controllers::flag::ConstPtr& msg){
         update_opt_flag = msg->flag;
+    }
+
+    void CTModOS::setResetFlag(const panda_controllers::flag::ConstPtr& msg){
+        reset_adp_flag = msg->flag;
     }
 
     template <size_t N>
