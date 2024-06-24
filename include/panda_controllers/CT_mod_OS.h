@@ -145,6 +145,7 @@ private:
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
     // Eigen::Matrix<double, NJ, 1> q_curr_old;
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
+    Eigen::Matrix<double, NJ, 1> dot_q_curr_old_2;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_qr;

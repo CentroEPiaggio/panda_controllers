@@ -5,7 +5,7 @@
     
     <!-- set -->
     <arg name="controller_name" default="CT_mod_controller_OS" /> <!-- backstepping_controller, CT_mod_controller_OS, computed_torque_controller, computed_torque_mod_controller -->
-    <!-- <arg name="hand_namespace" default="/robot/gripper"/> -->
+    <arg name="hand_namespace" default="/robot/gripper"/>
 
     <!-- flags -->
 	<arg name="yaml_file1" default="$(find panda_controllers)/config/trajectory_param.yaml" />
@@ -16,13 +16,13 @@
 	<node pkg="panda_controllers"  name="adaptive_throw" type="adaptive_throw" output="screen"/>
 
     <!-- Qb hand file-->
-    <!-- <group ns="$(arg hand_namespace)">
+    <group ns="$(arg hand_namespace)">
         <include file="$(find qb_hand_control)/launch/control_qbhand.launch">
            <arg name="activate_on_initialization" value="true"/>
            <arg name="standalone" value="true"/>
            <arg name="use_controller_gui" value="false"/>
         </include>
-    </group>   -->
+    </group>  
     
     <arg name="t1"      value="/CT_mod_controller_OS/current_config"/>
     <arg name="t2"      value="/CT_mod_controller_OS/debug"/>
@@ -31,7 +31,7 @@
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
     <arg name="bag_path"    default="/home/franka/darko_ws/src/adaptive_control/panda_controllers/bagfiles/ICL_bag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/rosbag_ICL_opt_generics_4"/>
+    <arg name="bag_name"    default="$(arg bag_path)/rosbag_ICL_opt_generics_7"/>
     <arg name="duration"    default="110"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>

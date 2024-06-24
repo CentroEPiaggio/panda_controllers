@@ -234,7 +234,7 @@ namespace panda_controllers{
         reset_adp_flag = false;
         lambda_min = 0;
        
-        S.setZero(10);
+        // S.setZero(10);
         H.setZero(10,70);
         E.setZero(70); 
         /* Friction case stack*/
@@ -432,16 +432,16 @@ namespace panda_controllers{
 
 
         /* Application of FIR to velocity and acceleration(velocity and torque filter no needed for true robot)*/
-        // aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
-        // dot_q_curr = calcolaMedia(buffer_dq);
-        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
+        aggiungiDato(buffer_dq, dot_q_curr, 40);
+        dot_q_curr = calcolaMedia(buffer_dq);
+        aggiungiDato(buffer_ddq, ddot_q_curr, 40);
         ddot_q_curr = calcolaMedia(buffer_ddq);
         
-        tau_J = tau_J_d+G; // funziona pure
+        // tau_J = tau_J_d+G; // funziona pure
         // tau_J = tau_cmd;
-        // tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data()); // best in simulation
-        // aggiungiDato(buffer_tau, tau_J, WIN_LEN);
-        // tau_J = calcolaMedia(buffer_tau);
+        tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data()); // best in simulation
+        aggiungiDato(buffer_tau, tau_J,40);
+        tau_J = calcolaMedia(buffer_tau);
 
         /* Update and Compute Regressor */
 	    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
@@ -450,12 +450,12 @@ namespace panda_controllers{
         Y_norm = fastRegMat.getReg();
 
         err_param = Y_norm*param;
-        aggiungiDato(buffer_tau_d, err_param, 45);
+        aggiungiDato(buffer_tau_d, err_param,60);
         err_param = calcolaMedia(buffer_tau_d);
 
         tau_est = Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
-        aggiungiDato(buffer_dq, tau_est, 45);
-        tau_est = calcolaMedia(buffer_dq);
+        aggiungiDato(buffer_q, tau_est, 60);
+        tau_est = calcolaMedia(buffer_q);
 
         // ROS_INFO_STREAM(tau_J - Y_norm*param);
 
@@ -497,11 +497,11 @@ namespace panda_controllers{
         if (update_param_flag){             
 
             /*to reset memory H and E after pick object*/
-            // if(reset_adp_flag){
-            //     H.setZero();
-            //     E.setZero();
-            //     reset_adp_flag = false;
-            // }
+            if(reset_adp_flag){
+                H.setZero();
+                E.setZero();
+                reset_adp_flag = false;
+            }
     
             /*Compute new value of stack H and E*/              
             lambda_min = redStackCompute(redY_norm, H, l, redtau_J, E);
@@ -524,7 +524,7 @@ namespace panda_controllers{
 
     
             /*Adaptive law*/
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
+            dot_param = 0.01*Rinv*(3*Y_mod.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        param = param + dt*dot_param;
             // dot_param_tot = 0.01*Rinv_tot*(Y_mod_tot.transpose()*dot_error_q + 0.5*Y_stack_sum); // + 0.1*Y_norm.transpose()*(err_param)); 
 	        // param_tot = param_tot + dt*dot_param_tot;
@@ -541,7 +541,7 @@ namespace panda_controllers{
 
 
         /* update dynamic for control law(no filter action) */
-        // fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
+        fastRegMat.setArguments(q_curr, dot_q_curr_old, dot_q_curr_old, ddot_q_curr_old);
         fastRegMat.set_inertial_REG(param); 
 
         Mest = fastRegMat.getMass(); // Estimate Mass Matrix
@@ -555,12 +555,12 @@ namespace panda_controllers{
       
         /* command torque to joint */
         tau_cmd_old = tau_cmd;
-        // tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
-        if (update_opt_flag == false){
-            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
-        }else{
-            tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
-        }
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+        // if (update_opt_flag == false){
+        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
+        // }else{
+        //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest  + Kp_j* error_q + Kv_j*dot_error_q; // joint space controll
+        // }
 
         /* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
         tau_cmd = saturateTorqueRate(tau_cmd, tau_cmd_old);
@@ -584,9 +584,10 @@ namespace panda_controllers{
         fillMsgLink(msg_log.link5, param_tot.segment(48, PARAM+FRICTION));
         fillMsgLink(msg_log.link6, param_tot.segment(60, PARAM+FRICTION));
         fillMsgLink(msg_log.link7, param_tot.segment(72, PARAM+FRICTION));
-        fillMsg(msg_log.tau_cmd, tau_J_d+G);
+        fillMsg(msg_log.tau_cmd, tau_J);
         fillMsg(msg_log.tau_tilde, err_param);
-        fillMsg(msg_log.dot_qr, dot_q_curr);
+        fillMsg(msg_log.dot_qr, error_q);
+        fillMsg(msg_log.ddot_qr, ddot_q_curr);
         msg_log.cond = lambda_min;
         // msg_log.cond = l;
 
@@ -662,67 +663,73 @@ namespace panda_controllers{
         }else{
             /*Aprroccio braccio reale*/
             if (count%10 == 0){
-                red_Y = red_Y_new;
-                red_tau_J = red_tau_J_new;
+                // red_Y = red_Y_new;
+                // red_tau_J = red_tau_J_new;
                 count = 0;
             }
+            red_Y = red_Y_new;
+            red_tau_J = red_tau_J_new;
             count = count+1;
 
+            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+            double V = (solver_V.singularValues()).minCoeff();
             if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
                 Eigen::MatrixXd Th = H;
                 Eigen::MatrixXd Te = E;
 
-                
-                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
-                double V = (solver_V.singularValues()).minCoeff();
                 // double V = (red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm();
 
                 /*Pezzo classico per simulazione*/
-                // Eigen::VectorXd S(P);
-                // for (int i = 0; i < P; ++i) {
-                //     H.block(0,i*NJ,P,NJ) = red_Y.transpose();
-                //     Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
-                //     S(i) = (solver_S.singularValues()).minCoeff();
-                //     H = Th;
-                // }
+                Eigen::VectorXd S(P);
+                for (int i = 0; i < P; ++i) {
+                    H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+                    Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                    S(i) = (solver_S.singularValues()).minCoeff();
+                    H = Th;
+                }
         
-                H.block(0,(count-1)*NJ,P,NJ) = red_Y.transpose();
-                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
-                S(count-1) = (solver_S.singularValues()).minCoeff();
-                H = Th;
+                // H.block(0,(count-1)*NJ,P,NJ) = red_Y.transpose();
+                // Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+                // S(count-1) = (solver_S.singularValues()).minCoeff();
+                // H = Th;
                 
-                if (count == 10){
-                    Vmax = S.maxCoeff();
-                    Eigen::Index m; //index max eigvalues 
-                    S.maxCoeff(&m);
+                // if (count == 10){
+                Vmax = S.maxCoeff();
+                Eigen::Index m; //index max eigvalues 
+                S.maxCoeff(&m);
 
                     /*Aprroccio braccio reale*/
-                    if(Vmax >= V){
-                        H.block(0,m*NJ,P,NJ) = red_Y.transpose();
-                        E.segment(m*NJ,NJ) = red_tau_J;
+                //     if(Vmax >= V){
+                //         H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                //         E.segment(m*NJ,NJ) = red_tau_J;
             
-                    }else{
-                        Vmax = V;
-                        H = Th;
-                        E = Te;
-                }    
-                }else{
+                //     }else{
+                //         Vmax = V;
+                //         H = Th;
+                //         E = Te;
+                // }    
+                // }else{
+                //     Vmax = V;
+                //     H = Th;
+                //     E = Te;
+                // }
+
+                
+                if(Vmax >= V){
+                    H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+                    // Te = E;
+                    E.segment(m*NJ,NJ) = red_tau_J;
+                    // ROS_INFO_STREAM(Vmax);
+                }
+                else{
                     Vmax = V;
                     H = Th;
                     E = Te;
                 }
-
-                
-                // if(Vmax >= V){
-                //     H.block(0,m*NJ,P,NJ) = red_Y.transpose();
-                //     // Te = E;
-                //     E.segment(m*NJ,NJ) = red_tau_J;
-                //     // ROS_INFO_STREAM(Vmax);
-                // }
-                // else{
-                //     H = Th;
-                //     E = Te;
-                // }
+            }
+            else{
+                // count = 0;
+                Vmax = V;
             }
         }
         // ROS_INFO_STREAM(Vmax);

@@ -153,6 +153,7 @@ void udataCallback(const panda_controllers::udata::ConstPtr& msg){
 	}
 	counter = msg->count;
 	l_counter = msg->l;
+	// cout << l_counter << endl;
 
 }
 
@@ -613,7 +614,7 @@ int main(int argc, char **argv)
 	for(int i=0; i<7; i++){
 		double q_low = q_lim_low[i];
 		double q_upp = q_lim_upp[i];
-		q0_throw(i) = (q_low + q_upp) / 2;
+		// q0_throw(i) = (q_low + q_upp) / 2;
 	}
 	// double pos_des[3] = {1.2, 0.0, 0.0};
 	double t = 0;
@@ -704,6 +705,9 @@ int main(int argc, char **argv)
 					if (choice_2 == 1){
 						p_end = p0_throw;
 						pose_end = pose0_throw;
+						// opt_flag_msg.flag = true;
+						// q_end = q0_throw;
+						// joint_move = true;
 						// pose_end = pose_start+pose_saved;
 					}
 					else if (choice_2 == 2){
@@ -846,7 +850,7 @@ int main(int argc, char **argv)
 						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
 						if (t > tf_throw - HAND_DELAY){
 							if (first_time){
-								qbhand1_move(1.0);
+								qbhand1_move(0.0);
 								first_time = false;
 							}
 						}

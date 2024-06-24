@@ -6,10 +6,11 @@ throw_node:
   RATE_CLOSE: 1.9       # hz of closure hand
   HAND_DELAY: 0.5       # 0.2 dh3, 0.6 hand2, 0.4 hand1
   HAND_EFFORT_MAX: 0.15 # 0.15 hand2, 0.8 hand1
-  Q0_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw start point configuration (not set)
+  # Q0_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw start point configuration (not set)
+  Q0_THROW: [0.0280688, 0.0677844, -0.479592, -2.84265, -0.275138, 2.8663, -0.00172219]
   QF_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw end point configuration (not set)
   # P0_THROW: [0.446667, -0.0552812, 0.2] #[0.4, -0.4, 0.2]        # must coincide with Q0
-  P0_THROW: [0.449214, -0.238729, 0.105303]        # must coincide with Q0
+  P0_THROW: [0.40, -0.21, 0.10]        # must coincide with Q0
   POSE0_THROW: [3.06018, -0.106333, 0.050307] #[0.4, -0.4, 0.2]        # must coincide with Q0
   PF_THROW: [0.468341, 0.306827, 0.426758] #[0.4, 0.2, 0.5]         # throwing point
   POSEF_THROW: [0.468341, 0.306827, 0.426758]
@@ -19,12 +20,12 @@ throw_node:
   TF_THROW: 1.0
   TF_BRAKE: 0.3
   TF_EST_BRAKE: 0.5
-  TF_EST: 5.0
+  TF_EST: 9.0
   P0_THROW_EST: [0.406667, -0.0552812, 0.2] #[0.4, -0.3, 0.2]
   PF_THROW_EST: [0.468341, 0.306827, 0.426758] #[0.4, 0.1, 0.4] 
   TF_THROW_EST: 1.0
   DPF_THROW_EST: [0, 0.9, 0.9]
-  q_throw_1: [0.894005, -0.621265, -1.22914, -2.63406, 1.44333, 1.41412, 0.615504]
+  # q_throw_1: [0.894005, -0.621265, -1.22914, -2.63406, 1.44333, 1.41412, 0.615504]
   ee_pose: [0.405936, 0.07971, 0.344933, -0.36646, 0.290721, 0.533455, 0.704708]
   q_throw_2: [1.75216, -0.183465, -0.828613, -2.245, 2.6374, 1.74342, 0.420288]
   ee_pose: [0.319759, 0.56208, 0.475504, -0.263028, 0.280722, 0.630317, 0.674323]
