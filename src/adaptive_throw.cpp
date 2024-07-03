@@ -11,6 +11,7 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/udata.h"
 #include "panda_controllers/rpy.h"
+#include "panda_controllers/impedanceGain.h"
 
 #include "ros/ros.h"
 // #include "panda_controllers/CommandParams.h"
@@ -56,6 +57,7 @@ std:: string robot_name;
 
 Eigen::Matrix<double, 7, 1> q;
 Eigen::Matrix<double, 7, 1> q_end;
+Eigen::Matrix<double, 3, 1> ee_vel;
 Eigen::Matrix<double, 7, 1> q_start;
 Eigen::Matrix<double, 7, 1> q_saved;
 
@@ -153,7 +155,10 @@ void udataCallback(const panda_controllers::udata::ConstPtr& msg){
 	}
 	counter = msg->count;
 	l_counter = msg->l;
+	for(int i = 0; i<7; ++i){
+		ee_vel(i) = msg->ee_velocity[i];
 	// cout << l_counter << endl;
+	}
 
 }
 
@@ -412,8 +417,12 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "test_throw");
 	ros::NodeHandle node_handle;
 	bool start = true;
+	bool smooth_flag = true;
+	bool curr_vel_flag = false;
     int count = 0;
 	double t_smooth = 0;
+	Eigen::Matrix<double, 6, 1> Kp_throw;
+	Eigen::Matrix<double, 6, 1> Kv_throw;
 
 	// std::string robot_name = ROBOT_NAME;
 	float RATE;
@@ -426,10 +435,10 @@ int main(int argc, char **argv)
 	float HAND_DELAY;
 	float TF_THROW_EST;
 	std::vector<double> Q0_THROW;
-	std::vector<double> P0_THROW;
+	std::vector<double> P0_PICK;
+	std::vector<double> POSE0_PICK;
 	std::vector<double> POSE0_THROW;
-	std::vector<double> POSE0_EST;
-	std::vector<double> P0_EST;
+	std::vector<double> P0_THROW;
 	std::vector<double> QF_THROW;
 	std::vector<double> PF_THROW;
 	std::vector<double> POSEF_THROW;
@@ -458,13 +467,13 @@ int main(int argc, char **argv)
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/QF_THROW", QF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/P0_PICK", P0_PICK))
+		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/P0_THROW", P0_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/P0_EST", P0_EST))
-		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/POSE0_EST", POSE0_EST))
-		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/POSE0_THROW", POSE0_THROW))
+		ROS_ERROR("Failed to get parameter from server.");
+	if(!node_handle.getParam("/throw_node/POSE0_PICK", POSE0_PICK))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/POSEF_THROW", POSEF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -473,8 +482,6 @@ int main(int argc, char **argv)
 	if(!node_handle.getParam("/throw_node/DPF_THROW", DPF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/TF_EST", TF_EST))
-		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/P0_THROW_EST", P0_THROW_EST))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/TF_THROW_EST", TF_THROW_EST))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -505,10 +512,6 @@ int main(int argc, char **argv)
 		// robot_name = "/robot/arm";
 	}
 
-	traj_joints.pos.setZero();
-	traj_joints.vel.setZero();
-	traj_joints.acc.setZero();
-
 	/*Inizializzo comando rpy*/
 	pose_cartesian.rpy.setZero(); 
 	pose_cartesian.angular_vel.setZero(); 
@@ -529,6 +532,7 @@ int main(int argc, char **argv)
 	ros::Publisher pub_rpy = node_handle.advertise<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1);
 	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
 	ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/adaptiveFlag", 1);
+	ros::Publisher pub_impedanceGains = node_handle.advertise<panda_controllers::impedanceGain>("/CT_mod_controller_OS/impedanceGains", 1);
 	// ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_mod_controller/command_joints_opt", 1);
 	// ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/computed_torque_mod_controller/adaptiveFlag", 1);
 	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
@@ -540,6 +544,7 @@ int main(int argc, char **argv)
 	panda_controllers::flag newAdp_flag_msg;
 	panda_controllers::desTrajEE traj_msg;
 	panda_controllers::rpy rpy_msg;
+	panda_controllers::impedanceGain gains_msg;
 	sensor_msgs::JointState traj_opt_msg;
 
 	/*Resizie*/
@@ -570,15 +575,16 @@ int main(int argc, char **argv)
 	zero.setZero();
 	zero_j.setZero();
 	Eigen::Matrix<double, 7, 1> q0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(Q0_THROW.data(), Q0_THROW.size());
-	Eigen::Vector3d p0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
-	Eigen::Vector3d pose0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_THROW.data(), POSE0_THROW.size());
+	Eigen::Vector3d p0_pick = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_PICK.data(), P0_PICK.size());
+	Eigen::Vector3d pose0_pick = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_PICK.data(), POSE0_PICK.size());
 	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());
-	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSEF_THROW.data(), POSEF_THROW.size());
-	Eigen::Vector3d posef_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
-	Eigen::Vector3d p0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_EST.data(), P0_EST.size());
-	Eigen::Vector3d pose0_est= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_EST.data(), POSE0_EST.size());
+	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());
+	Eigen::Vector3d posef_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSEF_THROW.data(), POSEF_THROW.size());
+	Eigen::Vector3d p0_throw= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
+	Eigen::Vector3d pose0_throw= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_THROW.data(), POSE0_THROW.size());
 	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
-	Eigen::Vector3d p0_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW_EST.data(), P0_THROW_EST.size());
+	// Eigen::Vector3d p0_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW_EST.data(), P0_THROW_EST.size());
+	Eigen::Vector3d p0_throw_est = p0_throw;
 	Eigen::Vector3d pf_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW_EST.data(), PF_THROW_EST.size());
 	Eigen::Vector3d dpf_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW_EST.data(), DPF_THROW_EST.size());
 	Eigen::Vector3d pf_brake;
@@ -622,12 +628,16 @@ int main(int argc, char **argv)
 	int choice_2 = 0;
 	int executing = 0;
 
+	// /*Initial Gains*/
+	// Kp_throw << 60, 60, 60, 20, 20, 20;
+	// Kv_throw << 30, 30, 30, 2, 2, 2;
+
 	/* Inizializzazione grandezze ottimo, ub e lb scelti per non sforare i limiti ed evitare la saturazione*/
 	udata.H.resize(700);
 	std::vector<double> lb(7), ub(7);
 	std::vector<double> x(7), x_old(7);
-	lb[0] = -M_PI_2; lb[1] = -M_PI_2; lb[2] = -M_PI_2; lb[3] = -M_PI_2; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
-	ub[0] = M_PI_2; ub[1] = M_PI_2; ub[2] = M_PI_2; ub[3] = M_PI_2; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
+	lb[0] = -M_PI_4; lb[1] = -M_PI_2; lb[2] = -M_PI_4; lb[3] = -M_PI_4; lb[4] = -M_PI_4; lb[5] = -M_PI_4; lb[6] = -M_PI_2;
+	ub[0] = M_PI_4; ub[1] = M_PI_2; ub[2] = M_PI_4; ub[3] = M_PI_4; ub[4] = M_PI_4; ub[5] = M_PI_4; ub[6] = M_PI_2;
 
 	for(int i=0; i < 7; ++i){
 		x_old[i] = 0;
@@ -638,7 +648,13 @@ int main(int argc, char **argv)
 			cout<<"choice:   (0: set command,  1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos,  8: reset error,  9: close/open hand) "<<endl;
 			cin>>choice;
 			newAdp_flag_msg.flag = false;
-			while (!ready) ros::spinOnce();
+			smooth_flag = true;
+			while (!ready) {
+				ros::spinOnce();
+				traj_joints.pos = q_start;
+				traj_joints.vel.setZero();
+				traj_joints.acc.setZero();
+			}
 			if (choice == 0){
 				cout<<"what:  (1: Position,  2: Orientation,  0: Cancel)"<<endl;
 				cin>>choice_2;
@@ -656,6 +672,7 @@ int main(int argc, char **argv)
 					executing = 0;
 				}
 			}
+		
 			if (choice == 1){
 				// --- save q, p --- //
 				init_q = false;
@@ -681,7 +698,7 @@ int main(int argc, char **argv)
 				cin>>tf_est;
 			}else if (choice == 3){
 				// --- go to --- //
-				cout<<"where:   (1: p0_throw,  2: pf_throw,  3: p0_est,  4: config_saved,   5: point_saved(relative),   6: point_saved(absolute),     0: cancel) "<<endl;
+				cout<<"where:   (1: p0_pick,  2: pf_throw,  3: p0_throw,  4: config_saved,   5: point_saved(relative),   6: point_saved(absolute),     0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 0){
 					choice = 0;
@@ -694,8 +711,9 @@ int main(int argc, char **argv)
 
 					/*If precendent move is a joint movement*/					
 					if(joint_move){
-						p_start = computeT0EE(q).translation();
-						pose_start = (computeT0EE(q).linear()).eulerAngles(0,1,2);
+						q_start = q_end;
+						p_start = computeT0EE(q_start).translation();
+						pose_start = (computeT0EE(q_start).linear()).eulerAngles(0,1,2);
 						joint_move = false;
 					}
 
@@ -703,8 +721,9 @@ int main(int argc, char **argv)
 					tf = tf_0;
 
 					if (choice_2 == 1){
-						p_end = p0_throw;
-						pose_end = pose0_throw;
+						p_end = p0_pick;
+						pose_end = pose0_pick;
+						tf = tf + 2;
 						// opt_flag_msg.flag = true;
 						// q_end = q0_throw;
 						// joint_move = true;
@@ -717,8 +736,8 @@ int main(int argc, char **argv)
 						// cout << pose_end << endl;
 					}
 					else if (choice_2 == 3) {
-						p_end = p0_est;
-						pose_end = pose0_est;
+						p_end = p0_throw;
+						pose_end = pose0_throw;
 					}	
 					else if (choice_2 == 4) {
 						opt_flag_msg.flag = true;
@@ -756,9 +775,20 @@ int main(int argc, char **argv)
 				}else{
 					p_start = p_end;
 				}
+				curr_vel_flag = true;
 				p_end = pf_brake;
 				executing = 2;
 				tf = tf_throw + tf_brake;
+
+				/*High gains for throw*/
+				//Set throw gains
+				Kp_throw << 100, 100, 100, 30, 30, 30;
+				Kv_throw << 50, 50, 50, 2, 2, 2;
+				for(int i = 0; i<6; ++i){
+					gains_msg.stiffness[i] = Kp_throw(i); 
+					gains_msg.damping[i] = Kv_throw(i);
+				}
+				pub_impedanceGains.publish(gains_msg);
 			}else if (choice == 5){
 				// --- estimate --- //
 				cout<<"estimation type:   (1: lissajous,  2: min-jerk,  3:traj_opt ,0: cancel) "<<endl;
@@ -838,11 +868,27 @@ int main(int argc, char **argv)
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
+					Eigen::Vector3d offset;
+					offset << 0, 0, 0.10;
 					// --- go to --- //
-					traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf, t);
-                    traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf, t);
-					/*ORIENTATION COMMAND SLERP*/
-					pose_cartesian = slerp(pose_start, pose_end, t, tf);
+					if(t <= tf_0){ 
+						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end+offset, zero, zero, tf_0, t);
+                    	traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf_0, t);
+						/*ORIENTATION COMMAND SLERP*/
+						pose_cartesian = slerp(pose_start, pose_end, t, tf);
+					}else{
+						traj_cartesian = interpolator_cartesian(p_end+offset, zero, zero, p_end, zero, zero, tf-tf_0, t-tf_0);
+					}
+					if(choice_2 == 1){
+					//Set pick gains
+						Kp_throw << 100, 100, 100, 30, 30, 30;
+						Kv_throw << 30, 30, 30, 2, 2, 2;
+						for(int i = 0; i<6; ++i){
+							gains_msg.stiffness[i] = Kp_throw(i); 
+							gains_msg.damping[i] = Kv_throw(i);
+						}
+						pub_impedanceGains.publish(gains_msg);
+					}
 					// cout << "command:" << rpy.pitch << endl;
 				}else if (executing == 2){
 					// --- throwing --- //
@@ -855,6 +901,13 @@ int main(int argc, char **argv)
 							}
 						}
 					}else{
+						// if(curr_vel_flag){
+						// 	curr_vel_flag = false;
+						// 	ros::spinOnce();
+						// 	pf_brake = pf_throw + ee_vel*tf_brake/2;
+						// 	cout << pf_brake << endl;
+						// }
+						// traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
 						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
 					}
 				}else if (executing == 3){
@@ -900,7 +953,7 @@ int main(int argc, char **argv)
 						x[i] = x_old[i];
 					}
 					traj_joints_old = traj_joints;
-
+					
 					if (counter%10 == 0){
                         // count = 0;
                         ros::spinOnce();
@@ -911,6 +964,7 @@ int main(int argc, char **argv)
                         udata.t = t;
                         udata.l = l_counter;
                         nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ);
+						double minf;
 
                         opt.set_xtol_rel(1e-4);
                         opt.set_lower_bounds(lb); // setto limite inferiore
@@ -919,26 +973,37 @@ int main(int argc, char **argv)
                     
 
                         // Ottimizzazione
-                        double minf;
-                        nlopt::result result = opt.optimize(x, minf);
-                    
-                        for(int i=0; i < 7; ++i){
-                            x_old[i] = x[i];
-                        }
-						// for(int i = 0; i < 7; ++i){
-						// 	traj_joints.pos(i) = q_c(i) + 0.20*sin(x[i]*t);     
-						// 	traj_joints.vel(i) = x[i]*0.20*cos(x[i]*t);
-						// 	traj_joints.acc(i) = -x[i]*x[i]*0.20*sin(x[i]*t);      
-                    	// }
+						// if(!smooth_flag){
+						nlopt::result result = opt.optimize(x, minf);
+					
+						for(int i=0; i < 7; ++i){
+							x_old[i] = x[i];
+						}
+				
+						for(int i = 0; i < 7; ++i){
+							traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
+							traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
+							traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+						}
+						// }	
 						// t_smooth = t + 0.010;
 						// cout << t_smooth <<endl;
 						// cout << traj_joints.pos <<endl;
 						// cout << traj_joints_old.pos <<endl;
 					}
 					/*Parte di smoothing ai giunti*/
-					// traj_joints = interpolator_joints(traj_joints_old.pos, zero_j, zero_j, traj_joints.pos, zero_j, zero_j, t_smooth, t);
-					
-
+					// traj_joints = interpolator_joints(traj_joints_old.pos, traj_joints_old.vel, traj_joints_old.acc, traj_joints.pos, traj_joints.vel, traj_joints.acc, t_smooth, t);
+					// if(t <= 1.0+t_smooth){
+					// 	traj_joints = interpolator_joints(traj_joints_old.pos, traj_joints_old.vel, traj_joints_old.acc, traj_joints.pos, traj_joints.vel, traj_joints.acc, 1.0+t_smooth, t);
+					// }else{
+						// for(int i = 0; i < 7; ++i){
+						// 	traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
+						// 	traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
+						// 	traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+						// 	smooth_flag = false;
+						// }
+					// 	t_smooth = t;
+					// }
 					/*Traiettoria ottima sinusoidale ottenuta*/
                     for(int i = 0; i < 7; ++i){
                         traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
@@ -946,7 +1011,7 @@ int main(int argc, char **argv)
                         traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
                     }
                     // count = count+1;
-			    }
+				}
 			
 
 				// ----- publishing ----- //
@@ -1010,6 +1075,15 @@ int main(int argc, char **argv)
 			pub_flag_opt.publish(opt_flag_msg);
 			// reset first_time
 			first_time = true;
+
+			/*Return to initial Gains*/
+			Kp_throw << 60, 60, 60, 20, 20, 20;
+			Kv_throw << 30, 30, 30, 2, 2, 2;
+			for(int i = 0; i<6; ++i){
+				gains_msg.stiffness[i] = Kp_throw(i); 
+				gains_msg.damping[i] = Kv_throw(i);
+			}
+			pub_impedanceGains.publish(gains_msg);
 		}
 		loop_rate.sleep();
 	}

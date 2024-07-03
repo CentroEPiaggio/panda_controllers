@@ -23,6 +23,7 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+#include <geometry_msgs/WrenchStamped.h>
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
@@ -30,6 +31,7 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/rpy.h"
 #include "panda_controllers/udata.h"
+#include "panda_controllers/impedanceGain.h"
 
 // #include "utils/ThunderPanda.h"
 #include "utils/thunder_panda_2.h"
@@ -172,13 +174,14 @@ private:
 
     Eigen::Matrix<double, NJ, 1> dot_error_q;
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
-     Eigen::Matrix<double, NJ, 1> error_q;
+    Eigen::Matrix<double, NJ, 1> error_q;
     Eigen::Matrix<double, NJ, 1> err_param;
 
     Eigen::Matrix<double, NJ, 1> tau_cmd;
     Eigen::Matrix<double, NJ, 1> tau_J;
     Eigen::Matrix<double, NJ, 1> redtau_J;
-    // Eigen::Matrix<double, DOF, 1> F_cmd; // Forza commandata agente sull'EE
+
+    Eigen::Matrix<double, DOF, 1> F_ext; // Forza commandata agente sull'EE
     Eigen::Matrix<double, DOF, 1> vel_cur;
     
     /* Error and dot error feedback */
@@ -328,9 +331,11 @@ private:
     ros::Subscriber sub_command_j_;
     ros::Subscriber sub_command_rpy_;
     ros::Subscriber sub_flag_opt_;
+    ros::Subscriber sub_impedance_gains_;
     ros::Subscriber sub_joints;
     ros::Subscriber sub_flag_resetAdp;
     ros::Subscriber sub_flag_update_;
+    ros::Subscriber sub_Fext_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
     ros::Publisher pub_opt_;
@@ -339,7 +344,9 @@ private:
     void setCommandCB(const desTrajEE::ConstPtr& msg);
     void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);
     void jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg);
+    void setGains(const impedanceGain::ConstPtr& msg);
     void setRPYcmd(const rpy::ConstPtr& msg);
+    void callbackFext(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);
