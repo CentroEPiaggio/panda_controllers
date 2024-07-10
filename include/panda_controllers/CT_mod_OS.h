@@ -181,7 +181,8 @@ private:
     Eigen::Matrix<double, NJ, 1> tau_J;
     Eigen::Matrix<double, NJ, 1> redtau_J;
 
-    Eigen::Matrix<double, DOF, 1> F_ext; // Forza commandata agente sull'EE
+    Eigen::Matrix<double, DOF, 1> F_ext; 
+    Eigen::Matrix<double, DOF, 1> F_cont; 
     Eigen::Matrix<double, DOF, 1> vel_cur;
     
     /* Error and dot error feedback */

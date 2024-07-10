@@ -443,6 +443,7 @@ namespace panda_controllers{
         // tau_J = tau_J_d+G; // funziona pure
         // tau_J = tau_cmd;
         tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data()); // best in simulation
+        F_cont = F_ext; // contact force
         aggiungiDato(buffer_tau, tau_J,40);
         tau_J = calcolaMedia(buffer_tau);
 
@@ -453,11 +454,11 @@ namespace panda_controllers{
         Y_norm = fastRegMat.getReg();
 
         err_param = Y_norm*param;
-        aggiungiDato(buffer_tau_d, err_param,60);
+        aggiungiDato(buffer_tau_d, err_param,40);
         err_param = calcolaMedia(buffer_tau_d);
 
         tau_est = Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
-        aggiungiDato(buffer_q, tau_est, 60);
+        aggiungiDato(buffer_q, tau_est, 40);
         tau_est = calcolaMedia(buffer_q);
 
         // ROS_INFO_STREAM(tau_J - Y_norm*param);
@@ -503,6 +504,7 @@ namespace panda_controllers{
             if(reset_adp_flag){
                 H.setZero();
                 E.setZero();
+                l = 0;
                 reset_adp_flag = false;
             }
     
@@ -558,10 +560,10 @@ namespace panda_controllers{
       
         /* command torque to joint */
         tau_cmd_old = tau_cmd;
-        // tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+        tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
 
         /*For testing without Adp*/
-        tau_cmd = M*ddot_qr + C + G + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+        // tau_cmd = M*ddot_qr + C + G + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
 
         // if (update_opt_flag == false){
         //     tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0; // operative space controll
@@ -583,7 +585,7 @@ namespace panda_controllers{
         msg_log.header.stamp = time_now;
 
         fillMsg(msg_log.error_pos_EE, error);
-	    // fillMsg(msg_log.dot_error_pos_EE, F_ext);
+	    fillMsg(msg_log.Fext, F_cont);
         fillMsg(msg_log.dot_error_pos_EE, dot_error);
         fillMsgLink(msg_log.link1, param_tot.segment(0, PARAM+FRICTION));
         fillMsgLink(msg_log.link2, param_tot.segment(12, PARAM+FRICTION));
@@ -672,12 +674,12 @@ namespace panda_controllers{
         }else{
             /*Aprroccio braccio reale*/
             if (count%10 == 0){
-                // red_Y = red_Y_new;
-                // red_tau_J = red_tau_J_new;
+                red_Y = red_Y_new;
+                red_tau_J = red_tau_J_new;
                 count = 0;
             }
-            red_Y = red_Y_new;
-            red_tau_J = red_tau_J_new;
+            // red_Y = red_Y_new;
+            // red_tau_J = red_tau_J_new;
             count = count+1;
 
             Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());

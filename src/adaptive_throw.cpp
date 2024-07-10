@@ -421,8 +421,8 @@ int main(int argc, char **argv)
 	bool curr_vel_flag = false;
     int count = 0;
 	double t_smooth = 0;
-	Eigen::Matrix<double, 6, 1> Kp_throw;
-	Eigen::Matrix<double, 6, 1> Kv_throw;
+	Eigen::Matrix<double, 6, 1> Kp;
+	Eigen::Matrix<double, 6, 1> Kv;
 
 	// std::string robot_name = ROBOT_NAME;
 	float RATE;
@@ -598,6 +598,11 @@ int main(int argc, char **argv)
 	traj_struct_cartesian traj_tmp;
 	XmlRpc::XmlRpcValue menu_par;
 
+	Eigen::Vector3d offset1;
+	offset1 << 0, 0, 0.30;
+	Eigen::Vector3d offset2;
+	offset2 << 0, 0, 0.10;
+
 	// Initialize Ctrl-C
 	signal(SIGINT, signal_callback_handler);
 	// SET SLEEP TIME 1000 ---> 1 kHz
@@ -629,8 +634,8 @@ int main(int argc, char **argv)
 	int executing = 0;
 
 	// /*Initial Gains*/
-	// Kp_throw << 60, 60, 60, 20, 20, 20;
-	// Kv_throw << 30, 30, 30, 2, 2, 2;
+	// Kp << 60, 60, 60, 20, 20, 20;
+	// Kv << 30, 30, 30, 2, 2, 2;
 
 	/* Inizializzazione grandezze ottimo, ub e lb scelti per non sforare i limiti ed evitare la saturazione*/
 	udata.H.resize(700);
@@ -698,7 +703,7 @@ int main(int argc, char **argv)
 				cin>>tf_est;
 			}else if (choice == 3){
 				// --- go to --- //
-				cout<<"where:   (1: p0_pick,  2: pf_throw,  3: p0_throw,  4: config_saved,   5: point_saved(relative),   6: point_saved(absolute),     0: cancel) "<<endl;
+				cout<<"where:   (1: p0_pick,  2: pf_throw,  3: p0_throw,  4: config_saved,   5: point_saved(relative),   6: point_saved(absolute),    7: Go up,     0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 0){
 					choice = 0;
@@ -760,6 +765,12 @@ int main(int argc, char **argv)
 							pose_saved.setZero();
                             // cout << pose_saved << endl;
 					}
+					else if (choice_2 == 7){
+						p_end = p_start+offset1;
+						// pose_end = posef_throw;
+						// pose_end = pose_start+pose_saved;
+						// cout << pose_end << endl;
+					}
 					else {
 						executing = 0;
 						p_end = p_start;
@@ -782,11 +793,11 @@ int main(int argc, char **argv)
 
 				/*High gains for throw*/
 				//Set throw gains
-				Kp_throw << 100, 100, 100, 30, 30, 30;
-				Kv_throw << 50, 50, 50, 2, 2, 2;
+				Kp << 120, 120, 120, 15, 15, 15;
+				Kv << 25, 25, 25, 2, 2, 2;
 				for(int i = 0; i<6; ++i){
-					gains_msg.stiffness[i] = Kp_throw(i); 
-					gains_msg.damping[i] = Kv_throw(i);
+					gains_msg.stiffness[i] = Kp(i); 
+					gains_msg.damping[i] = Kv(i);
 				}
 				pub_impedanceGains.publish(gains_msg);
 			}else if (choice == 5){
@@ -861,6 +872,14 @@ int main(int argc, char **argv)
 				}
 			}
 		}else{
+			//Set high gains
+			Kp <<100, 100, 100, 20, 20, 20;
+			Kv << 25, 25, 25, 2, 2, 2;
+			for(int i = 0; i<6; ++i){
+				gains_msg.stiffness[i] = Kp(i); 
+				gains_msg.damping[i] = Kv(i);
+			}
+			pub_impedanceGains.publish(gains_msg);
 			// ----- init trajectory cycle ----- //
 			t_init = ros::Time::now();
 			t = (ros::Time::now() - t_init).toSec();
@@ -868,32 +887,52 @@ int main(int argc, char **argv)
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
-					Eigen::Vector3d offset;
-					offset << 0, 0, 0.10;
 					// --- go to --- //
 					if(t <= tf_0){ 
-						traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end+offset, zero, zero, tf_0, t);
-                    	traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf_0, t);
+						if (choice_2 == 1){
+							// //Set pick gains
+							// Kp << 100, 100, 100, 30, 30, 30;
+							// Kv << 20, 20, 20, 2, 2, 2;
+							// for(int i = 0; i<6; ++i){
+							// 	gains_msg.stiffness[i] = Kp(i); 
+							// 	gains_msg.damping[i] = Kv(i);
+							// }
+							// pub_impedanceGains.publish(gains_msg);
+							traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end+offset2, zero, zero, tf_0, t);
+						}else{
+							// //Set pick gains
+							// Kp << 60, 60, 60, 20, 20, 20;
+							// Kv << 15, 15, 15, 2, 2, 2;
+							// for(int i = 0; i<6; ++i){
+							// 	gains_msg.stiffness[i] = Kp(i); 
+							// 	gains_msg.damping[i] = Kv(i);
+							// }
+							// pub_impedanceGains.publish(gains_msg);
+							traj_cartesian = interpolator_cartesian(p_start, zero, zero, p_end, zero, zero, tf_0, t);
+						}
+						traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf_0, t);
 						/*ORIENTATION COMMAND SLERP*/
 						pose_cartesian = slerp(pose_start, pose_end, t, tf);
+						
 					}else{
-						traj_cartesian = interpolator_cartesian(p_end+offset, zero, zero, p_end, zero, zero, tf-tf_0, t-tf_0);
+						traj_cartesian = interpolator_cartesian(p_end+offset2, zero, zero, p_end, zero, zero, tf-tf_0, t-tf_0);
 					}
-					if(choice_2 == 1){
-					//Set pick gains
-						Kp_throw << 100, 100, 100, 30, 30, 30;
-						Kv_throw << 30, 30, 30, 2, 2, 2;
-						for(int i = 0; i<6; ++i){
-							gains_msg.stiffness[i] = Kp_throw(i); 
-							gains_msg.damping[i] = Kv_throw(i);
-						}
-						pub_impedanceGains.publish(gains_msg);
-					}
+					// if(choice_2 == 1){
+					// 	//Set pick gains
+					// 	Kp << 100, 100, 100, 30, 30, 30;
+					// 	Kv << 20, 20, 20, 2, 2, 2;
+					// 	for(int i = 0; i<6; ++i){
+					// 		gains_msg.stiffness[i] = Kp(i); 
+					// 		gains_msg.damping[i] = Kv(i);
+					// 	}
+					// 	pub_impedanceGains.publish(gains_msg);
+					// }
 					// cout << "command:" << rpy.pitch << endl;
 				}else if (executing == 2){
 					// --- throwing --- //
 					if (t <= tf_throw){
 						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
+						// traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, zero, zero, tf_throw+tf_brake, t);
 						if (t > tf_throw - HAND_DELAY){
 							if (first_time){
 								qbhand1_move(0.0);
@@ -901,14 +940,14 @@ int main(int argc, char **argv)
 							}
 						}
 					}else{
-						// if(curr_vel_flag){
-						// 	curr_vel_flag = false;
-						// 	ros::spinOnce();
-						// 	pf_brake = pf_throw + ee_vel*tf_brake/2;
-						// 	cout << pf_brake << endl;
-						// }
-						// traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
+						if(curr_vel_flag){
+							curr_vel_flag = false;
+							ros::spinOnce();
+							pf_brake = pf_throw + ee_vel*tf_brake/2;
+							// cout << pf_brake << endl;
+						}
 						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
+						// traj_cartesian = interpolator_cartesian(pf_throw, zero, zero, pf_brake, zero, zero, tf_throw+tf_brake, t);
 					}
 				}else if (executing == 3){
 					// --- Estimating --- //
@@ -1077,13 +1116,13 @@ int main(int argc, char **argv)
 			first_time = true;
 
 			/*Return to initial Gains*/
-			Kp_throw << 60, 60, 60, 20, 20, 20;
-			Kv_throw << 30, 30, 30, 2, 2, 2;
-			for(int i = 0; i<6; ++i){
-				gains_msg.stiffness[i] = Kp_throw(i); 
-				gains_msg.damping[i] = Kv_throw(i);
-			}
-			pub_impedanceGains.publish(gains_msg);
+			// Kp << 60, 60, 60, 20, 20, 20;
+			// Kv << 15, 15, 15, 2, 2, 2;
+			// for(int i = 0; i<6; ++i){
+			// 	gains_msg.stiffness[i] = Kp(i); 
+			// 	gains_msg.damping[i] = Kv(i);
+			// }
+			// pub_impedanceGains.publish(gains_msg);
 		}
 		loop_rate.sleep();
 	}

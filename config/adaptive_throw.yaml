@@ -11,19 +11,21 @@ throw_node:
   QF_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw end point configuration (not set)
   # P0_THROW: [0.446667, -0.0552812, 0.2] #[0.4, -0.4, 0.2]        # must coincide with Q0
   # P0_THROW: [0.40, -0.21, 0.10]        # must coincide with Q0
-  P0_PICK: [0.452004, -0.16528, 0.020591] # Per pallina
-  # P0_PICK: [0.452004, -0.16528, 0.040591] # Per bobina
+  # P0_PICK: [0.471477, -0.134084, 0.0703911] # Per pallina
+  P0_PICK: [0.452004, -0.16528, 0.030591] # Per bobina
   POSE0_PICK: [3.01607, -0.0237897, 0.11158] #[0.4, -0.4, 0.2]     
   POSEF_THROW: [1.70302, 3.1349, -1.55535]
-  PF_THROW: [0.293045, 0.555201, 0.598858] #[0.4, 0.2, 0.5]         # throwing point
+  PF_THROW: [0.293045, 0.555201, 0.658858] #[0.4, 0.2, 0.5]         # throwing point
+  # PF_THROW: [0.270461, 0.44308, 0.448593]
   P0_THROW: [0.406667, -0.0552812, 0.2] #[0.4, -0.3, 0.2]
   P0_EST: [0.446489, -0.196457, 0.289419]           # desired center of estimating point
-  POSE0_THROW: [1.92647, -3.10564, -1.94921] 
+  # POSE0_THROW: [1.92647, -3.10564, -1.94921]
+  POSE0_THROW: [2.26238, 3.05656, -1.43283] 
   DPF_THROW: [0, 1.5, 0.9]              # throwing velocity
-  TF_THROW: 1.2
+  TF_THROW: 1.5
   TF_BRAKE: 0.5
   TF_EST_BRAKE: 0.5
-  TF_EST: 9.0
+  TF_EST: 6.0
   PF_THROW_EST: [0.468341, 0.306827, 0.426758] #[0.4, 0.1, 0.4] 
   TF_THROW_EST: 1.0
   DPF_THROW_EST: [0, 1.5, 0.9]
