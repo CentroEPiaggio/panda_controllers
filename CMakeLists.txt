@@ -52,6 +52,7 @@ add_message_files(FILES
 	Vec7D.msg
 	udata.msg
 	rpy.msg
+	impedanceGain.msg
 )
 ## to create msg, specify dependecies
 generate_messages(

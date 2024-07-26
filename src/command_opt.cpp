@@ -27,13 +27,13 @@
 #endif
 
 
+
 /*Variabili inizializzati*/
 Eigen::VectorXd q_curr(7);
 Eigen::VectorXd dq_curr(7);
 Eigen::VectorXd ddq_curr(7);
 Eigen::VectorXd H_vec(700);
 int l_idx;
-int count;
 
 
 Eigen::Matrix<double, NJ, 1> q_c;
@@ -53,8 +53,8 @@ thunder_ns::thunder_panda_2 fastRegMat;
 
 struct UserData {
     // std::vector<double> q;
-    // std::vector<double> dq;
-    // std::vector<double> ddq;
+    std::vector<double> dq;
+    std::vector<double> ddq;
     // std::vector<std::vector<double>> H;
     std::vector<double> H;
     int l;
@@ -71,22 +71,21 @@ double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::Mat
 int main(int argc, char **argv)
 {
 
-    std::vector<double> lb(NJ), ub(NJ);
     ros::init(argc, argv, "command_opt");
 	ros::NodeHandle node_handle;
-    double frequency = 1000;
+    double frequency = 500;
 	ros::Rate loop_rate(frequency); 
 	
     // udata.q.resize(7);
-    // udata.dq.resize(7);
-    // udata.ddq.resize(7);
+    udata.dq.resize(7);
+    udata.ddq.resize(7);
     udata.H.resize(700);
     
     Eigen::Matrix<double, NJ, 1> qr;
     Eigen::Matrix<double, NJ, 1> dot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     // q_curr.setZero();
-    // l_idx = 11;
+    l_idx = 11;
 
     // fastRegMat.init(NJ);
 
@@ -101,11 +100,11 @@ int main(int argc, char **argv)
     // ubE << 5, 2.5, 5, 5.5, 5, 10, 10;
     
 	/* Publisher */
-	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
+	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("command_joints_opt", 1);
 	ros::Publisher pub_flag_opt = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/optFlag", 1);
 
 	/* Subscriber */
-	ros::Subscriber sub_config = node_handle.subscribe<panda_controllers::udata>("/CT_mod_controller_OS/opt_data", 1, &jointsCallback);
+	ros::Subscriber sub_config = node_handle.subscribe<panda_controllers::udata>("opt_data", 1, &jointsCallback);
 
     ros::Time t;
     double t_start;
@@ -121,30 +120,17 @@ int main(int argc, char **argv)
     command.position.resize(NJ);
     command.velocity.resize(NJ);
     command.effort.resize(NJ);
-    qr = q_c;
-    dot_qr.setZero();
-    ddot_qr.setZero();
-    l_idx = 0;
-    count = 0;
-    std::vector<double> x(NJ), x_old(NJ); // variabile soluzione di ottimo che viene inizializzata
+    std::vector<double> x(NJ); // variabile soluzione di ottimo che viene inizializzata
     // std::vector<double> x_old(7);
-    for(int i=0; i < 7; ++i){
-        x_old[i] = 0;
-    }
-    
-    /*Bound for omega*/
-    lb[0] = -M_PI_2; lb[1] = -M_PI_2; lb[2] = -M_PI_2; lb[3] = -M_PI_2; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI_2;
-    ub[0] = M_PI_2; ub[1] = M_PI_2; ub[2] = M_PI_2; ub[3] = M_PI_2; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI_2;
+
     // ros::Duration(0.1).sleep();
 
     while(ros::ok()){
-        // ros::spinOnce();
-       
+        ros::spinOnce();
+        qr.setZero();
+        dot_qr.setZero();
+        ddot_qr.setZero();
         opt_flag_msg.flag = true;
-
-        for(int i=0; i < 7; ++i){
-            x[i] = x_old[i];
-        }  
 
         t = ros::Time::now();
         if (dt == 0)
@@ -159,36 +145,82 @@ int main(int argc, char **argv)
 
         // lbE << -1.5, -1.5, -1.5, -1.5, -1.5, -1.5, -1.5;
         // ubE << 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5;
-        if (count%10 == 0){
-            ros::spinOnce();
-            
-            count = 0;
-            for(int i = 0; i < 700; ++i){
-                udata.H[i] = H_vec(i);
-            }
-            udata.l = l_idx;
 
-            nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ); // Algoritmo COYBLA -> GRADIENT FRRE OPTIMIZATIO
+        nlopt::opt opt(nlopt::algorithm::LN_COBYLA, NJ); // Algoritmo COYBLA -> GRADIENT FRRE OPTIMIZATION
+        
+        
+        udata.l = 11;
+        
+        
+         // definisco lower and upper bound
+        std::vector<double> lb(NJ), ub(NJ);
+        // max_acc[0] = 15; max_acc[1] = 7.5; max_acc[2] = 10; max_acc[3] = 12.5; max_acc[4] = 15; max_acc[5] = 20; max_acc[6] = 20;
+        // min_acc[0] = -15; min_acc[1] = -7.5; min_acc[2] = -10; min_acc[3] = -12.5; min_acc[4] = -15; min_acc[5] = -20; min_acc[6] = -20;
+      
+
+        /*Bound for omega*/
+        lb[0] = -M_PI_2; lb[1] = -M_PI_2; lb[2] = -M_PI; lb[3] = -M_PI; lb[4] = -M_PI_2; lb[5] = -M_PI_2; lb[6] = -M_PI;
+        ub[0] = M_PI_2; ub[1] = M_PI_2; ub[2] = M_PI; ub[3] = M_PI; ub[4] = M_PI_2; ub[5] = M_PI_2; ub[6] = M_PI;
+
+        /*Bound for A*/
+        //  for (int i = 0; i < NJ; ++i) {
+        //     lb[NJ + i] = q_min_limit(i) / 2;
+        //     ub[NJ + i] = q_max_limit(i) / 2;
+        // }
+
+        // cout << "position: "<<q_curr;
+        // Sezione cating da Eigen a sdt perchè Eigen non compatibile con libreria di ottimo
+        for(int i=0; i < 7; ++i){
+            x[i] = 0;
+            // x[i+NJ] = (q_min_limit(i)+q_max_limit(i))/4;
+            // for(int r=0; r<2; ++r){
+            //     x[4*i+2*r] = 0;
+            //     x[4*i+2*r+1] = 0;
+            //     lb[4*i+2*r] = std::max(0.5*wf*r*q_min_limit(i), -dq_limit(i));
+            //     lb[4*i+2*r+1] = lb[4*i+2*r];
+            //     ub[4*i+2*r] = std::min(0.5*wf*r*q_max_limit(i), dq_limit(i));
+            //     ub[4*i+2*r+1] = ub[4*i+2*r];
+            // }
+           
+        }    
+
+        /*Calcolo dei bound*/
+
+
+        // da verificare se corretta allocazione
+        for(int i = 0; i < 700; ++i){
+                udata.H[i] = H_vec(i);
+        }
+
+        opt.set_xtol_rel(1e-4);
+        opt.set_lower_bounds(lb); // setto limite inferiore
+        opt.set_upper_bounds(ub); // setto limite superiore 
+        opt.set_min_objective(objective, &udata);  // definisco costo da massimizzare
+    
+
+        // Ottimizzazione
+        double minf;
+        nlopt::result result = opt.optimize(x, minf);
+        for(int i = 0; i < 7; ++i){
+                qr(i) = q_c(i) + 0.30*sin(x[i]*dt);     
+                dot_qr(i) = x[i]*0.30*cos(x[i]*dt);
+                ddot_qr(i) = -x[i]*x[i]*0.30*sin(x[i]*dt);      
+        }
         
 
-            opt.set_xtol_rel(1e-4);
-            opt.set_lower_bounds(lb); // setto limite inferiore
-            opt.set_upper_bounds(ub); // setto limite superiore 
-            opt.set_min_objective(objective, &udata);  // definisco costo da massimizzare
 
-            // Ottimizzazione
-            double minf;
-            nlopt::result result = opt.optimize(x, minf);
-        }
-        count = count+1;
+        // qr << 0.0+0.30*sin(1.5*(x[0])*dt), 0.0+0.30*sin(2*(x[1])*dt), 0.0+0.30*sin(2*(x[2])*dt), -1.5+0.30*sin(2*(x[3])*dt), 0.0+0.30*sin(2*(x[4])*dt), 1.5+0.30*sin(2*(x[5])*dt), 0.0+0.30*sin(2*(x[6])*dt);
+        // dot_qr << 1.5*(x[0])*0.30*cos(1.5*(x[0])*dt), 2*(x[1])*0.30*cos(2*(x[1])*dt), 2*(x[2])*0.30*cos(2*(x[2])*dt), 2*(x[3])*0.30*cos(2*(x[3])*dt), 2*(x[4])*0.30*cos(2*(x[4])*dt), 2*(x[5])*0.30*cos(2*(x[5])*dt), 2*(x[6])*0.30*cos(2*(x[6])*dt);
+        // ddot_qr << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*dt), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*dt), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*dt), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*dt), -pow(2*(x[4]),2)*0.30*sin(2*(x[4])*dt), -pow(2*(x[5]),2)*0.30*sin(2*(x[5])*dt), -pow(2*(x[6]),2)*0.30*sin(2*(x[6])*dt);
+    
+        // for(int i=0; i<NJ; ++i){
+        //     for(int r=0; r<2; ++r){
+        //         qr(i) = qr(i) + x[4*i+2*r]/(wf*r)*sin(wf*r*dt) - x[4*i+2*r+1]/(wf*r)*cos(wf*r*dt);
+        //         dot_qr(i) = dot_qr(i) + x[4*i+2*r]*cos(wf*r*dt) + x[4*i+2*r+1]*sin(wf*r*dt);
+        //         ddot_qr(i) = ddot_qr(i) - wf*r*x[4*i+2*r]*sin(wf*r*dt) + wf*r*x[4*i+2*r+1]*cos(wf*r*dt);
+        //     }
+        // }
 
-        for(int i = 0; i < 7; ++i){
-            qr(i) = q_c(i) + 0.30*sin(x[i]*dt);     
-            dot_qr(i) = x[i]*0.30*cos(x[i]*dt);
-            ddot_qr(i) = -x[i]*x[i]*0.30*sin(x[i]*dt);      
-            x_old[i] = x[i];
-            // cout << x[i]<< endl;
-        }
 
         for(int i=0;i<NJ;i++){
             command.position[i] = qr(i);
@@ -205,10 +237,37 @@ int main(int argc, char **argv)
 
 void jointsCallback(const panda_controllers::udata::ConstPtr& msg){
    
+    /*Devo inviare q future*/
+	// q_curr[0] = msg->q_cur[0];
+	// q_curr[1] = msg->q_cur[1];
+	// q_curr[2] = msg->q_cur[2];
+	// q_curr[3] = msg->q_cur[3];
+	// q_curr[4] = msg->q_cur[4];
+	// q_curr[5] = msg->q_cur[5];
+	// q_curr[6] = msg->q_cur[6];
+
+    // // cout << "position: "<<q_curr;
+
+    // dq_curr[0] = msg->dot_q_curr[0];
+	// dq_curr[1] = msg->dot_q_curr[1];
+	// dq_curr[2] = msg->dot_q_curr[2];
+	// dq_curr[3] = msg->dot_q_curr[3];
+	// dq_curr[4] = msg->dot_q_curr[4];
+	// dq_curr[5] = msg->dot_q_curr[5];
+	// dq_curr[6] = msg->dot_q_curr[6];
+
+    // ddq_curr[0] = msg->ddot_q_curr[0];
+	// ddq_curr[1] = msg->ddot_q_curr[1];
+	// ddq_curr[2] = msg->ddot_q_curr[2];
+	// ddq_curr[3] = msg->ddot_q_curr[3];
+	// ddq_curr[4] = msg->ddot_q_curr[4];
+	// ddq_curr[5] = msg->ddot_q_curr[5];
+	// ddq_curr[6] = msg->ddot_q_curr[6];
+
     for(int i = 0; i<70; ++i){
         H_vec.segment(i*PARAM, PARAM) << msg->H_stack[i*PARAM], msg->H_stack[i*PARAM+1], msg->H_stack[i*PARAM+2], msg->H_stack[i*PARAM+3], msg->H_stack[i*PARAM+4], msg->H_stack[i*PARAM+5], msg->H_stack[i*PARAM+6], msg->H_stack[i*PARAM+7], msg->H_stack[i*PARAM+8], msg->H_stack[i*PARAM+9];
     }
-    l_idx = msg->count;
+
     // cout<<"valore di ottimo:"<< H_vec;
 
 	// if (!init_start){
@@ -224,39 +283,60 @@ double objective(const std::vector<double> &x, std::vector<double> &grad, void *
     Eigen::VectorXd q(7);
     Eigen::VectorXd dq(7);
     Eigen::VectorXd ddq(7);
+    // double wf = 20;
+    // Eigen::VectorXd x[7];
     int l;
-	double dt;
-	// int count;
+    double dt;
 
     H_true.resize(10,70);
+
     l = udata->l;
     dt = udata->dt;
-	// count = udata->count;
-	q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
-	if (!grad.empty()) {
+
+    if (!grad.empty()) {
         for (int i = 0; i < NJ; i++) {
             grad[i] = 0.0;
         }
     }
 
-	/*Traiettoria sinusoidale ottima*/
+
     for(int i = 0; i < NJ; ++i){
             q(i) = q_c(i) + 0.30*sin(x[i]*dt);     
             dq(i) = x[i]*0.30*cos(x[i]*dt);
             ddq(i) = -x[i]*x[i]*0.30*sin(x[i]*dt);      
     }
+
+    // q << 0.0+0.30*sin(1.5*(x[0])*dt), 0.0+0.30*sin(2*(x[1])*dt), 0.0+0.30*sin(2*(x[2])*dt), -1.5+0.30*sin(2*(x[3])*dt), 0.0+0.60*sin(2*(x[4])*dt), 1.5+0.60*sin(2*(x[5])*dt), 0.0+0.60*sin(2*(x[6])*dt);
+    // dq << 1.5*(x[0])*0.30*cos(1.5*(x[0])*dt), 2*(x[1])*0.30*cos(2*(x[1])*dt), 2*(x[2])*0.30*cos(2*(x[2])*dt), 2*(x[3])*0.30*cos(2*(x[3])*dt), 2*(x[4])*0.60*cos(2*(x[4])*dt), 2*(x[5])*0.60*cos(2*(x[5])*dt), 2*(x[6])*0.60*cos(2*(x[6])*dt);
+    // ddq << -pow(1.5*(x[0]),2)*0.30*sin(1.5*(x[0])*dt), -pow(2*(x[1]),2)*0.30*sin(2*(x[1])*dt), +pow(2*(x[2]),2)*0.30*sin(2*(x[2])*dt), -pow(2*(x[3]),2)*0.30*sin(2*(x[3])*dt), -pow(2*(x[4]),2)*0.60*sin(2*(x[4])*dt), -pow(2*(x[5]),2)*0.60*sin(2*(x[5])*dt), -pow(2*(x[6]),2)*0.60*sin(2*(x[6])*dt);
     
+    // q.setZero();
+    // dq.setZero();
+    // ddq.setZero();
+    /*Serie di Fourier ordine r*/
+    // for(int i=0; i<NJ; ++i){
+    //     for(int r=0; r<2; ++r){
+    //         q(i) = q(i) + x[4*i+2*r]/(wf*r)*sin(wf*r*dt) - x[4*i+2*r+1]/(wf*r)*cos(wf*r*dt);
+    //         dq(i) = dq(i) + x[4*i+2*r]*cos(wf*r*dt) + x[4*i+2*r+1]*sin(wf*r*dt);
+    //         ddq(i) = ddq(i) - wf*r*x[4*i+2*r]*sin(wf*r*dt) + wf*r*x[4*i+2*r+1]*cos(wf*r*dt);
+    //     }
+    // }
+    
+
     for(int i=0; i<70; ++i){
         H_true.block(0,i,PARAM,1) << udata->H[i*PARAM], udata->H[i*PARAM+1], udata->H[i*PARAM+2], udata->H[i*PARAM+3], udata->H[i*PARAM+4], udata->H[i*PARAM+5], udata->H[i*PARAM+6], udata->H[i*PARAM+7], udata->H[i*PARAM+8], udata->H[i*PARAM+9];
     }
-    // cout << H_true.transpose()*H_true<<endl;
-	
+
     fastRegMat.setArguments(q, dq, dq, ddq);
     Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg();
     Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
 
-    return redStackCompute(redY, H_true, l);
+    return -redStackCompute(redY, H_true, l);
+    // Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_opt(H_true*H_true.transpose());
+    
+    // return -(solver_opt.singularValues()).minCoeff();
+     
 }
 
 
@@ -264,14 +344,14 @@ double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::Mat
     const int P = 10;
     const double epsilon = 0.1;
     double Vmax = 0;
-    double cost;
 
     if (l <= (P-1)){
         if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
             H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+            // l = l+1;
+            // ROS_INFO_STREAM(H*H.transpose());
             Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
-            Vmax = (solver_V.singularValues()).minCoeff();
-            cost = 0;
+            double V_max = (solver_V.singularValues()).minCoeff();
         }
                             
     }else{
@@ -298,16 +378,7 @@ double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::Mat
             }else{
                 Vmax = V;
             }
-            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_cond(H*H.transpose());
-            double lmax = (solver_cond.singularValues()).maxCoeff();
-            if (Vmax != 0){
-                cost = lmax/Vmax;
-            }else{
-                cost = 0;
-            }
-            // cout << "ciao"<<endl;
         }
     }
-    return cost;
-    // return Vmax;
+    return Vmax;
 }

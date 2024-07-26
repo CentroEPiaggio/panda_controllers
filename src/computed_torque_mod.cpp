@@ -389,7 +389,7 @@ namespace panda_controllers{
 
             Y_stack_sum.segment((NJ-1)*PARAM, PARAM) = redY_stack_sum;
             // dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.3*Y_norm.transpose()*(err_param)); // legge aggiornamento parametri se vi è update(CAMBIARE RINV NEGLI ESPERIMENTI)
-            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.5*Y_stack_sum);
+            dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error + 0.2*Y_stack_sum + 0.3*Y_norm.transpose()*(err_param));
             param = param + dt*dot_param;
             // dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error + 0.3*Y_D_norm.transpose()*(err_param));
             // param_frict = param_frict + dt*dot_param_frict;

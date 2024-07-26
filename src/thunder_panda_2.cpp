@@ -76,9 +76,9 @@ namespace thunder_ns{
 			// std::cout << "CoM: " << CoM << std::endl;
 			Eigen::Matrix3d I_tmp = mass * hat(CoM) * hat(CoM).transpose();
 			// std::cout << "I_tmp: " << I_tmp << std::endl;
-			Eigen::Matrix<double, 6,1> I_tmp_v;
+			Eigen::Matrix<double, 6, 1> I_tmp_v;
 			I_tmp_v << I_tmp(0,0), I_tmp(0,1), I_tmp(0,2), I_tmp(1,1), I_tmp(1,2), I_tmp(2,2);
-			Eigen::Matrix<double, 6,1> I;
+			Eigen::Matrix<double, 6, 1> I;
 			I << p_reg(4), p_reg(5), p_reg(6), p_reg(7), p_reg(8), p_reg(9);
 			param_DYN.segment(N_PAR_LINK*i, N_PAR_LINK) << mass, CoM, I-I_tmp_v;
 		}

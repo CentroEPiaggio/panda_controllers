@@ -23,6 +23,7 @@
 
 //Ros Message
 #include <sensor_msgs/JointState.h>
+#include <geometry_msgs/WrenchStamped.h>
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
 #include "panda_controllers/link_params.h"
@@ -30,6 +31,7 @@
 #include "panda_controllers/flag.h"
 #include "panda_controllers/rpy.h"
 #include "panda_controllers/udata.h"
+#include "panda_controllers/impedanceGain.h"
 
 // #include "utils/ThunderPanda.h"
 #include "utils/thunder_panda_2.h"
@@ -88,8 +90,9 @@ private:
     double dt;
     int l;
     int t;
+    int count; 
+    double lambda_min;
     double epsilon; // information trashold 
-    int count;
 
     ros::Time time_now;
     
@@ -114,19 +117,20 @@ private:
     Eigen::Matrix<double, DOF, DOF> Lambda; 
     Eigen::Matrix<double, DOF, DOF> Kp; 
     Eigen::Matrix<double, DOF, DOF> Kv;
+    Eigen::Matrix<double, NJ, NJ> Kp_j; 
+    Eigen::Matrix<double, NJ, NJ> Kv_j;
     Eigen::Matrix<double, DOF, DOF> Kp_xi; 
     Eigen::Matrix<double, DOF, DOF> Kv_xi;
-
-    /* Gain Matrices in CT*/
-    Eigen::Matrix<double, NJ, NJ> Kp_j; 
-    Eigen::Matrix<double, NJ, NJ> Kv_j; 
 
     /* Gain Matrice in NullSpacde*/
     Eigen::Matrix<double, NJ, NJ> Kn;
 
     std:: string robot_name;
     
-   
+    /*Proof PE*/
+    Eigen::Matrix<double, NJ*PARAM, 1> v;
+    Eigen::Matrix<double, NJ*PARAM, 1> v_dot;
+    Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> v_diag;
    
      /* Gain for parameters */
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
@@ -134,13 +138,16 @@ private:
     Eigen::Matrix<double, NJ*(FRICTION), NJ*(FRICTION)> Rinv_fric;
     bool update_param_flag;
     bool update_opt_flag;
+    bool reset_adp_flag;
 
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
     Eigen::Matrix<double, NJ, 1> q_curr;
     Eigen::Matrix<double, NJ, 1> q_c; // vettore giunti meta corsa
     Eigen::Matrix<double, NJ, 1> dot_q_curr;
+    // Eigen::Matrix<double, NJ, 1> q_curr_old;
     Eigen::Matrix<double, NJ, 1> dot_q_curr_old;
+    Eigen::Matrix<double, NJ, 1> dot_q_curr_old_2;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr_old;
     Eigen::Matrix<double, NJ, 1> ddot_q_curr;
     Eigen::Matrix<double, NJ, 1> dot_qr;
@@ -150,6 +157,7 @@ private:
     Eigen::Matrix<double, NJ, 1> tau_d;
     Eigen::Matrix<double, NJ, 1> qr_old;
     Eigen::Matrix<double, NJ, 1> dot_qr_est;
+    Eigen::Matrix<double, NJ, 1> q_d_nullspace_;
     Eigen::Matrix<double, NJ, 1> ddot_qr;
     Eigen::Matrix<double, NJ, 1> ddot_qr_est;
 
@@ -158,17 +166,23 @@ private:
     Eigen::Matrix<double, NJ, 1> dq_opt;
     Eigen::Matrix<double, NJ, 1> q_opt;
 
-    Eigen::Matrix<double, NJ, 1> error_q;
+    /*Inf variable*/
+    // double inf1;
+    // double inf2;
+
+    // Eigen::Matrix<double, NJ, 1> x_eig;
+
     Eigen::Matrix<double, NJ, 1> dot_error_q;
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
-    
+    Eigen::Matrix<double, NJ, 1> error_q;
     Eigen::Matrix<double, NJ, 1> err_param;
 
     Eigen::Matrix<double, NJ, 1> tau_cmd;
-    Eigen::Matrix<double, NJ, 1> tau_cmd_old;
     Eigen::Matrix<double, NJ, 1> tau_J;
     Eigen::Matrix<double, NJ, 1> redtau_J;
-    // Eigen::Matrix<double, DOF, 1> F_cmd; // Forza commandata agente sull'EE
+
+    Eigen::Matrix<double, DOF, 1> F_ext; 
+    Eigen::Matrix<double, DOF, 1> F_cont; 
     Eigen::Matrix<double, DOF, 1> vel_cur;
     
     /* Error and dot error feedback */
@@ -198,12 +212,16 @@ private:
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_q;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_dq; // Array dinamico 7D
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddq;
+    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_dqr;
+    // std::vector<Eigen::Matrix<double, 7, 1>> buffer_ddqr;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau;
     std::vector<Eigen::Matrix<double, 7, 1>> buffer_tau_d;
     std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
-    const int WIN_LEN = 40; // dovrebbe corrispondere a una freq di taglio di circa 100Hz
+    const int WIN_LEN = 5;
 
     /* Parameter vector */
+    Eigen::Matrix<double, NJ, 1> tau_est;
+    Eigen::Matrix<double, NJ, 1> tau_cmd_old;
     Eigen::Matrix<double, NJ*PARAM, 1> param;
     Eigen::Matrix<double, PARAM, 1> param7;
     Eigen::Matrix<double, PARAM, 1> param_real;
@@ -263,18 +281,22 @@ private:
     Eigen::Matrix<double,NJ,NJ> N1; // NullSpace Projector
     Eigen::Matrix<double,NJ,NJ> P; // Projector
     
-    /* Object Regressor Slotine Li*/
-    // regrob::thunderPanda fastRegMat;
+  
+    /*Stack function calculation*/
+    Eigen::VectorXd S;
+    Eigen::Matrix<double, NJ, 1> red_tau_J;
+    Eigen::Matrix<double, NJ, PARAM> red_Y;
+
     thunder_ns::thunder_panda_2 fastRegMat;
 
-    /*Variabili utili per approccio braccio reale*/
-    Eigen::Matrix<double, NJ, 1> red_tau_J;
-    Eigen::Matrix<double, NJ, PARAM> red_Y; 
-    Eigen::Matrix<double, NJ, 1> tau_est;
-    Eigen::Matrix<double, NJ, 1> tau_err;
-    // Eigen::VectorXd S;
-    double sigma_min;
-    double sigma_max;
+    /*Data Struct from optimal problem*/
+    // struct UserData {
+    //     std::vector<double> q;
+    //     std::vector<double> dq;
+    //     // std::vector<std::vector<double>> H;
+    //     std::vector<double> H;
+    //     int l;
+    // };
 
     /*Filter function*/
     void aggiungiDato(std::vector<Eigen::Matrix<double, NJ, 1>>& buffer_, const Eigen::Matrix<double, NJ, 1>& dato_, int lunghezza_finestra_);
@@ -289,7 +311,7 @@ private:
 
     /* Fuction Stack building*/
     // void stackCompute(const Eigen::Matrix<double, NJ, NJ*PARAM>& Y, Eigen::MatrixXd& H, int& l, const Eigen::Matrix<double, NJ, 1>& tau_J, Eigen::VectorXd& E);
-    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
+    double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y_new, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J_new, Eigen::VectorXd& E);
     // double redStackComputeFric(const Eigen::Matrix<double, NJ, NJ*FRICTION>& red_Y, Eigen::MatrixXd& H,int& l, const Eigen::Matrix<double, NJ, 1>& red_tau_J, Eigen::VectorXd& E);
     // void redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l);
 
@@ -310,8 +332,11 @@ private:
     ros::Subscriber sub_command_j_;
     ros::Subscriber sub_command_rpy_;
     ros::Subscriber sub_flag_opt_;
+    ros::Subscriber sub_impedance_gains_;
     ros::Subscriber sub_joints;
+    ros::Subscriber sub_flag_resetAdp;
     ros::Subscriber sub_flag_update_;
+    ros::Subscriber sub_Fext_;
     ros::Publisher pub_err_;
     ros::Publisher pub_config_;
     ros::Publisher pub_opt_;
@@ -320,11 +345,14 @@ private:
     void setCommandCB(const desTrajEE::ConstPtr& msg);
     void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);
     void jointsCallbackT(const sensor_msgs::JointStateConstPtr& msg);
+    void setGains(const impedanceGain::ConstPtr& msg);
     void setRPYcmd(const rpy::ConstPtr& msg);
+    void callbackFext(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 
     /*Setting Flag Callback*/
     void setFlagUpdate(const flag::ConstPtr& msg);
     void setFlagOpt(const flag::ConstPtr& msg);
+    void setResetFlag(const flag::ConstPtr& msg);
 
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
