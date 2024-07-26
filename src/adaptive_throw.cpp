@@ -48,8 +48,8 @@
 
 using namespace std;
 
-bool ready;
-bool ready2;
+bool ready = false;
+bool ready2 = false;
 bool init_q = false;
 bool init_p = false;
 std:: string robot_name;
@@ -110,8 +110,8 @@ pose_struct_cartesian pose_cartesian;
 
 
 struct UserData {
-    std::vector<double> H;
-    int l;
+	std::vector<double> H;
+	int l;
 	double t;
 	int count;
 } udata;
@@ -171,32 +171,32 @@ traj_struct_cartesian interpolator_cartesian(Eigen::Vector3d pos_i, Eigen::Vecto
 
 // Funzione per convertire angoli RPY in quaternioni(Ordine rotazione roll-pitch.yaw)
 Eigen::Quaterniond rpyToQuaternion(double roll, double pitch, double yaw, bool transf) {
-    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+	Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+	Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+	Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
 
-    Eigen::Quaterniond q = rollAngle*pitchAngle*yawAngle;
+	Eigen::Quaterniond q = rollAngle*pitchAngle*yawAngle;
 	q.normalize();
-    return q;
+	return q;
 }
 
 pose_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
 	
 	// Convertire gli angoli Eulero in quaternioni
-    Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2], false);
-    Eigen::Quaterniond q_desired = rpyToQuaternion(rpy_desired[0], rpy_desired[1], rpy_desired[2], true);
+	Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2], false);
+	Eigen::Quaterniond q_desired = rpyToQuaternion(rpy_desired[0], rpy_desired[1], rpy_desired[2], true);
 
-    // Calcolare il fattore di interpolazione normalizzato
-    double t_normalized = t / t_f;
+	// Calcolare il fattore di interpolazione normalizzato
+	double t_normalized = t / t_f;
 
 	// calcolo theta
 	// double theta = acos(q_current.dot(q_desired));
 
 	// setto vecchio quaternione di comando
 	Eigen::Quaterniond q_interpolated_old = q_interpolated;
-    
+	
 	// Calcolare il quaternione interpolato usando SLERP
-    q_interpolated = q_current.slerp(t_normalized, q_desired);
+	q_interpolated = q_current.slerp(t_normalized, q_desired);
 	
 	// Eigen::Quaterniond dq_interpolated;
 	// if ((q_current*q_desired).w() >= 0){
@@ -213,16 +213,16 @@ pose_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vec
 
 	// accelerazione angolare commandata
 	Eigen::Vector3d angular_acceleration = (angular_velocity - angular_velocity_old) / 0.001;
-    
-    // Convertire il quaternione interpolato in angoli di Eulero
-    Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(0, 1, 2);
+	
+	// Convertire il quaternione interpolato in angoli di Eulero
+	Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(0, 1, 2);
 
 	// cout << euler_angles << endl;
-    pose_struct_cartesian com;
+	pose_struct_cartesian com;
 	com.rpy = euler_angles;
 	com.angular_vel = angular_velocity; 
 	com.angular_acc = angular_acceleration;
-    
+	
 	return com;
 }
 
@@ -278,128 +278,131 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 /*Funzione obiettivo problema di ottimo*/
 double objective(const std::vector<double> &x, std::vector<double> &grad, void *data){
 
-    UserData *udata = reinterpret_cast<UserData*>(data);
-    Eigen::MatrixXd H_true;
-    Eigen::VectorXd q(7);
-    Eigen::VectorXd dq(7);
-    Eigen::VectorXd ddq(7);
-    int l;
+	UserData *udata = reinterpret_cast<UserData*>(data);
+	Eigen::MatrixXd H_true;
+	Eigen::VectorXd q(7);
+	Eigen::VectorXd dq(7);
+	Eigen::VectorXd ddq(7);
+	int l;
 	double t;
 	int count;
 
-    H_true.resize(10,70);
-    l = udata->l;
-    t = udata->t;
+	H_true.resize(10,70);
+	l = udata->l;
+	t = udata->t;
 	count = udata->count;
 	q_c << 0.0, 0.0, 0.0, -1.5708, 0.0, 1.8675, 0.0;
 
 	if (!grad.empty()) {
-        for (int i = 0; i < NJ; i++) {
-            grad[i] = 0.0;
-        }
-    }
+		for (int i = 0; i < NJ; i++) {
+			grad[i] = 0.0;
+		}
+	}
 
 	/*Traiettoria sinusoidale ottima*/
-    for(int i = 0; i < NJ; ++i){
-            q(i) = q_c(i) + 0.30*sin(x[i]*t);     
-            dq(i) = x[i]*0.30*cos(x[i]*t);
-            ddq(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
-    }
-    
-    for(int i=0; i<70; ++i){
-        H_true.block(0,i,PARAM,1) << udata->H[i*PARAM], udata->H[i*PARAM+1], udata->H[i*PARAM+2], udata->H[i*PARAM+3], udata->H[i*PARAM+4], udata->H[i*PARAM+5], udata->H[i*PARAM+6], udata->H[i*PARAM+7], udata->H[i*PARAM+8], udata->H[i*PARAM+9];
-    }
+	for(int i = 0; i < NJ; ++i){
+			q(i) = q_c(i) + 0.30*sin(x[i]*t);     
+			dq(i) = x[i]*0.30*cos(x[i]*t);
+			ddq(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
+	}
 	
-    fastRegMat.setArguments(q, dq, dq, ddq);
-    Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg();
-    Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
+	for(int i=0; i<70; ++i){
+		H_true.block(0,i,PARAM,1) << udata->H[i*PARAM], udata->H[i*PARAM+1], udata->H[i*PARAM+2], udata->H[i*PARAM+3], udata->H[i*PARAM+4], udata->H[i*PARAM+5], udata->H[i*PARAM+6], udata->H[i*PARAM+7], udata->H[i*PARAM+8], udata->H[i*PARAM+9];
+	}
+	
+	fastRegMat.setArguments(q, dq, dq, ddq);
+	Eigen::Matrix<double, NJ,PARAM*NJ> Y = fastRegMat.getReg();
+	Eigen::Matrix<double, NJ,PARAM> redY = Y.block(0,(NJ-1)*PARAM,NJ,PARAM);
 
-    return redStackCompute(redY, H_true, l);
+	return redStackCompute(redY, H_true, l);
 }
 
 double redStackCompute(const Eigen::Matrix<double, NJ, PARAM>& red_Y, Eigen::MatrixXd& H,int& l){
-    const int P = 10;
-    const double epsilon = 0.1;
-    double Vmax;
+	const int P = 10;
+	const double epsilon = 0.1;
+	double Vmax;
 
-    if (l <= (P-1)){
-        if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
-            H.block(0,l*NJ,P,NJ) = red_Y.transpose();
-            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
-            double V_max = (solver_V.singularValues()).minCoeff();
-        }
-                            
-    }else{
-        if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
-            Eigen::MatrixXd Th = H;
-            
-            Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
-            double V = (solver_V.singularValues()).minCoeff();
+	if (l <= (P-1)){
+		if ((red_Y.transpose()-H.block(0,l*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+			H.block(0,l*NJ,P,NJ) = red_Y.transpose();
+			Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+			double V_max = (solver_V.singularValues()).minCoeff();
+		}
+							
+	}else{
+		if ((red_Y.transpose()-H.block(0,(P-1)*NJ,P,NJ)).norm()/(red_Y.transpose()).norm() >= epsilon){
+			Eigen::MatrixXd Th = H;
+			
+			Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_V(H*H.transpose());
+			double V = (solver_V.singularValues()).minCoeff();
 
-            Eigen::VectorXd S(P);
-            for (int i = 0; i < P; ++i) {
-                H.block(0,i*NJ,P,NJ) = red_Y.transpose();
-                Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
-                S(i) = (solver_S.singularValues()).minCoeff();
-                H = Th;
-            }
-            Vmax = S.maxCoeff();
-            Eigen::Index m; //index max eigvalues 
-            S.maxCoeff(&m);
-            
+			Eigen::VectorXd S(P);
+			for (int i = 0; i < P; ++i) {
+				H.block(0,i*NJ,P,NJ) = red_Y.transpose();
+				Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_S(H*H.transpose());
+				S(i) = (solver_S.singularValues()).minCoeff();
+				H = Th;
+			}
+			Vmax = S.maxCoeff();
+			Eigen::Index m; //index max eigvalues 
+			S.maxCoeff(&m);
+			
 
-            if(Vmax >= V){
-                H.block(0,m*NJ,P,NJ) = red_Y.transpose();
-            }else{
-                Vmax = V;
-            }
-        }
-    }
+			if(Vmax >= V){
+				H.block(0,m*NJ,P,NJ) = red_Y.transpose();
+			}else{
+				Vmax = V;
+			}
+		}
+	}
 	Eigen::JacobiSVD<Eigen::Matrix<double, PARAM, PARAM>> solver_cond(H*H.transpose());
 	double lmax = (solver_cond.singularValues()).minCoeff();
-    return (lmax/Vmax);
+	return (lmax/Vmax);
 }
 
-    Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q){
-       
-        Eigen::Matrix<double, NJ, 4> DH; // matrice D-H
-        Eigen::Affine3d T0i = Eigen::Affine3d::Identity();
-        Eigen::Affine3d T0n; 
-        Eigen::Matrix<double, 4, 4> T = Eigen::Matrix<double, 4, 4>::Identity();
+Eigen::Affine3d computeT0EE(const Eigen::VectorXd& q){
+	
+	// Eigen::Matrix<double, NJ, 4> DH; // matrice D-H
+	// Eigen::Affine3d T0i = Eigen::Affine3d::Identity();
+	// Eigen::Affine3d T0n; 
+	// Eigen::Matrix<double, 4, 4> T = Eigen::Matrix<double, 4, 4>::Identity();
 
-        // Riempio sezione distanza "a"
-        DH.block(0,0,NJ,1) << 0, 0, 0,0.0825, -0.0825, 0, 0.088;   
-        // Riempio sezione angolo "alpha"
-        DH.block(0,1,NJ,1) << 0, -M_PI_2, M_PI_2, M_PI_2, -M_PI_2, M_PI_2, M_PI_2;
-        // Riempio sezione distanza "d"
-        DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107; // verificato che questi valori corrispondono a DH che usa il robot in simulazione
-        // Riempio sezione angolo giunto "theta"
-        DH.block(0,3,NJ,1) = q;     
+	// // Riempio sezione distanza "a"
+	// DH.block(0,0,NJ,1) << 0, 0, 0,0.0825, -0.0825, 0, 0.088;   
+	// // Riempio sezione angolo "alpha"
+	// DH.block(0,1,NJ,1) << 0, -M_PI_2, M_PI_2, M_PI_2, -M_PI_2, M_PI_2, M_PI_2;
+	// // Riempio sezione distanza "d"
+	// DH.block(0,2,NJ,1) << 0.3330, 0, 0.3160, 0, 0.384, 0, 0.107; // verificato che questi valori corrispondono a DH che usa il robot in simulazione
+	// // Riempio sezione angolo giunto "theta"
+	// DH.block(0,3,NJ,1) = q;     
 
-        for (int i = 0; i < NJ; ++i)
-        {
-            double a_i = DH(i,0);
-            double alpha_i = DH(i,1);
-            double d_i = DH(i,2);
-            double q_i = DH(i,3);
+	// for (int i = 0; i < NJ; ++i)
+	// {
+	// 	double a_i = DH(i,0);
+	// 	double alpha_i = DH(i,1);
+	// 	double d_i = DH(i,2);
+	// 	double q_i = DH(i,3);
 
-            T << cos(q_i), -sin(q_i), 0, a_i,
-                sin(q_i)*cos(alpha_i), cos(q_i)*cos(alpha_i), -sin(alpha_i), -sin(alpha_i)*d_i,
-                sin(q_i)*sin(alpha_i), cos(q_i)*sin(alpha_i), cos(alpha_i), cos(alpha_i)*d_i,
-                0, 0, 0, 1;
+	// 	T << cos(q_i), -sin(q_i), 0, a_i,
+	// 		sin(q_i)*cos(alpha_i), cos(q_i)*cos(alpha_i), -sin(alpha_i), -sin(alpha_i)*d_i,
+	// 		sin(q_i)*sin(alpha_i), cos(q_i)*sin(alpha_i), cos(alpha_i), cos(alpha_i)*d_i,
+	// 		0, 0, 0, 1;
 
-            // Avanzamento perice i 
-            T0i.matrix() = T0i.matrix()*T;
-        }
-        T0n = T0i;
-        /*If EE system differs from frame n(Like frame hand true robot)*/
-        // Eigen::Affine3d TnEE;
-        // Eigen::Vector3d dnEE;
-        // dnEE << 0.13, 0 , 0.035;
-        // T0n.translation() = T0i*dnEE;
-        
-        return T0n;
-    }
+	// 	// Avanzamento perice i 
+	// 	T0i.matrix() = T0i.matrix()*T;
+	// }
+	// T0n = T0i;
+	// /*If EE system differs from frame n(Like frame hand true robot)*/
+	// // Eigen::Affine3d TnEE;
+	// // Eigen::Vector3d dnEE;
+	// // dnEE << 0.13, 0 , 0.035;
+	// // T0n.translation() = T0i*dnEE;
+	
+	fastRegMat.setArguments(q, q, q, q)
+	Eigen::Affine3d T0n(fastRegMat.computeT0EE())
+	
+	return T0n;
+}
 
 
 int main(int argc, char **argv)
@@ -507,7 +510,7 @@ int main(int argc, char **argv)
 	ros::Publisher pub_error = node_handle.advertise<franka_msgs::ErrorRecoveryActionGoal>(robot_name + "/franka_control/error_recovery/goal", 1);
 	ros::Publisher pub_traj_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("/CT_mod_controller_OS/command_cartesian", 1);
 	ros::Publisher pub_rpy = node_handle.advertise<panda_controllers::rpy>("/CT_mod_controller_OS/command_rpy", 1);
-		ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
+	ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/CT_mod_controller_OS/command_joints_opt", 1);
 	ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/CT_mod_controller_OS/adaptiveFlag", 1);
 	// ros::Publisher pub_cmd_opt = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_mod_controller/command_joints_opt", 1);
 	// ros::Publisher pub_flagAdaptive = node_handle.advertise<panda_controllers::flag>("/computed_torque_mod_controller/adaptiveFlag", 1);
@@ -523,8 +526,8 @@ int main(int argc, char **argv)
 	/*Resizie*/
 	opt_flag_msg.flag = false;
 	traj_opt_msg.position.resize(NJ);
-    traj_opt_msg.velocity.resize(NJ);
-    traj_opt_msg.effort.resize(NJ);
+	traj_opt_msg.velocity.resize(NJ);
+	traj_opt_msg.effort.resize(NJ);
 
 	srand(time(NULL));
 	bool first_time = true;
@@ -887,7 +890,7 @@ int main(int argc, char **argv)
 						traj_joints.pos(i) = q_c(i) + 0.30*sin(x[i]*t);     
 						traj_joints.vel(i) = x[i]*0.30*cos(x[i]*t);
 						traj_joints.acc(i) = -x[i]*x[i]*0.30*sin(x[i]*t);      
-        			}
+					}
 				}
 			
 

@@ -3,7 +3,7 @@ project(panda_controllers)
 
 set(CMAKE_BUILD_TYPE Release)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # SET(NLOPT_LIBRARY "/home/tommy/nlopt-2.7.1/build/libnlopt.so")
 # SET(NLOPT_LIBRARIES "/home/tommy/nlopt-2.7.1/build/libnlopt.so.0" "/home/tommy/nlopt-2.7.1/build//libnlopt.so.0.10.0")
