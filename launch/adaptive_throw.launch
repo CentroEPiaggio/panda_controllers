@@ -30,9 +30,9 @@
     <arg name="t4"      value="/CT_mod_controller_OS/logging"/>
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
-    <arg name="bag_path"    default="/home/franka/darko_ws/src/adaptive_control/panda_controllers/bagfiles/ICL_bag"/>
+    <!-- <arg name="bag_path"    default="/home/franka/darko_ws/src/adaptive_control/panda_controllers/bagfiles/ICL_bag"/>
     <arg name="bag_name"    default="$(arg bag_path)/rosbag_ICL_generics"/>
     <arg name="duration"    default="110"/>
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/> -->
     
-    <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)"/>
 </launch>
