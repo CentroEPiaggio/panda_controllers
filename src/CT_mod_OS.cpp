@@ -3,6 +3,7 @@
 
 #include <pluginlib/class_list_macros.h>
 #include <panda_controllers/CT_mod_OS.h> //library of the computed torque 
+#include <signal.h>
 
 using namespace std;
 namespace panda_controllers{
@@ -10,7 +11,10 @@ namespace panda_controllers{
 	bool CTModOS::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
 	{
 		this->cvc_nh = node_handle; 
- 
+		
+		// Initialize Ctrl-C
+		// signal(SIGINT, this->signal_callback_handler);
+
 		std::string arm_id; //checking up the arm id of the robot     
 		if (!node_handle.getParam("arm_id", arm_id)) {
 			ROS_ERROR("Computed Torque: Could not get parameter arm_id!");
@@ -710,6 +714,13 @@ namespace panda_controllers{
 		// double lmax = (solver_cond.singularValues()).maxCoeff();
 		// return (lmax/Vmax);
 		return Vmax;
+	}
+
+	// Define the function to be called when ctrl-c (SIGINT) is sent to process
+	void CTModOS::signal_callback_handler(int signum){
+		cout << "Caught signal " << signum << endl;
+		// Terminate program
+		exit(signum);
 	}
 	
 	/* Check for the effort commanded */

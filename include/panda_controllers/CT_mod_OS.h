@@ -341,6 +341,9 @@ private:
     ros::Publisher pub_config_;
     ros::Publisher pub_opt_;
 
+    // SIGINT //
+    void signal_callback_handler(int signum);
+
     /* Setting Command Callback*/
     void setCommandCB(const desTrajEE::ConstPtr& msg);
     void setCommandCBJ(const sensor_msgs::JointStateConstPtr& msg);

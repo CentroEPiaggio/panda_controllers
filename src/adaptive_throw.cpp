@@ -62,12 +62,12 @@ Eigen::Matrix<double, 7, 1> q_start;
 Eigen::Matrix<double, 7, 1> q_saved;
 
 Eigen::Vector3d p;
-Eigen::Vector3d pose;
-Eigen::Matrix<double, 4, 1> orient;
+Eigen::Vector3d or_rpy;
+Eigen::Matrix<double, 4, 1> or_quat;
 Eigen::Vector3d p_start;	// used to save starting point of tragectory (go to start)
 Eigen::Vector3d p_end;	// used to save starting point of tragectory (go to start)
-Eigen::Vector3d pose_start;	// used to save starting point of tragectory (go to start)
-Eigen::Vector3d pose_end;	// used to save starting orientation of EE(go to start)		
+Eigen::Vector3d rpy_start;	// used to save starting point of tragectory (go to start)
+Eigen::Vector3d rpy_end;	// used to save starting orientation of EE(go to start)		
 
 Eigen::Quaterniond q_interpolated;
 Eigen::Vector3d angular_velocity;
@@ -105,12 +105,12 @@ struct traj_struct_cartesian{
 };
 traj_struct_cartesian traj_cartesian;
 
-struct pose_struct_cartesian{
+struct rpy_struct_cartesian{
 	Eigen::Vector3d rpy;
 	Eigen::Vector3d angular_vel;
 	Eigen::Vector3d angular_acc;
 };
-pose_struct_cartesian pose_cartesian;
+rpy_struct_cartesian rpy_cartesian;
 
 
 struct UserData {
@@ -135,7 +135,7 @@ void signal_callback_handler(int signum){
 
 // void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
 //   pos << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-//   orient << msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z;
+//   or_quat << msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z;
 // }
 
 void jointsCallback( const sensor_msgs::JointStateConstPtr& msg ){
@@ -189,7 +189,7 @@ Eigen::Quaterniond rpyToQuaternion(double roll, double pitch, double yaw, bool t
     return q;
 }
 
-pose_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
+rpy_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vector3d& rpy_desired, double t, double t_f){
 	
 	// Convertire gli angoli Eulero in quaternioni
     Eigen::Quaterniond q_current = rpyToQuaternion(rpy_current[0], rpy_current[1], rpy_current[2], false);
@@ -227,7 +227,7 @@ pose_struct_cartesian slerp(const Eigen::Vector3d& rpy_current, const Eigen::Vec
     Eigen::Vector3d euler_angles = q_interpolated.toRotationMatrix().eulerAngles(0, 1, 2);
 
 	// cout << euler_angles << endl;
-    pose_struct_cartesian com;
+    rpy_struct_cartesian com;
 	com.rpy = euler_angles;
 	com.angular_vel = angular_velocity; 
 	com.angular_acc = angular_acceleration;
@@ -266,20 +266,19 @@ void frankaCallback(const franka_msgs::FrankaStateConstPtr& msg){
 	Eigen::Quaterniond quaternion(rotation);
 	quaternion.normalize();
 	p << msg->O_T_EE[12], msg->O_T_EE[13], msg->O_T_EE[14];
-	pose = rotation.eulerAngles(0,1,2);
+	or_rpy = rotation.eulerAngles(0,1,2);
 	Eigen::Vector4d coeffs = quaternion.coeffs();
-	orient(0) = coeffs(0);
-	orient(1) = coeffs(1);
-	orient(2) = coeffs(2);
-	orient(3) = coeffs(3);
+	or_quat(0) = coeffs(0);
+	or_quat(1) = coeffs(1);
+	or_quat(2) = coeffs(2);
+	or_quat(3) = coeffs(3);
 	// q = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->q).data());
 	init_p = true;
 	if (!ready){
 		p_start = p;
 		p_end = p;
-		pose_start = pose;
-		cout << pose_start << endl;
-		pose_end = pose_start;
+		rpy_start = or_rpy;
+		rpy_end = rpy_start;
 		ready = true;
 	}
 }
@@ -436,12 +435,12 @@ int main(int argc, char **argv)
 	float TF_THROW_EST;
 	std::vector<double> Q0_THROW;
 	std::vector<double> P0_PICK;
-	std::vector<double> POSE0_PICK;
-	std::vector<double> POSE0_THROW;
+	std::vector<double> RPY0_PICK;
+	std::vector<double> RPY0_THROW;
 	std::vector<double> P0_THROW;
 	std::vector<double> QF_THROW;
 	std::vector<double> PF_THROW;
-	std::vector<double> POSEF_THROW;
+	std::vector<double> RPYF_THROW;
 	std::vector<double> DPF_THROW;
 	std::vector<double> P0_THROW_EST;
 	std::vector<double> PF_THROW_EST;
@@ -471,11 +470,11 @@ int main(int argc, char **argv)
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/P0_THROW", P0_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/POSE0_THROW", POSE0_THROW))
+	if(!node_handle.getParam("/throw_node/RPY0_THROW", RPY0_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/POSE0_PICK", POSE0_PICK))
+	if(!node_handle.getParam("/throw_node/RPY0_PICK", RPY0_PICK))
 		ROS_ERROR("Failed to get parameter from server.");
-	if(!node_handle.getParam("/throw_node/POSEF_THROW", POSEF_THROW))
+	if(!node_handle.getParam("/throw_node/RPYF_THROW", RPYF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
 	if(!node_handle.getParam("/throw_node/PF_THROW", PF_THROW))
 		ROS_ERROR("Failed to get parameter from server.");
@@ -513,9 +512,9 @@ int main(int argc, char **argv)
 	}
 
 	/*Inizializzo comando rpy*/
-	pose_cartesian.rpy.setZero(); 
-	pose_cartesian.angular_vel.setZero(); 
-	pose_cartesian.angular_acc.setZero();
+	rpy_cartesian.rpy.setZero(); 
+	rpy_cartesian.angular_vel.setZero(); 
+	rpy_cartesian.angular_acc.setZero();
 
 	// ----- Subscriber and Publishers ----- //
 	// ros::Publisher pub_traj = node_handle.advertise<panda_controllers::Commands>(robot_name + "/computed_torque_controller/command", 1000);
@@ -560,7 +559,7 @@ int main(int argc, char **argv)
 	bool set_rot = false;
 
 	double tf = 3.0;
-	double rate = RATE;
+	// double rate = RATE;
 	double tf_throw = TF_THROW;
 	double tf_throw_est = TF_THROW_EST;
 	double tf_brake = TF_BRAKE;
@@ -576,12 +575,12 @@ int main(int argc, char **argv)
 	zero_j.setZero();
 	Eigen::Matrix<double, 7, 1> q0_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(Q0_THROW.data(), Q0_THROW.size());
 	Eigen::Vector3d p0_pick = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_PICK.data(), P0_PICK.size());
-	Eigen::Vector3d pose0_pick = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_PICK.data(), POSE0_PICK.size());
+	Eigen::Vector3d rpy0_pick = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(RPY0_PICK.data(), RPY0_PICK.size());
 	Eigen::Matrix<double, 7, 1> qf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(QF_THROW.data(), QF_THROW.size());
 	Eigen::Vector3d pf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(PF_THROW.data(), PF_THROW.size());
-	Eigen::Vector3d posef_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSEF_THROW.data(), POSEF_THROW.size());
+	Eigen::Vector3d rpyf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(RPYF_THROW.data(), RPYF_THROW.size());
 	Eigen::Vector3d p0_throw= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW.data(), P0_THROW.size());
-	Eigen::Vector3d pose0_throw= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(POSE0_THROW.data(), POSE0_THROW.size());
+	Eigen::Vector3d rpy0_throw= Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(RPY0_THROW.data(), RPY0_THROW.size());
 	Eigen::Vector3d dpf_throw = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(DPF_THROW.data(), DPF_THROW.size());
 	// Eigen::Vector3d p0_throw_est = Eigen::Map<Eigen::VectorXd,Eigen::Unaligned>(P0_THROW_EST.data(), P0_THROW_EST.size());
 	Eigen::Vector3d p0_throw_est = p0_throw;
@@ -591,7 +590,7 @@ int main(int argc, char **argv)
 	Eigen::Vector3d pf_brake_est;
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
 	Eigen::Vector3d p_saved;	// starting point of desidered position
-	Eigen::Vector3d pose_saved;	// starting point of desidered pose
+	Eigen::Vector3d rpy_saved;	// starting point of desidered or_rpy
 
 	traj_struct_cartesian traj_est_start;
 	traj_struct_cartesian traj_est_end;
@@ -607,7 +606,6 @@ int main(int argc, char **argv)
 	signal(SIGINT, signal_callback_handler);
 	// SET SLEEP TIME 1000 ---> 1 kHz
 	ros::Rate loop_rate(RATE);
-
 
 	const double q_lim_upp[] = {2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973};
 	const double q_lim_low[] = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
@@ -656,10 +654,11 @@ int main(int argc, char **argv)
 			smooth_flag = true;
 			while (!ready) {
 				ros::spinOnce();
-				traj_joints.pos = q_start;
-				traj_joints.vel.setZero();
-				traj_joints.acc.setZero();
+				loop_rate.sleep();
 			}
+			traj_joints.pos = q_start;
+			traj_joints.vel.setZero();
+			traj_joints.acc.setZero();
 			if (choice == 0){
 				cout<<"what:  (1: Position,  2: Orientation,  0: Cancel)"<<endl;
 				cin>>choice_2;
@@ -669,16 +668,14 @@ int main(int argc, char **argv)
 					cout<<"z:"; cin>>p_saved(2);
 					set_pos = true;
 				}else if (choice_2 == 2){
-					cout<<"roll:"; cin>>pose_saved(0); 
-					cout<<"pitch:"; cin>>pose_saved(1); 
-					cout<<"yaw:"; cin>>pose_saved(2);
+					cout<<"roll:"; cin>>rpy_saved(0); 
+					cout<<"pitch:"; cin>>rpy_saved(1); 
+					cout<<"yaw:"; cin>>rpy_saved(2);
 					set_rot = true;
 				} else{
 					executing = 0;
 				}
-			}
-		
-			if (choice == 1){
+			}else if (choice == 1){
 				// --- save q, p --- //
 				init_q = false;
 				init_p = false;
@@ -687,13 +684,13 @@ int main(int argc, char **argv)
 				}
 				q_saved = q;
 				p_saved = p;
-				pose_saved = pose;
+				rpy_saved = or_rpy;
 				set_pos = true;
 				set_rot = true;
 
 				cout<<"q: ["<<q[0]<<", "<<q[1]<<", "<<q[2]<<", "<<q[3]<<", "<<q[4]<<", "<<q[5]<<", "<<q[6]<<"]"<<endl;
-				cout<<"ee_pose: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<", "<<orient[0]<<", "<<orient[1]<<", "<<orient[2]<<", "<<orient[3]<<"]"<<endl;
-				cout<<"rpy:["<<pose[0]<<", "<<pose[1]<<", "<<pose[2]<<"]"<<endl;
+				cout<<"ee_pose: ["<<p[0]<<", "<<p[1]<<", "<<p[2]<<", "<<or_quat[0]<<", "<<or_quat[1]<<", "<<or_quat[2]<<", "<<or_quat[3]<<"]"<<endl;
+				cout<<"rpy:["<<or_rpy[0]<<", "<<or_rpy[1]<<", "<<or_rpy[2]<<"]"<<endl;
 				cout<<"saved!"<<endl;
 			}else if (choice == 2){
 				// --- set tf--- //
@@ -709,7 +706,7 @@ int main(int argc, char **argv)
 					choice = 0;
 				}else {
 					p_start = p_end;
-					pose_start = pose_end;
+					rpy_start = rpy_end;
 					/*Reset joint position*/
 					ready2 = false;
 					ros::spinOnce();
@@ -718,7 +715,7 @@ int main(int argc, char **argv)
 					if(joint_move){
 						q_start = q_end;
 						p_start = computeT0EE(q_start).translation();
-						pose_start = (computeT0EE(q_start).linear()).eulerAngles(0,1,2);
+						rpy_start = (computeT0EE(q_start).linear()).eulerAngles(0,1,2);
 						joint_move = false;
 					}
 
@@ -727,22 +724,22 @@ int main(int argc, char **argv)
 
 					if (choice_2 == 1){
 						p_end = p0_pick;
-						pose_end = pose0_pick;
+						rpy_end = rpy0_pick;
 						tf = tf + 2;
 						// opt_flag_msg.flag = true;
 						// q_end = q0_throw;
 						// joint_move = true;
-						// pose_end = pose_start+pose_saved;
+						// rpy_end = rpy_start+rpy_saved;
 					}
 					else if (choice_2 == 2){
 						p_end = pf_throw;
-						// pose_end = posef_throw;
-						// pose_end = pose_start+pose_saved;
-						// cout << pose_end << endl;
+						// rpy_end = rpyf_throw;
+						// rpy_end = rpy_start+rpy_saved;
+						// cout << rpy_end << endl;
 					}
 					else if (choice_2 == 3) {
 						p_end = p0_throw;
-						pose_end = pose0_throw;
+						rpy_end = rpy0_throw;
 					}	
 					else if (choice_2 == 4) {
 						opt_flag_msg.flag = true;
@@ -751,9 +748,9 @@ int main(int argc, char **argv)
 					}
 					else if (choice_2 == 5) {
 						p_end = p_start + p_saved;
-						pose_end = pose_start+pose_saved;
+						rpy_end = rpy_start+rpy_saved;
 						p_saved.setZero();
-						pose_saved.setZero();
+						rpy_saved.setZero();
 					}
 					else if (choice_2 == 6) {
 						if (set_pos)
@@ -761,15 +758,15 @@ int main(int argc, char **argv)
 							p_saved.setZero();
                             // cout << p_saved << endl;
 						if (set_rot)
-							pose_end = pose_saved;
-							pose_saved.setZero();
-                            // cout << pose_saved << endl;
+							rpy_end = rpy_saved;
+							rpy_saved.setZero();
+                            // cout << rpy_saved << endl;
 					}
 					else if (choice_2 == 7){
 						p_end = p_start+offset1;
-						// pose_end = posef_throw;
-						// pose_end = pose_start+pose_saved;
-						// cout << pose_end << endl;
+						// rpy_end = rpyf_throw;
+						// rpy_end = rpy_start+rpy_saved;
+						// cout << rpy_end << endl;
 					}
 					else {
 						executing = 0;
@@ -802,7 +799,7 @@ int main(int argc, char **argv)
 				pub_impedanceGains.publish(gains_msg);
 			}else if (choice == 5){
 				// --- estimate --- //
-				cout<<"estimation type:   (1: lissajous,  2: min-jerk,  3:traj_opt ,0: cancel) "<<endl;
+				cout<<"estimation type:   (1: lissajous,  2: min-jerk,  3:traj_opt,  0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 1){
 					// trajectory center
@@ -912,7 +909,7 @@ int main(int argc, char **argv)
 						}
 						traj_joints = interpolator_joints(q_start, zero_j, zero_j, q_end, zero_j, zero_j, tf_0, t);
 						/*ORIENTATION COMMAND SLERP*/
-						pose_cartesian = slerp(pose_start, pose_end, t, tf);
+						rpy_cartesian = slerp(rpy_start, rpy_end, t, tf);
 						
 					}else{
 						traj_cartesian = interpolator_cartesian(p_end+offset2, zero, zero, p_end, zero, zero, tf-tf_0, t-tf_0);
@@ -1051,7 +1048,6 @@ int main(int argc, char **argv)
                     }
                     // count = count+1;
 				}
-			
 
 				// ----- publishing ----- //
 				if (opt_flag_msg.flag){
@@ -1076,15 +1072,15 @@ int main(int argc, char **argv)
 					traj_msg.acceleration.y = traj_cartesian.acc(1);
 					traj_msg.acceleration.z = traj_cartesian.acc(2);
 
-					rpy_msg.angle[0] = pose_cartesian.rpy(0); // roll
-					rpy_msg.angle[1] = pose_cartesian.rpy(1); // pitch
-					rpy_msg.angle[2] = pose_cartesian.rpy(2); //yaw
-					// rpy_msg.omega[0] = pose_cartesian.angular_vel(0); 
-					// rpy_msg.omega[1] = pose_cartesian.angular_vel(1); 
-					// rpy_msg.omega[2] = pose_cartesian.angular_vel(2);
-					// rpy_msg.alpha[0] = pose_cartesian.angular_acc(0); 
-					// rpy_msg.alpha[1] = pose_cartesian.angular_acc(1); 
-					// rpy_msg.alpha[2] = pose_cartesian.angular_acc(2);
+					rpy_msg.angle[0] = rpy_cartesian.rpy(0); // roll
+					rpy_msg.angle[1] = rpy_cartesian.rpy(1); // pitch
+					rpy_msg.angle[2] = rpy_cartesian.rpy(2); //yaw
+					// rpy_msg.omega[0] = rpy_cartesian.angular_vel(0); 
+					// rpy_msg.omega[1] = rpy_cartesian.angular_vel(1); 
+					// rpy_msg.omega[2] = rpy_cartesian.angular_vel(2);
+					// rpy_msg.alpha[0] = rpy_cartesian.angular_acc(0); 
+					// rpy_msg.alpha[1] = rpy_cartesian.angular_acc(1); 
+					// rpy_msg.alpha[2] = rpy_cartesian.angular_acc(2);
 					pub_rpy.publish(rpy_msg);
 					pub_traj_cartesian.publish(traj_msg);  
 				}	
@@ -1108,7 +1104,7 @@ int main(int argc, char **argv)
 				pub_traj_cartesian.publish(traj_msg);  
 			}
 			// p_saved.setZero();
-			// pose_saved.setZero();
+			// rpy_saved.setZero();
 			executing = 0;
 			opt_flag_msg.flag = false;
 			pub_flag_opt.publish(opt_flag_msg);

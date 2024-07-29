@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- launch rosbag and command -->
+<launch>
+    <!-- flag -->
+    <arg name="record_rosbag"       default="false" />
+
+    <!-- rosbag -->
+    <arg name="t1"      value="/CT_mod_controller_OS/current_config"/>
+    <arg name="t2"      value="/CT_mod_controller_OS/debug"/>
+    <arg name="t3"      value="/CT_mod_controller_OS/command_cartesian"/>
+    <arg name="t4"      value="/CT_mod_controller_OS/logging"/>
+    <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
+   
+    <arg name="bag_path"    default="$(find panda_controllers)/bagfiles/bag"/>
+    <arg name="bag_name"    default="$(arg bag_path)/throw1"/>
+    <arg name="duration"    default="110"/>
+    <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)" if="$(arg record_rosbag)" />
+
+</launch>

@@ -10,7 +10,7 @@
      <include file="$(find qb_hand_control)/launch/control_qbhand.launch">
         <arg name="activate_on_initialization" value="true"/>
         <arg name="standalone" value="true"/>
-        <arg name="use_controller_gui" value="true"/>
+        <arg name="use_controller_gui" value="false"/>
      </include>
   </group>  
 </launch>
