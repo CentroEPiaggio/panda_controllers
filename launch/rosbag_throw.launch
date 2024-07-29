@@ -13,7 +13,7 @@
    
     <arg name="bag_path"    default="$(find panda_controllers)/bagfiles/bag"/>
     <arg name="bag_name"    default="$(arg bag_path)/throw1"/>
-    <arg name="duration"    default="110"/>
+    <arg name="duration"    default="600"/>
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen"  args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)" if="$(arg record_rosbag)" />
 
 </launch>

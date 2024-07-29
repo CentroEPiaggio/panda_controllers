@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 	bool smooth_flag = true;
 	bool curr_vel_flag = false;
     int count = 0;
-	double t_smooth = 0;
+	// double t_smooth = 0;
 	Eigen::Matrix<double, 6, 1> Kp;
 	Eigen::Matrix<double, 6, 1> Kv;
 
@@ -589,8 +589,10 @@ int main(int argc, char **argv)
 	Eigen::Vector3d pf_brake;
 	Eigen::Vector3d pf_brake_est;
 	Eigen::Vector3d p_center;	// starting point of estimating trajectory
-	Eigen::Vector3d p_saved;	// starting point of desidered position
-	Eigen::Vector3d rpy_saved;	// starting point of desidered or_rpy
+	Eigen::Vector3d p_saved;	// saved point
+	Eigen::Vector3d p_com;      // starting point of desidered position
+	Eigen::Vector3d rpy_saved;	// saver rpy orientation
+	Eigen::Vector3d rpy_com;	// starting point of desidered or_rpy
 
 	traj_struct_cartesian traj_est_start;
 	traj_struct_cartesian traj_est_end;
@@ -648,7 +650,7 @@ int main(int argc, char **argv)
 
 	while (ros::ok()){
 		if (executing == 0){
-			cout<<"choice:   (0: set command,  1: get pos,  2: set tf,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: reset pos,  8: reset error,  9: close/open hand) "<<endl;
+			cout<<"choice:   (1: get pos,  2: nothing,  3: go to,  4: throw,  5: estimate,  6: adaptive,  7: set,  8: reset,  9: close/open hand) "<<endl;
 			cin>>choice;
 			newAdp_flag_msg.flag = false;
 			smooth_flag = true;
@@ -659,23 +661,7 @@ int main(int argc, char **argv)
 			traj_joints.pos = q_start;
 			traj_joints.vel.setZero();
 			traj_joints.acc.setZero();
-			if (choice == 0){
-				cout<<"what:  (1: Position,  2: Orientation,  0: Cancel)"<<endl;
-				cin>>choice_2;
-				if (choice_2 == 1){
-					cout<<"x:"; cin>>p_saved(0);
-					cout<<"y:"; cin>>p_saved(1);
-					cout<<"z:"; cin>>p_saved(2);
-					set_pos = true;
-				}else if (choice_2 == 2){
-					cout<<"roll:"; cin>>rpy_saved(0); 
-					cout<<"pitch:"; cin>>rpy_saved(1); 
-					cout<<"yaw:"; cin>>rpy_saved(2);
-					set_rot = true;
-				} else{
-					executing = 0;
-				}
-			}else if (choice == 1){
+			if (choice == 1){
 				// --- save q, p --- //
 				init_q = false;
 				init_p = false;
@@ -693,25 +679,23 @@ int main(int argc, char **argv)
 				cout<<"rpy:["<<or_rpy[0]<<", "<<or_rpy[1]<<", "<<or_rpy[2]<<"]"<<endl;
 				cout<<"saved!"<<endl;
 			}else if (choice == 2){
-				// --- set tf--- //
-				cout<<"tf throwing: ";
-				cin>>tf_throw;
-				cout<<"tf estimate: ";
-				cin>>tf_est;
+				// ---  --- //
+				
 			}else if (choice == 3){
 				// --- go to --- //
-				cout<<"where:   (1: p0_pick,  2: pf_throw,  3: p0_throw,  4: config_saved,   5: point_saved(relative),   6: point_saved(absolute),    7: Go up,     0: cancel) "<<endl;
+				cout<<"where:   (1: p0_pick,  2: p0_throw,  3: pf_throw,  4: config_saved,   5: command(relative),   6: point_saved(absolute),    7: Go up,     0: cancel) "<<endl;
 				cin>>choice_2;
-				if (choice_2 == 0){
-					choice = 0;
-				}else {
+				if ((choice_2>=1) &&(choice_2<=7)) {
 					p_start = p_end;
 					rpy_start = rpy_end;
 					/*Reset joint position*/
 					ready2 = false;
-					ros::spinOnce();
+					while (!ready2) {
+						ros::spinOnce();
+						loop_rate.sleep();
+					}
 
-					/*If precendent move is a joint movement*/					
+					/*If last move is a joint movement*/					
 					if(joint_move){
 						q_start = q_end;
 						p_start = computeT0EE(q_start).translation();
@@ -729,68 +713,64 @@ int main(int argc, char **argv)
 						// opt_flag_msg.flag = true;
 						// q_end = q0_throw;
 						// joint_move = true;
-						// rpy_end = rpy_start+rpy_saved;
+						// rpy_end = rpy_start+rpy_com;
 					}
 					else if (choice_2 == 2){
-						p_end = pf_throw;
-						// rpy_end = rpyf_throw;
-						// rpy_end = rpy_start+rpy_saved;
-						// cout << rpy_end << endl;
-					}
-					else if (choice_2 == 3) {
 						p_end = p0_throw;
 						rpy_end = rpy0_throw;
-					}	
-					else if (choice_2 == 4) {
+						// rpy_end = rpyf_throw;
+						// rpy_end = rpy_start+rpy_com;
+						// cout << rpy_end << endl;
+					} else if (choice_2 == 3) {
+						p_end = pf_throw;
+						rpy_end = rpyf_throw;
+					} else if (choice_2 == 4) {
 						opt_flag_msg.flag = true;
 						q_end = q_saved;
 						joint_move = true;
-					}
-					else if (choice_2 == 5) {
-						p_end = p_start + p_saved;
-						rpy_end = rpy_start+rpy_saved;
-						p_saved.setZero();
-						rpy_saved.setZero();
-					}
-					else if (choice_2 == 6) {
+					} else if (choice_2 == 5) {
+						// - command - //
+						p_end = p_start + p_com;
+						rpy_end = rpy_start+rpy_com;
+						p_com.setZero();
+						rpy_com.setZero();
+					} else if (choice_2 == 6) {
 						if (set_pos)
-							p_end = p_saved;
-							p_saved.setZero();
-                            // cout << p_saved << endl;
+							p_end = p_com;
+							// p_com.setZero();
+							set_pos = false;
+                            // cout << p_com << endl;
 						if (set_rot)
-							rpy_end = rpy_saved;
-							rpy_saved.setZero();
-                            // cout << rpy_saved << endl;
-					}
-					else if (choice_2 == 7){
-						p_end = p_start+offset1;
-						// rpy_end = rpyf_throw;
-						// rpy_end = rpy_start+rpy_saved;
-						// cout << rpy_end << endl;
-					}
-					else {
+							rpy_end = rpy_com;
+							// rpy_com.setZero();
+							set_rot = false;
+                            // cout << rpy_com << endl;
+					} else {
 						executing = 0;
 						p_end = p_start;
+						rpy_end = rpy_start;
 					}
 				}
 			}else if (choice == 4){
 				// --- throw --- //
 				first_time = true; // used for hand opening
-				pf_brake = pf_throw + dpf_throw*tf_brake/2;
+				pf_brake = pf_throw;// + dpf_throw*tf_brake/2; // robot brake in the throwing point
 				if(joint_move){
-					p_start = computeT0EE(q).translation();
+					p_start = computeT0EE(q_end).translation();
 					joint_move = false;
 				}else{
 					p_start = p_end;
+					rpy_start = rpy_end;
 				}
 				curr_vel_flag = true;
 				p_end = pf_brake;
+				rpy_end = rpyf_throw;
 				executing = 2;
 				tf = tf_throw + tf_brake;
 
 				/*High gains for throw*/
 				//Set throw gains
-				Kp << 120, 120, 120, 15, 15, 15;
+				Kp << 120, 120, 120, 15, 15, 5;
 				Kv << 25, 25, 25, 2, 2, 2;
 				for(int i = 0; i<6; ++i){
 					gains_msg.stiffness[i] = Kp(i); 
@@ -850,8 +830,32 @@ int main(int argc, char **argv)
 				}
 				pub_flag_resetAdp.publish(newAdp_flag_msg); // publish of reset H and E
 			}else if (choice == 7){
-				ready = false;
+				// - set - //
+				cout<<"command:  (1: Position,  2: Orientation,  3: times,  0: Cancel)"<<endl;
+				cin>>choice_2;
+				if (choice_2 == 1){
+					// - set position - //
+					cout<<"x:"; cin>>p_com(0);
+					cout<<"y:"; cin>>p_com(1);
+					cout<<"z:"; cin>>p_com(2);
+					set_pos = true;
+				}else if (choice_2 == 2){
+					// - set orientation - //
+					cout<<"roll:"; cin>>rpy_com(0); 
+					cout<<"pitch:"; cin>>rpy_com(1); 
+					cout<<"yaw:"; cin>>rpy_com(2);
+					set_rot = true;
+				} else if (choice_2 == 3){
+					// - set times - //
+					cout<<"tf throwing: ";
+					cin>>tf_throw;
+					cout<<"tf estimate: ";
+					cin>>tf_est;
+				}else{
+					executing = 0;
+				}
 			}else if (choice == 8){
+				// - Reset - //
 				franka_msgs::ErrorRecoveryActionGoal error_msg;
 				pub_error.publish(error_msg);
 				ready = false;
@@ -880,7 +884,7 @@ int main(int argc, char **argv)
 			// ----- init trajectory cycle ----- //
 			t_init = ros::Time::now();
 			t = (ros::Time::now() - t_init).toSec();
-			t_smooth = t + 0.010;
+			// t_smooth = t + 0.010;
 			// ----- TRAJECTORY EXECUTION ----- //
 			while (t <= tf){
 				if (executing == 1){
@@ -929,7 +933,7 @@ int main(int argc, char **argv)
 					// --- throwing --- //
 					if (t <= tf_throw){
 						traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, dpf_throw, zero, tf_throw, t);
-						// traj_cartesian = interpolator_cartesian(p_start, zero, zero, pf_throw, zero, zero, tf_throw+tf_brake, t);
+						rpy_cartesian = slerp(rpy_start, rpy_end, t, tf);
 						if (t > tf_throw - HAND_DELAY){
 							if (first_time){
 								qbhand1_move(0.0);
@@ -937,12 +941,12 @@ int main(int argc, char **argv)
 							}
 						}
 					}else{
-						if(curr_vel_flag){
-							curr_vel_flag = false;
-							ros::spinOnce();
-							pf_brake = pf_throw + ee_vel*tf_brake/2;
-							// cout << pf_brake << endl;
-						}
+						// if(curr_vel_flag){
+						// 	curr_vel_flag = false;
+						// 	ros::spinOnce();
+						// 	pf_brake = pf_throw + ee_vel*tf_brake/2;
+						// 	// cout << pf_brake << endl;
+						// }
 						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
 						// traj_cartesian = interpolator_cartesian(pf_throw, zero, zero, pf_brake, zero, zero, tf_throw+tf_brake, t);
 					}
@@ -1103,8 +1107,8 @@ int main(int argc, char **argv)
 				traj_msg.acceleration.z = 0;
 				pub_traj_cartesian.publish(traj_msg);  
 			}
-			// p_saved.setZero();
-			// rpy_saved.setZero();
+			// p_com.setZero();
+			// rpy_com.setZero();
 			executing = 0;
 			opt_flag_msg.flag = false;
 			pub_flag_opt.publish(opt_flag_msg);

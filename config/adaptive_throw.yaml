@@ -1,29 +1,24 @@
 # possible grippers: 0) dh3, 1) hand1, 2) hand2
 throw_node:
   SIMULATION: 0         # use gazebo as robot
-  GRIPPER: 1          # gripper used
+  GRIPPER: 1            # gripper used
   RATE: 1000            # hz of throwing traj
   RATE_CLOSE: 1.9       # hz of closure hand
   HAND_DELAY: 0.5       # 0.2 dh3, 0.6 hand2, 0.4 hand1
   HAND_EFFORT_MAX: 0.15 # 0.15 hand2, 0.8 hand1
-  # Q0_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw start point configuration (not set)
-  Q0_THROW: [0.0280688, 0.0677844, -0.479592, -2.84265, -0.275138, 2.8663, -0.00172219]
-  QF_THROW: [0.0, -0.78, -0.0, -2.35, -0.0, 1.57, 0.78]   # throw end point configuration (not set)
-  # P0_THROW: [0.446667, -0.0552812, 0.2] #[0.4, -0.4, 0.2]        # must coincide with Q0
-  # P0_THROW: [0.40, -0.21, 0.10]        # must coincide with Q0
-  # P0_PICK: [0.471477, -0.134084, 0.0703911] # Per pallina
-  P0_PICK: [0.452004, -0.16528, 0.030591] # Per bobina
-  RPY0_PICK: [3.01607, -0.0237897, 0.11158] #[0.4, -0.4, 0.2]     
-  RPYF_THROW: [1.70302, 3.1349, -1.55535]
-  PF_THROW: [0.293045, 0.555201, 0.658858] #[0.4, 0.2, 0.5]         # throwing point
-  # PF_THROW: [0.270461, 0.44308, 0.448593]
-  P0_THROW: [0.406667, -0.0552812, 0.2] #[0.4, -0.3, 0.2]
+  Q0_THROW: [1.89582, 0.36526, -0.0403498, -1.80959, -1.75471, 0.8352, -1.26802]
+  QF_THROW: [0.729568, 0.222592, -0.672178, -1.69969, -2.50666, 1.98799, -0.44609]
   P0_EST: [0.446489, -0.196457, 0.289419]           # desired center of estimating point
+  P0_PICK: [0.452004, -0.16528, 0.030591] # Per bobina
+  P0_THROW: [0.272697, 0.364462, 0.310598]
+  PF_THROW: [0.791429, -0.00130922, 0.537626]    # throwing point
+  RPY0_PICK: [3.01607, -0.0237897, 0.11158]
+  RPY0_THROW: [0.463404, 0.973553, -0.60816]
+  RPYF_THROW: [1.04328, 0.58188, -0.484891]
   # RPY0_THROW: [1.92647, -3.10564, -1.94921]
-  RPY0_THROW: [2.26238, 3.05656, -1.43283] 
-  DPF_THROW: [0, 1.5, 0.9]              # throwing velocity
-  TF_THROW: 1.5
-  TF_BRAKE: 0.5
+  DPF_THROW: [1.2, -0.7, 0.9]              # throwing velocity
+  TF_THROW: 0.9
+  TF_BRAKE: 0.3
   TF_EST_BRAKE: 0.5
   TF_EST: 6.0
   PF_THROW_EST: [0.468341, 0.306827, 0.426758] #[0.4, 0.1, 0.4] 

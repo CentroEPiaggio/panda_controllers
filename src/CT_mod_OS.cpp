@@ -441,7 +441,8 @@ namespace panda_controllers{
 
 		/* Error definition in Null Space*/
 		dot_error_q = dot_qr - dot_q_curr;
-		dot_error_Nq0 = -N1*(dot_q_curr);
+		error_Nq0 = q_c - q_curr;
+		dot_error_Nq0 = N1*(error_Nq0-dot_q_curr);
 
 		Kp_xi = Kp;
 		Kv_xi = Kv;
@@ -519,14 +520,15 @@ namespace panda_controllers{
 		// GestXi = J_T_pinv*Gest;
 	  
 		/* command torque to joint */
-		// tau_cmd_old = tau_cmd;
+		tau_cmd_old = tau_cmd;
 		tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
 
 		/*For testing without Adp*/
 		// tau_cmd = M*ddot_qr + C + G + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
 
 		/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
-		tau_cmd = saturateTorqueRate(tau_cmd, tau_J_curr);
+		// tau_cmd = saturateTorqueRate(tau_cmd, tau_J_curr); // works very bad, too much noise in the joint sensors
+		tau_cmd = saturateTorqueRate(tau_cmd, tau_cmd_old);
 
 		/* Set the command for each joint */
 		for (size_t i = 0; i < 7; i++) {

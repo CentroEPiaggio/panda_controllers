@@ -173,6 +173,7 @@ private:
     // Eigen::Matrix<double, NJ, 1> x_eig;
 
     Eigen::Matrix<double, NJ, 1> dot_error_q;
+    Eigen::Matrix<double, NJ, 1> error_Nq0;
     Eigen::Matrix<double, NJ, 1> dot_error_Nq0;
     Eigen::Matrix<double, NJ, 1> error_q;
     Eigen::Matrix<double, NJ, 1> err_param;
