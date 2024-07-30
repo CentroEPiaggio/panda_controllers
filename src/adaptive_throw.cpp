@@ -417,7 +417,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle node_handle;
 	bool start = true;
 	bool smooth_flag = true;
-	bool curr_vel_flag = false;
+	// bool curr_vel_flag = false;
     int count = 0;
 	// double t_smooth = 0;
 	Eigen::Matrix<double, 6, 1> Kp;
@@ -762,24 +762,23 @@ int main(int argc, char **argv)
 					p_start = p_end;
 					rpy_start = rpy_end;
 				}
-				curr_vel_flag = true;
+				// curr_vel_flag = true;
 				p_end = pf_brake;
 				rpy_end = rpyf_throw;
 				executing = 2;
 				tf = tf_throw + tf_brake;
 
-				/*High gains for throw*/
-				//Set throw gains
-				Kp << 120, 120, 120, 15, 15, 5;
-				Kv << 25, 25, 25, 2, 2, 2;
-				for(int i = 0; i<6; ++i){
-					gains_msg.stiffness[i] = Kp(i); 
-					gains_msg.damping[i] = Kv(i);
-				}
-				pub_impedanceGains.publish(gains_msg);
+				// //Set throw gains
+				// Kp << 100, 100, 100, 1, 1, 1;
+				// Kv << 30, 30, 30, 0.5, 0.5, 0.5;
+				// for(int i = 0; i<6; ++i){
+				// 	gains_msg.stiffness[i] = Kp(i); 
+				// 	gains_msg.damping[i] = Kv(i);
+				// }
+				// pub_impedanceGains.publish(gains_msg);
 			}else if (choice == 5){
 				// --- estimate --- //
-				cout<<"estimation type:   (1: lissajous,  2: min-jerk,  3:traj_opt,  0: cancel) "<<endl;
+				cout<<"estimation type:   (1: lissajous,  2: throw,  3:traj_opt,  0: cancel) "<<endl;
 				cin>>choice_2;
 				if (choice_2 == 1){
 					// trajectory center
@@ -800,11 +799,30 @@ int main(int argc, char **argv)
 					// acc_est_end = traj_cartesian.acc;
 					p_end = traj_est_end.pos;
 				} else if (choice_2 == 2){
-					pf_brake_est = pf_throw_est + dpf_throw_est*tf_brake/2;
-					p_start = p_end;
-					p_end = pf_brake_est;
-					executing = 4;
-					tf = tf_0 + tf_throw_est + tf_brake;
+					// --- throw --- //
+					first_time = false; // used for hand opening
+					pf_brake = pf_throw;// + dpf_throw*tf_brake/2; // robot brake in the throwing point
+					if(joint_move){
+						p_start = computeT0EE(q_end).translation();
+						joint_move = false;
+					}else{
+						p_start = p_end;
+						rpy_start = rpy_end;
+					}
+					// curr_vel_flag = true;
+					p_end = pf_brake;
+					rpy_end = rpyf_throw;
+					executing = 2;
+					tf = tf_throw + tf_brake;
+
+					// //Set throw gains
+					// Kp << 100, 100, 100, 1, 1, 1;
+					// Kv << 30, 30, 30, 0.5, 0.5, 0.5;
+					// for(int i = 0; i<6; ++i){
+					// 	gains_msg.stiffness[i] = Kp(i); 
+					// 	gains_msg.damping[i] = Kv(i);
+					// }
+					// pub_impedanceGains.publish(gains_msg);
 				} else if (choice_2 == 3){
 					opt_flag_msg.flag = true;
 					joint_move = true;
@@ -873,14 +891,14 @@ int main(int argc, char **argv)
 				}
 			}
 		}else{
-			//Set high gains
-			Kp <<100, 100, 100, 20, 20, 20;
-			Kv << 25, 25, 25, 2, 2, 2;
-			for(int i = 0; i<6; ++i){
-				gains_msg.stiffness[i] = Kp(i); 
-				gains_msg.damping[i] = Kv(i);
-			}
-			pub_impedanceGains.publish(gains_msg);
+			// //Set high gains
+			// Kp <<100, 100, 100, 20, 20, 20;
+			// Kv << 25, 25, 25, 2, 2, 2;
+			// for(int i = 0; i<6; ++i){
+			// 	gains_msg.stiffness[i] = Kp(i); 
+			// 	gains_msg.damping[i] = Kv(i);
+			// }
+			// pub_impedanceGains.publish(gains_msg);
 			// ----- init trajectory cycle ----- //
 			t_init = ros::Time::now();
 			t = (ros::Time::now() - t_init).toSec();

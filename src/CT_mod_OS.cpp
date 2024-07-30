@@ -175,7 +175,7 @@ namespace panda_controllers{
 			param.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
 			param_frict.segment((FRICTION)*i, FRICTION) << d1, d2;
 		}
-		// param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.014045526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
+		// param_real << 0.73552200000000001, 0.0077354848739999999, -0.0031274395439999996, -0.033394905365999997, 0.01645526761273585, -0.00039510871831575201, -0.00084478578026577801, 0.011624582982752355, -0.00088299513761623202, 0.0049096519673609458;
 
 		/* Param_dyn initial calculation*/
 		fastRegMat.set_inertial_REG(param);
@@ -362,7 +362,7 @@ namespace panda_controllers{
 		// tau_J = tau_cmd;
 		tau_J = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J.data()); // best in simulation
 		F_cont = F_ext; // contact force
-		aggiungiDato(buffer_tau, tau_J,40);
+		aggiungiDato(buffer_tau, tau_J,6);
 		tau_J = calcolaMedia(buffer_tau);
 	
 		/* Update pseudo-inverse of J and its derivative */
@@ -448,9 +448,9 @@ namespace panda_controllers{
 		Kv_xi = Kv;
 		
 		/* Application of FIR to velocity and acceleration(velocity and torque filter no needed for true robot)*/
-		aggiungiDato(buffer_dq, dot_q_curr, 40);
+		aggiungiDato(buffer_dq, dot_q_curr, 6);
 		dot_q_curr = calcolaMedia(buffer_dq);
-		aggiungiDato(buffer_ddq, ddot_q_curr, 40);
+		aggiungiDato(buffer_ddq, ddot_q_curr, 6);
 		ddot_q_curr = calcolaMedia(buffer_ddq);
 
 		/* Update and Compute Regressor */
@@ -460,11 +460,11 @@ namespace panda_controllers{
 		Y_norm = fastRegMat.getReg();
 
 		err_param = Y_norm*param;
-		aggiungiDato(buffer_tau_d, err_param,40);
+		aggiungiDato(buffer_tau_d, err_param,6);
 		err_param = calcolaMedia(buffer_tau_d);
 
 		tau_est = Y_norm.block(0,0,NJ,(NJ-1)*PARAM)*param.segment(0,(NJ-1)*PARAM);
-		aggiungiDato(buffer_q, tau_est, 40);
+		aggiungiDato(buffer_q, tau_est, 6);
 		tau_est = calcolaMedia(buffer_q);
 
 		// ROS_INFO_STREAM(tau_J - Y_norm*param);
@@ -489,15 +489,15 @@ namespace panda_controllers{
 		// Y_mod_tot.block(0,NJ*PARAM,NJ,NJ*FRICTION) = Y_D;
 
 		/*Current parameters link 7*/
-		param7 = param.segment((NJ-1)*PARAM, PARAM);
+		// param7 = param.segment((NJ-1)*PARAM, PARAM);
 		
 		/* Update parameters law*/
 		err_param = tau_cmd - Y_norm*param - Y_D_norm*param_frict;
 		if (update_param_flag){
 			dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param));
 			param = param + dt*dot_param; 
-			dot_param_frict = 0.01*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
-			param_frict = param_frict + dt*dot_param_frict;
+			dot_param_frict = 1*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
+			// param_frict = param_frict + dt*dot_param_frict;
 		}
 
 		/*Reshape parameters vector*/
@@ -521,7 +521,7 @@ namespace panda_controllers{
 	  
 		/* command torque to joint */
 		tau_cmd_old = tau_cmd;
-		tau_cmd = Mest*ddot_qr + Cest*dot_qr + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+		tau_cmd = Mest*ddot_qr + Cest*dot_qr + Dest + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
 
 		/*For testing without Adp*/
 		// tau_cmd = M*ddot_qr + C + G + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
@@ -532,7 +532,7 @@ namespace panda_controllers{
 
 		/* Set the command for each joint */
 		for (size_t i = 0; i < 7; i++) {
-		 	joint_handles_[i].setCommand(tau_cmd[i]-G[i]); // Friction of motor compensation
+		 	joint_handles_[i].setCommand(tau_cmd[i]-G[i]);
 		}
 
 		/* Publish messages */
