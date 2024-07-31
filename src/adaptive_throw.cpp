@@ -865,10 +865,8 @@ int main(int argc, char **argv)
 					set_rot = true;
 				} else if (choice_2 == 3){
 					// - set times - //
-					cout<<"tf throwing: ";
-					cin>>tf_throw;
-					cout<<"tf estimate: ";
-					cin>>tf_est;
+					cout<<"tf movement: ";
+					cin>>tf_0;
 				}else{
 					executing = 0;
 				}
@@ -965,7 +963,18 @@ int main(int argc, char **argv)
 						// 	pf_brake = pf_throw + ee_vel*tf_brake/2;
 						// 	// cout << pf_brake << endl;
 						// }
-						traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
+						// //Set high damping to stop robot
+						Kp <<50, 50, 50, 5, 5, 5;
+						Kv << 70, 70, 70, 2, 2, 2;
+						for(int i = 0; i<6; ++i){
+							gains_msg.stiffness[i] = Kp(i); 
+							gains_msg.damping[i] = Kv(i);
+						}
+						pub_impedanceGains.publish(gains_msg);
+						// traj_cartesian = interpolator_cartesian(pf_throw, dpf_throw, zero, pf_brake, zero, zero, tf_brake, t-tf_throw);
+						traj_cartesian.pos = pf_throw;
+						traj_cartesian.vel = 0*traj_cartesian.vel;
+						traj_cartesian.acc = 0*traj_cartesian.acc;
 						// traj_cartesian = interpolator_cartesian(pf_throw, zero, zero, pf_brake, zero, zero, tf_throw+tf_brake, t);
 					}
 				}else if (executing == 3){
@@ -1134,13 +1143,13 @@ int main(int argc, char **argv)
 			first_time = true;
 
 			/*Return to initial Gains*/
-			// Kp << 60, 60, 60, 20, 20, 20;
-			// Kv << 15, 15, 15, 2, 2, 2;
-			// for(int i = 0; i<6; ++i){
-			// 	gains_msg.stiffness[i] = Kp(i); 
-			// 	gains_msg.damping[i] = Kv(i);
-			// }
-			// pub_impedanceGains.publish(gains_msg);
+			Kp << 30, 30, 30, 5, 5, 5;
+			Kv << 15, 15, 15, 2, 2, 2;
+			for(int i = 0; i<6; ++i){
+				gains_msg.stiffness[i] = Kp(i); 
+				gains_msg.damping[i] = Kv(i);
+			}
+			pub_impedanceGains.publish(gains_msg);
 		}
 		loop_rate.sleep();
 	}

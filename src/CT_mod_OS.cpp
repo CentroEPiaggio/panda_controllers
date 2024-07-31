@@ -206,8 +206,8 @@ namespace panda_controllers{
 		Rlink(9,9) = Rlink(4,4);
 
 		Rlink_fric.setZero();
-		Rlink_fric(0,0) = gainRparam[1];
-		Rlink_fric(1,1) = gainRparam[2];
+		Rlink_fric(0,0) = gainRparam[3];
+		Rlink_fric(1,1) = gainRparam[4];
 
 		/* Inverse matrix R calculation */
 		Rinv.setZero();
@@ -347,7 +347,16 @@ namespace panda_controllers{
 		/* Actual position, velocity and acceleration of the joints */
 		q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 		dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
-		ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt; 
+
+		/* Application of FIR to velocity and acceleration(velocity and torque filter no needed for true robot)*/
+		aggiungiDato(buffer_dq, dot_q_curr, 6);
+		dot_q_curr = calcolaMedia(buffer_dq);
+
+		ddot_q_curr = (dot_q_curr - dot_q_curr_old) / dt;
+
+		aggiungiDato(buffer_ddq, ddot_q_curr, 6);
+		ddot_q_curr = calcolaMedia(buffer_ddq);
+
 		dot_q_curr_old = dot_q_curr; 
 		ddot_q_curr_old = ddot_q_curr;
 	
@@ -436,7 +445,7 @@ namespace panda_controllers{
 			tmp_conversion2.block(3, 3, 3, 3) = -L_tmp.inverse() * L_dot_tmp *L_tmp.inverse();
 
 			dot_qr = J_pinv*tmp_conversion1*ee_vel_cmd_tot; 
-			ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot; 
+			ddot_qr = J_pinv*tmp_conversion1*ee_acc_cmd_tot + J_pinv*tmp_conversion2*ee_vel_cmd_tot +J_dot_pinv*tmp_conversion1*ee_vel_cmd_tot + N1*Kn*(q_c - q_curr - 0.2*dot_q_curr); 
 		}
 
 		/* Error definition in Null Space*/
@@ -446,12 +455,6 @@ namespace panda_controllers{
 
 		Kp_xi = Kp;
 		Kv_xi = Kv;
-		
-		/* Application of FIR to velocity and acceleration(velocity and torque filter no needed for true robot)*/
-		aggiungiDato(buffer_dq, dot_q_curr, 6);
-		dot_q_curr = calcolaMedia(buffer_dq);
-		aggiungiDato(buffer_ddq, ddot_q_curr, 6);
-		ddot_q_curr = calcolaMedia(buffer_ddq);
 
 		/* Update and Compute Regressor */
 		fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
@@ -492,12 +495,13 @@ namespace panda_controllers{
 		// param7 = param.segment((NJ-1)*PARAM, PARAM);
 		
 		/* Update parameters law*/
-		err_param = tau_cmd - Y_norm*param - Y_D_norm*param_frict;
+		// err_param = tau_cmd - Y_norm*param - Y_D_norm*param_frict;
+		err_param = tau_J - Y_norm*param - Y_D_norm*param_frict;
 		if (update_param_flag){
 			dot_param = 0.01*Rinv*(Y_mod.transpose()*dot_error_q + 0.3*Y_norm.transpose()*(err_param));
 			param = param + dt*dot_param; 
-			dot_param_frict = 1*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
-			// param_frict = param_frict + dt*dot_param_frict;
+			dot_param_frict = 0.1*Rinv_fric*(Y_D.transpose()*dot_error_q + 0.3*Y_D_norm.transpose()*(err_param));
+			param_frict = param_frict + dt*dot_param_frict;
 		}
 
 		/*Reshape parameters vector*/
@@ -521,7 +525,7 @@ namespace panda_controllers{
 	  
 		/* command torque to joint */
 		tau_cmd_old = tau_cmd;
-		tau_cmd = Mest*ddot_qr + Cest*dot_qr + Dest + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
+		tau_cmd = Mest*ddot_qr + Cest*dot_qr + Dest + Gest + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error;// + Kn*dot_error_Nq0;
 
 		/*For testing without Adp*/
 		// tau_cmd = M*ddot_qr + C + G + J.transpose()*Kp_xi*error + J.transpose()*Kv_xi*dot_error + Kn*dot_error_Nq0;
