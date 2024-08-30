@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <!-- Launch adaptiveFlag_node -->
 <launch>
-    
-    <group ns="backstepping_controller"> <!-- backstepping_controller, computed_torque_controller -->
-        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" />
+    <arg name="controller_name" default="backstepping_controller"/>
+    <group ns="$(arg controller_name)"> <!-- backstepping_controller, computed_torque_controller -->
+        <node pkg="panda_controllers" type="adaptiveFlag_node" name="adaptiveFlagNode" output="screen" />
     </group>
 
 </launch>

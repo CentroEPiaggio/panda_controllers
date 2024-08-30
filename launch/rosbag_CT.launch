@@ -9,7 +9,7 @@
     <!-- flag -->
     <arg name="command_cartesian"   default="true" />
     <arg name="flag_node"           default="false" />
-    <arg name="clik"                default="$(arg command_cartesian)" />
+    <arg name="clik"                default="false" />
     <arg name="homing"              default="false" />
 
     <!-- rosbag -->
@@ -20,14 +20,14 @@
     <arg name="topics"  value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
    
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="$(arg bag_path)/LAB_CT_1"/>
-    <arg name="duration"    default="65"/>
+    <arg name="bag_name"    default="$(arg bag_path)/backstepping"/>
+    <arg name="duration"    default="60"/>
     
     <!-- rosbag file name -->
     <arg name="gainR"       default="Ri1(1_0.1_0.01_0.001)"/>
-    <arg name="adapt"       default="$(arg flag_node)"/>
+    <arg name="adapt"       default="adp_$(arg flag_node)"/>
     <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
-    <arg name="param_off"   default="p0"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="param_off"   default="pW"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gain"        default="$(arg gainR)"/>
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 

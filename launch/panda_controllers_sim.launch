@@ -23,7 +23,7 @@
 	<!-- to load yaml -->
 	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
 	<group ns="$(arg controller_name)">
-		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/franka_inertial_REG.yaml" />
+		<rosparam command="load" 	file="$(find panda_controllers)/config/inertial/franka_inertial_REG_pW.yaml" />
 	</group>
 
 	<!-- to load gazebo (and rviz) -->

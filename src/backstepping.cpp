@@ -297,8 +297,8 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 		}
 	}
 	// cout<<"ok8"<<endl;
-	if (update_param_flag && !saturate_s_flag){
-		dot_param = Rinv*Yr.transpose()*s_temp;
+	if (update_param_flag){// && !saturate_s_flag){
+		dot_param = Rinv*Yr.transpose()*s;//_temp;
 /* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
 		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
 		param = param + dt*dot_param;

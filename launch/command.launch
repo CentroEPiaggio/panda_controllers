@@ -10,7 +10,7 @@
 
     <!-- flag -->
     <arg name="clik"            default="false" />
-    <arg name="flag_node"       default="false" />
+    <arg name="flag_node"       default="true" />
 
     <group ns="$(arg controller_name)">
         <!-- load yaml -->
