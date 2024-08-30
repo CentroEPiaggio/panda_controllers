@@ -3,12 +3,12 @@
 	<name>panda_controllers</name>
 	<version>1.0.0</version>
 	<description>panda_controllers provides some ROS controllers for using Franka Emika Panda robots with ros_control</description>
-	<maintainer email="georgejose.pollayil@phd.unipi.it">George Jose Pollayil</maintainer>
+	<maintainer email="giorgio.simonini@phd.unipi.it">Giorgio Simonini</maintainer>
 	<license>Apache 2.0</license>
 
 	<url type="repository">https://github.com/CentroEPiaggio/panda_controllers</url>
 	<url type="bugtracker">https://github.com/CentroEPiaggio/panda_controllers/issues</url>
-	<author>George Jose Pollayil</author>
+	<author>Giorgio Simonini</author>
 
 	<buildtool_depend>catkin</buildtool_depend>
 
@@ -35,7 +35,7 @@
 	<exec_depend>franka_control</exec_depend>
 	<exec_depend>franka_description</exec_depend>
 	<exec_depend>message_runtime</exec_depend>
-	<exec_depend>panda_moveit_config</exec_depend>
+	<!-- <exec_depend>panda_moveit_config</exec_depend> -->
 	<exec_depend>rospy</exec_depend>
 
 	<export>

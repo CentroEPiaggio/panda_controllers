@@ -19,8 +19,8 @@
     <arg name="topics"      value="$(arg t1) $(arg t2) $(arg t3) $(arg t4)"/>
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
-    <arg name="bag_name"    default="/media/franka/PANDA_LAZY/lab_13ottobre/video/hand/LAB_hand_2_LINK7"/>
-    <arg name="duration"    default="70"/>
+    <arg name="bag_name"    default="backstepping"/>
+    <arg name="duration"    default="60"/>
     
     <!-- rosbag file name -->
     <arg name="gainLambda"  default="L(2.0_2.0)"/>
@@ -33,8 +33,8 @@
     
     
     <node pkg="rosbag" type="record" name="bag_recorder" output="screen" 
-        args="--duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg param_off) $(arg topics)">
-    </node><!-- duration=$(arg duration) -O $(arg bag_name)_$(arg traj_type)_$(arg adapt)_$(arg gain)_$(arg param_off) $(arg topics)" -->
+        args="--duration=$(arg duration) -O $(arg bag_name) $(arg topics)">
+    </node>
 
     <group ns="backstepping_controller">
         <node pkg="$(arg package)" type="adaptiveFlag_node" name="adaptiveFlag_name" output="screen" if="$(arg flag_node)" />

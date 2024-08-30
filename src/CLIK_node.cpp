@@ -9,11 +9,11 @@
 
 #include <sensor_msgs/JointState.h>
 
-#include "panda_controllers/point.h"
-#include "panda_controllers/desTrajEE.h"
+#include "point.h"
+#include "desTrajEE.h"
 
-#include "utils/ThunderPanda.h"
-#include "utils/utils_cartesian.h"
+#include "ThunderPanda.h"
+#include "utils_cartesian.h"
 
 #define NJ 7
 

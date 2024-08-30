@@ -10,7 +10,7 @@
 
   <!-- load initial guess parameters -->
   <group ns="backstepping_controller">
-    <rosparam command="load" 	file="$(find panda_controllers)/config/inertial/inertial_DH_REG.yaml" />
+    <rosparam command="load" 	file="$(find panda_controllers)/config/inertial/franka_inertial_REG.yaml" />
   </group>
   <!-- load controller parameters -->
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />

@@ -10,7 +10,7 @@
 //#include <geometry_msgs/Point.h>
 #include "panda_controllers/point.h"
 #include "panda_controllers/desTrajEE.h"
-#include "utils/gen_traj_fun.h"
+#include "gen_traj_fun.h"
 
 typedef Eigen::Vector3d vec3d;
 

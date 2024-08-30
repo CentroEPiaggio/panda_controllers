@@ -1,7 +1,8 @@
 //various library on which we work on
 #include <pluginlib/class_list_macros.h>
-#include <panda_controllers/backstepping.h> //library of the Backstepping
+#include <backstepping.h> //library of the Backstepping
 
+using namespace std;
 namespace panda_controllers{
 
 bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle)
@@ -14,6 +15,11 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	if (!node_handle.getParam("arm_id", arm_id)) {
 		ROS_ERROR("Backstepping: Could not get parameter arm_id!");
 		return false;
+	}
+
+	if (!node_handle.getParam("logging", logging)) {
+		ROS_ERROR("Backstepping: Could not get parameter logging, set to 0!");
+		logging = true;
 	}
 
 	franka_hw::FrankaModelInterface* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
@@ -137,13 +143,9 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &Backstepping::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &Backstepping::setFlagUpdate, this);   //it verify with the callback that the command has been received
-	this->pub_err_ = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
+	this->pub_log = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
-	
-	/* Initialize regressor object */
-
-	fastRegMat.init(NJ);
-	
+	// cout<<"init ok"<<endl;
 	return true;
 }
 
@@ -152,14 +154,19 @@ void Backstepping::starting(const ros::Time& time)
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
 	robot_state = state_handle_->getRobotState();
-	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+	// T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+
 	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
 
+	frankaRobot.set_q(q_curr);
+	frankaRobot.set_dq(dot_q_curr);
+	T0EE = frankaRobot.get_T_0_ee();
+
+
 	/* Secure initialization command */
-	
-	ee_pos_cmd = T0EE.translation();
-	ee_rot_cmd = T0EE.linear();
+	ee_pos_cmd = T0EE.block<3,1>(0,3);
+	ee_rot_cmd = T0EE.block<3,3>(0,0);
 	
 	ee_vel_cmd.setZero();
 	ee_acc_cmd.setZero();
@@ -180,23 +187,34 @@ void Backstepping::starting(const ros::Time& time)
 	/* Update regressor */
 
 	dot_param.setZero();
-    fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
+	// cout<<"starting ok"<<endl;
 }
 
 void Backstepping::update(const ros::Time&, const ros::Duration& period)
 {
+	// cout<<"update in"<<endl;
 	bool saturate_s_flag;
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
 	robot_state = state_handle_->getRobotState();
 	
-	jacobian = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
-	rosG = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
-	
-	T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+	franka_G = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
+	// Jee = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+	// T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+	// cout<<"ok1"<<endl;
 	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
-
+	/* tau_J_d is past tau_cmd saturated */
+	tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
+	// cout<<"ok2"<<endl;
+	frankaRobot.set_q(q_curr);
+	frankaRobot.set_dq(dot_q_curr);
+	Jee = frankaRobot.get_J_ee();
+	T0EE = frankaRobot.get_T_0_ee();
+	/* Compute pseudo-inverse of jacobian and its derivative */
+	J_pinv = frankaRobot.get_J_ee_pinv();
+	J_dot = frankaRobot.get_J_ee_dot();
+	// cout<<"ok3"<<endl;
 	Eigen::Vector3d ee_position, ee_velocity;
 	Eigen::Vector3d ee_omega;
 	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
@@ -208,27 +226,16 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	Eigen::Matrix<double,6,6> tmp_conversion0, tmp_conversion1, tmp_conversion2;
 
-	/* Update pseudo-inverse of jacobian and its derivative */
-
-	fastRegMat.setArguments(q_curr,dot_q_curr);
-
-	/* Compute pseudo-inverse of jacobian and its derivative */
-	
-	mypJacEE = fastRegMat.getPinvJac_gen();
-	mydot_pJacEE = fastRegMat.getDotPinvJac_gen();
-
 	/* Compute error translation */
-
-	ee_position = T0EE.translation();
-	ee_velocity = jacobian.topRows(3)*dot_q_curr;
+	ee_position = T0EE.block<3,1>(0,3);
+	ee_velocity = Jee.topRows(3)*dot_q_curr;
 
 	error.head(3) = ee_pos_cmd - ee_position;
 	dot_error.head(3) = ee_vel_cmd - ee_velocity;
-
+	// cout<<"ok4"<<endl;
 	/* Compute error orientation */
-
-  	ee_rot = T0EE.linear();
-	ee_omega = jacobian.bottomRows(3)*dot_q_curr;
+  	ee_rot = T0EE.block<3,3>(0,0);
+	ee_omega = Jee.bottomRows(3)*dot_q_curr;
 
 	Rs_tilde = ee_rot_cmd*ee_rot.transpose();
 	L = createL(ee_rot_cmd, ee_rot);
@@ -236,9 +243,8 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	
 	error.tail(3) = vect(Rs_tilde);
 	dot_error.tail(3) = L.transpose()*ee_ang_vel_cmd-L*ee_omega;
-
+	// cout<<"ok5"<<endl;
 	/* Compute reference */
-
 	ee_vel_cmd_tot << ee_vel_cmd, L.transpose()*ee_ang_vel_cmd;
 	ee_acc_cmd_tot << ee_acc_cmd, dotL.transpose()*ee_ang_vel_cmd + L.transpose()*ee_ang_acc_cmd;
 	
@@ -251,9 +257,9 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
 	tmp_conversion2.setZero();
 	tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
-
-	dot_qr = mypJacEE*tmp_conversion1*tmp_position;
-	ddot_qr = mypJacEE*tmp_conversion1*tmp_velocity + mypJacEE*tmp_conversion2*tmp_position +mydot_pJacEE*tmp_conversion1*tmp_position;
+	// cout<<"ok6"<<endl;
+	dot_qr = J_pinv*tmp_conversion1*tmp_position;
+	ddot_qr = J_pinv * (tmp_conversion1*tmp_velocity + tmp_conversion2*tmp_position + J_dot*dot_qr);
 
 	s = dot_qr - dot_q_curr;
 /* 	for(int i=0;i<NJ;i++){
@@ -262,22 +268,15 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	
 	
 	/* Update and Compute Regressor */
-	
-	fastRegMat.setArguments(q_curr, dot_q_curr, dot_qr, ddot_qr);
-	Yr = fastRegMat.getReg_gen();
-
-	/* tau_J_d is past tau_cmd saturated */
-
-	tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
-
+	frankaRobot.set_dqr(dot_qr);
+	frankaRobot.set_ddqr(ddot_qr);
+	Yr = frankaRobot.get_Yr();
+	// cout<<"ok7"<<endl;
 	/* Backstepping control law */
-
 	dt = period.toSec();
 
 	/* Update inertial parameters */
 	Eigen::Matrix<double,7,1> s_temp = s;
-
-
 	for(int i=0;i<NJ;i++){
 		if (std::fabs(s_temp(i,1)) < tol_s) s_temp(i,1) = 0.0;
 	}
@@ -297,7 +296,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 			if (count_UB_s == NJ) saturate_s_flag = false;
 		}
 	}
-	
+	// cout<<"ok8"<<endl;
 	if (update_param_flag && !saturate_s_flag){
 		dot_param = Rinv*Yr.transpose()*s_temp;
 /* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
@@ -307,23 +306,36 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute tau command */
 	tau_tilde = Yr*(param_init-param);
-	tau_cmd = Yr*param + Kd*s + jacobian.transpose()*tmp_conversion0.transpose()*error-rosG;
+	tau_cmd = Yr*param + Kd*s + Jee.transpose()*tmp_conversion0.transpose()*error;
 	//tau_cmd.setZero(); // gravity compensation check (spoiler: it is not perfect)
 	
 	/* Saturate the derivate of tau_cmd */
+	// cout<<"ok9"<<endl;
+	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d + franka_G);
 	
-	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
+	/* Set the command for each joint */
 
- 	/* Publish messages */
+	for (size_t i = 0; i < NJ; i++) {
+		joint_handles_[i].setCommand(tau_cmd[i] - franka_G[i]);
+	}
 
+	/* Publish messages */
 	time_now = ros::Time::now();
-	
+
+	if (logging){
 	msg_log.header.stamp = time_now;
 	
 	fillMsg(msg_log.error_pos_EE, error);
 	fillMsg(msg_log.dot_error_pos_EE, dot_error);
 	fillMsg(msg_log.dot_qr, dot_qr);
 	fillMsg(msg_log.ddot_qr, ddot_qr);
+	fillMsg(msg_log.J, Jee);
+	fillMsg(msg_log.J_dot, J_dot);
+	fillMsg(msg_log.J_pinv, J_pinv);
+	fillMsg(msg_log.L, L);
+	fillMsg(msg_log.conv0, tmp_conversion0);
+	fillMsg(msg_log.conv1, tmp_conversion1);
+	fillMsg(msg_log.conv2, tmp_conversion2);
 	fillMsg(msg_log.s, s);
 	fillMsgLink(msg_log.link1, param.segment(0, PARAM));
 	fillMsgLink(msg_log.link2, param.segment(10, PARAM));
@@ -332,22 +344,18 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fillMsgLink(msg_log.link5, param.segment(40, PARAM));
 	fillMsgLink(msg_log.link6, param.segment(50, PARAM));
 	fillMsgLink(msg_log.link7, param.segment(60, PARAM));
+	fillMsg(msg_log.Yr_param, Yr*param);
 	fillMsg(msg_log.tau_cmd, tau_cmd);
 	fillMsg(msg_log.tau_tilde, tau_tilde);
+	this->pub_log.publish(msg_log);
+}
 
 	msg_config.header.stamp  = time_now;
-	msg_config.xyz.x = T0EE.translation()(0);
-	msg_config.xyz.y = T0EE.translation()(1);
-	msg_config.xyz.z = T0EE.translation()(2);
+	msg_config.xyz.x = T0EE(0,3);
+	msg_config.xyz.y = T0EE(1,3);
+	msg_config.xyz.z = T0EE(2,3);
 
-	this->pub_err_.publish(msg_log);
 	this->pub_config_.publish(msg_config);
-	
-	/* Set the command for each joint */
-
-	for (size_t i = 0; i < NJ; i++) {
-		joint_handles_[i].setCommand(tau_cmd[i]);
-	}
 }
 
 void Backstepping::stopping(const ros::Time&)
@@ -386,11 +394,11 @@ void Backstepping::setFlagUpdate(const panda_controllers::flag::ConstPtr& msg){
 }
 
 template <size_t N>
-void Backstepping::fillMsg(boost::array<double, N>& msg_, const Eigen::VectorXd& data_) {
+void Backstepping::fillMsg(boost::array<float, N>& msg_, const Eigen::MatrixXd& data_) {
     
 	int dim = data_.size();
     for (int i = 0; i < dim; i++) {
-        msg_[i] = data_[i];
+        msg_[i] = data_(i);
     }
 }
 

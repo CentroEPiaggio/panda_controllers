@@ -3,7 +3,7 @@ project(panda_controllers)
 
 set(CMAKE_BUILD_TYPE Release)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -51,8 +51,8 @@ include_directories(
 	#${Boost_INCLUDE_DIRS}
 #	${CasADi_INCLUDE_DIRS}
 	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_SOURCE_DIR}/include
 )
-
 
 catkin_package(
 	LIBRARIES ${PROJECT_NAME}
@@ -71,12 +71,22 @@ catkin_package(
 	DEPENDS Franka
 )
 
+# - all in one - #
+# file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+# # Definisci la tua libreria
+# add_library(library ${SOURCES})
+# # Specifica il nome dell'output della libreria
+# set_target_properties(library PROPERTIES OUTPUT_NAME "library")
+# # Indica che altri progetti possono trovare questa libreria
+# target_include_directories(library PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
 add_library(${PROJECT_NAME}   
-	src/computed_torque.cpp #Computed Torque controller
+	# src/computed_torque.cpp #Computed Torque controller
 	src/backstepping.cpp #Backstepping controller
 	#src/cartesian_impedance_controller_softbots.cpp #CartesianImpendanceSoftBots controller
-	src/gen_regr_fun.cpp
-	src/ThunderPanda.cpp
+	src/franka_gen.cpp
+	src/thunder_franka.cpp
+	src/gen_traj_fun.cpp
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -95,18 +105,18 @@ add_dependencies(command_cartesian
 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
 	${catkin_EXPORTED_TARGETS}
 )
-add_executable(CLIK_node
-	src/CLIK_node.cpp
-	src/ThunderPanda.cpp
-	src/gen_regr_fun.cpp
-)
-target_link_libraries(CLIK_node
-	${catkin_LIBRARIES}
-)
-add_dependencies(CLIK_node
-	${${PROJECT_NAME}_EXPORTED_TARGETS} 
-	${catkin_EXPORTED_TARGETS}
-)
+# add_executable(CLIK_node
+# 	src/CLIK_node.cpp
+# 	src/ThunderPanda.cpp
+# 	src/gen_regr_fun.cpp
+# )
+# target_link_libraries(CLIK_node
+# 	${catkin_LIBRARIES}
+# )
+# add_dependencies(CLIK_node
+# 	${${PROJECT_NAME}_EXPORTED_TARGETS} 
+# 	${catkin_EXPORTED_TARGETS}
+# )
 add_executable(adaptiveFlag_node
 	src/adaptiveFlag_node.cpp
 )
