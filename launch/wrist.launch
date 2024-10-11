@@ -2,10 +2,10 @@
 <!-- THIS FILE LAUNCHES QBMOVE AND QBCLAW -->
 <launch>
 	<!-- LAUNCH ARGUMENTS -->
-	<arg name="robot_1_qb_end_effector" default="qbmove" doc="The qbrobotics device type connected to robot 1"/> <!-- [qbhand | qbhand2m | qbsofthand]-->
-	<arg name="robot_2_qb_end_effector" default="qbhand" doc="The qbrobotics device type connected to robot 2"/> <!-- [qbhand | qbhand2m | qbsofthand]-->
-	<arg name="qbmove_device_id1" value="2" doc="The ID of qbrobotics qbmove elastic wrist"/>
-	<arg name="qbhand_device_id2" value="1" doc="The ID of qbrobotics qbmove softhand"/>
+	<arg name="wrist_name" default="qbmove" doc="The qbrobotics device type connected to robot 1"/> <!-- [qbhand | qbhand2m | qbsofthand]-->
+	<arg name="hand_name" default="qbhand" doc="The qbrobotics device type connected to robot 2"/> <!-- [qbhand | qbhand2m | qbsofthand]-->
+	<arg name="wrist_id" value="2" doc="The ID of qbrobotics qbmove elastic wrist"/>
+	<arg name="hand_id" value="1" doc="The ID of qbrobotics qbmove softhand"/>
 
 	<!-- Hand params -->
 	<arg name="softhand_enabled" default="true"/>
@@ -14,19 +14,19 @@
 	<arg name="qbmove_enabled" default="true"/>
 	
 	<!-- softhand namespace -->
-	<group ns="softhand">
+	<!-- <group ns="softhand">
 		<group if="$(arg softhand_enabled)">    
 			<include file="$(find qb_move_control)/launch/control.launch">
 				<arg name="standalone" value="false" />
 				<arg name="activate_on_initialization" value="true"/>
 				<arg name="use_rviz" value="false"/>
 				<arg name="use_without_robot" value="true"/>
-				<arg name="device_id" value="$(arg qbhand_device_id2)"/>
-				<arg name="device_name" value="$(arg robot_2_qb_end_effector)$(arg qbhand_device_id2)"/>
+				<arg name="device_id" value="$(arg hand_id)"/>
+				<arg name="device_name" value="$(arg hand_name)$(arg hand_id)"/>
 				<arg name="use_controller_gui" value="true" doc="Choose whether or not to use the controller GUI."/>
 			</include>  
 		</group>
-	</group>
+	</group> -->
 	
 	<!-- QB Move namespace -->
 	<group ns="cube_wrist">
@@ -36,9 +36,9 @@
 				<arg name="activate_on_initialization" value="true"/>
 				<arg name="use_rviz" value="false"/>
 				<arg name="use_without_robot" value="true"/>
-				<arg name="device_id" value="$(arg qbmove_device_id1)"/>
-				<arg name="device_name" value="$(arg robot_1_qb_end_effector)$(arg qbmove_device_id1)"/>
-				<arg name="use_controller_gui" value="true" doc="Choose whether or not to use the controller GUI."/>
+				<arg name="device_id" value="$(arg wrist_id)"/>
+				<arg name="device_name" value="$(arg wrist_name)$(arg wrist_id)"/>
+				<arg name="use_controller_gui" value="false" doc="Choose whether or not to use the controller GUI."/>
 			</include> 
 		</group>
 	</group>

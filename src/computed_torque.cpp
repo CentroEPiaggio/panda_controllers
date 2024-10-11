@@ -16,7 +16,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
 	/* Inizializing the Kp and Kv gains */
 
-	double kp1, kp2, kp3, kv1, kv2, kv3;
+	double kp1, kp2, kp3, kp4, kv1, kv2, kv3, kv4;
 
 	if (!node_handle.getParam("kp1", kp1) || !node_handle.getParam("kp2", kp2) || !node_handle.getParam("kp3", kp3) 
 		|| !node_handle.getParam("kv1", kv1) || !node_handle.getParam("kv2", kv2) || !node_handle.getParam("kv3", kv3)) {
@@ -141,27 +141,23 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 
 	/* Start subscribers nodes */
 	// sub_command: read the desired joint position, velocity and trajectory
-	this->sub_command = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ILCControllerWrist::setCommandCB, this);
-	// sub_flag: read the flag set by torque_signal node to switch between controllers
-	this->sub_flag = node_handle.subscribe<std_msgs::Bool> ("trajectory_tracking", 1, &ILCControllerWrist::setFlagCB, this);
-	// sub_torque: read torque signal from external node (torque_signal node)
-	this->sub_torque = node_handle.subscribe<std_msgs::Float64MultiArray> ("torque_signal", 10000, &ILCControllerWrist::setTorqueCB, this);
+	this->sub_command = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);
+	// // sub_flag: read the flag set by torque_signal node to switch between controllers
+	// this->sub_flag = node_handle.subscribe<std_msgs::Bool> ("trajectory_tracking", 1, &ComputedTorque::setFlagCB, this);
 	// sub_soft_joints: read joint states from wrist soft joint
-	this->sub_soft_joints = node_handle.subscribe<sensor_msgs::JointState> ("/cube_wrist/qbmove2/control/joint_states", 1, &ILCControllerWrist::setJointState, this);
+	this->sub_soft_joints = node_handle.subscribe<sensor_msgs::JointState> ("/cube_wrist/qbmove2/control/joint_states", 1, &ComputedTorque::setJointState, this);
 	// sub_command_wrist: read the desired joint position, velocity and trajectory for Franka + soft wrist
-	this->sub_command_wrist = node_handle.subscribe<sensor_msgs::JointState> ("command_wrist", 1, &ILCControllerWrist::setCommandWristCB, this);
-	// sub_gotostart: to move the cube to the initial position
-	this->sub_gotostart = node_handle.subscribe<std_msgs::Bool> ("gotostart", 1, &ILCControllerWrist::setGoToStartCB, this);
+	this->sub_command_wrist = node_handle.subscribe<sensor_msgs::JointState> ("command_wrist", 1, &ComputedTorque::setCommandWristCB, this);
+	// // sub_gotostart: to move the cube to the initial position
+	// this->sub_gotostart = node_handle.subscribe<std_msgs::Bool> ("gotostart", 1, &ComputedTorque::setGoToStartCB, this);
 	
 	/* Start publishers nodes */
-	// pub_flag: to publish the flag to synchronize the controller with the torque_signal node
-	this->pub_flag = node_handle.advertise<std_msgs::Bool> ("synchronize_controllers", 10, true);
 	// pub_err: to track the errors on the robot's configuration
-	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1000, true);
+	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 100, true);
 	// // pub_effort_cmd: to track the actual torque (effort) applied at the robot's actuators
 	// this->pub_effort_cmd = node_handle.advertise<std_msgs::Float64MultiArray> ("effort_command",1000, true);
-	// pub_config: to track the real robot's configuration and its derivative
-	this->pub_config = node_handle.advertise<sensor_msgs::JointState> ("robot_configuration", 1000);
+	// // pub_config: to track the real robot's configuration and its derivative
+	// this->pub_config = node_handle.advertise<sensor_msgs::JointState> ("robot_configuration", 1);
 	// // pub_reset: to reset simulation
 	// this->pub_reset = node_handle.advertise<std_msgs::Bool> ("reset_simulation", 1, true);
 	// // pub_gravity: to publish gravity vector
@@ -302,12 +298,12 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 		// joint_handles_[i].setCommand(tau_cmd_wrist[i]);	// send command to the robot's i-th joint 
 		joint_handles_[i].setCommand(tau_cmd[i]);
 		// Fill gravity message
-		gravity_msg.data[i] = G_Wrist[i];
+		// gravity_msg.data[i] = G_Wrist[i];
 	}
 	/* ...and for soft joint */
-	gravity_msg.data[7] = G_Wrist(7);
+	// gravity_msg.data[7] = G_Wrist(7);
 	// Publish gravity vector message
-	this->pub_gravity.publish(gravity_msg);
+	// this->pub_gravity.publish(gravity_msg);
 
 	/* Set the command for qbmove soft joint using position and preset trajectory controller */
 	if(!wrist_fixed) {
@@ -336,16 +332,16 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 	this->pub_stiffness.publish(stiffness_msg);
 
 	/* Publish messages to track torque and gravity */
-	this->pub_gravity.publish(gravity_msg);
+	// this->pub_gravity.publish(gravity_msg);
 
 	/* Publish current robot configuration and its derivative */
-	sensor_msgs::JointState config_msg;
-	std::vector<double> q_vect(q_wrist.data(),q_wrist.data()+q_wrist.size());
-	std::vector<double> dq_vect(dq_wrist.data(),dq_wrist.data()+dq_wrist.size());
-	config_msg.header.stamp = ros::Time::now();
-	config_msg.position = q_vect;
-	config_msg.velocity = dq_vect;
-	pub_config.publish(config_msg);
+	// sensor_msgs::JointState config_msg;
+	// std::vector<double> q_vect(q_wrist.data(),q_wrist.data()+q_wrist.size());
+	// std::vector<double> dq_vect(dq_wrist.data(),dq_wrist.data()+dq_wrist.size());
+	// config_msg.header.stamp = ros::Time::now();
+	// config_msg.position = q_vect;
+	// config_msg.velocity = dq_vect;
+	// pub_config.publish(config_msg);
 
 }
 
@@ -401,7 +397,7 @@ void ComputedTorque::setJointState(const sensor_msgs::JointStateConstPtr& msg) {
 }
 
 // Callback function for sub_command_wrist subscriber node
-void ILCControllerWrist::setCommandWristCB (const sensor_msgs::JointStateConstPtr& msg) {
+void ComputedTorque::setCommandWristCB (const sensor_msgs::JointStateConstPtr& msg) {
 	if ((msg->position).size() != 8 || (msg->position).empty()) {
 		ROS_FATAL("Desired position has not dimension 8 or is empty! Position vector size: %i", int((msg->position).size()));
 	}
