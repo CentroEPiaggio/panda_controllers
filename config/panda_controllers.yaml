@@ -18,19 +18,6 @@ computed_torque_controller:
     kv3: 3.0
     dt: 5
 
-cartesian_impedance_controller_softbots:
-    type: panda_controllers/CartesianImpedanceControllerSoftbots
-    arm_id: $(arg prefix)arm
-    joint_names:
-        - $(arg prefix)arm_joint1
-        - $(arg prefix)arm_joint2
-        - $(arg prefix)arm_joint3
-        - $(arg prefix)arm_joint4
-        - $(arg prefix)arm_joint5
-        - $(arg prefix)arm_joint6
-        - $(arg prefix)arm_joint7
-
-
 
 
 

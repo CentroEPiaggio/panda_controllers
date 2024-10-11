@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
 
-	<!--arg name="controller" default="computed_torque_controller"/-->
+	<arg name="controller" default="computed_torque_controller" />
 	<!-- <arg name="robot_ip" default="192.168.0.210" /> -->
 	<arg name="arm_id" default="panda" doc="Name of the panda robot to spawn" />
 	<arg name="prefix" default="/robot/arm" doc="prefix for arm" />
@@ -12,13 +12,21 @@
 	<!-- <node name="controller_spawn" pkg="controller_manager" type="controller_manager" respawn="false" output="screen"  args="spawn computed_torque_controller"/> -->
 
 	<include file="$(find franka_gazebo)/launch/panda.launch">
-		<!-- <arg name="rviz" value="true" /> -->
-		<arg name="controller" value="computed_torque_controller" />
-		<!-- <arg name="controller" value="cartesian_impedance_controller_softbots" /> -->
-	</include>
 
-	<!-- <node name="controller_load" pkg="controller_manager" type="controller_manager" /> -->
-	
-	<!--/group-->
+		<!-- <arg name="rviz" value="true" /> -->
+		<arg name="controller" value="$(arg controller)" />
+		
+		<!-- Set initial robot configuration -->
+		<arg name="initial_joint_positions" value="-J $(arg arm_id)_joint1 -1.2596132435374552
+													-J $(arg arm_id)_joint2 -0.6634185106461509
+                									-J $(arg arm_id)_joint3 -0.6927487535235402
+													-J $(arg arm_id)_joint4 -2.171625619268133
+													-J $(arg arm_id)_joint5 -0.26422693835292665
+													-J $(arg arm_id)_joint6 1.5070607352519412
+													-J $(arg arm_id)_joint7 0.06353219221245718
+													-J $(arg arm_id)_finger_joint1 0.001
+													-J $(arg arm_id)_finger_joint2 0.001"
+													/>
+	</include>
 
 </launch>

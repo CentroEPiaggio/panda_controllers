@@ -1,6 +1,6 @@
 # panda_controllers
+Package of controllers implemented within the ROS Control framework for the Franka Emika Panda robot + elastic wrist + softhand.
 
-Package of controllers (cartesian impedance and computed torque) implemented within the ROS Control framework for the Franka Emika Panda robot.
 
 ## Table of Contents
 1. [Installation](#markdown-header-installation)
@@ -16,7 +16,7 @@ Steps for installation:
 1. Clone the `panda_controllers` package to your Catkin Workspace, e.g. `~/catkin_ws`:
    ```
    cd ~/catkin_ws/src
-   git clone https://github.com/CentroEPiaggio/panda_controllers.git
+   git clone --branch franka_wrist_softhand https://github.com/CentroEPiaggio/panda_controllers.git
    ```
 
 1. Compile the package using `catkin`:
@@ -28,5 +28,4 @@ Steps for installation:
 Since you are interested in using this controllers you need to install libfranka and franka_ros, availables at: [franka_FCI](https://frankaemika.github.io/docs/)
 
 ## Running controllers
-
-In the `panda_controllers` package, there are two launch file related to the spawning of the cartesian and computed torque controller,`cartesian_impedance_controller_softbots.launch` and `computed_torque_controller.launch` , respectively.
+TO-DO
