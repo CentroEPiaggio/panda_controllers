@@ -290,7 +290,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 		theta_control = wrist_theta;
 	} else {
 		/*  Compute control action for qbmove joint -> theta = q + K^-1 * tau */
-		theta_control = (q_wrist(7) - wrist_offset) + (1/stiffness) * tau_cmd_wrist(7);
+		// theta_control = (q_wrist(7) - wrist_offset) + (1/stiffness) * tau_cmd_wrist(7);
+		theta_control = (q_des_wrist(7) - wrist_offset) + (1/stiffness) * tau_cmd_wrist(7);
 	}
 
 	/* Set the command for each rigid joint... */
@@ -313,12 +314,14 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 		qbmove_command.joint_names.push_back("qbmove2_shaft_joint");                    // shaft position
 		qbmove_command.joint_names.push_back("qbmove2_stiffness_preset_virtual_joint"); // stiffness preset
 		qbmove_point.positions.push_back(theta_control);    // shaft position [rad]
-		qbmove_point.positions.push_back(wrist_stiffness);              // stiffness preset [0,1]
+		qbmove_point.positions.push_back(wrist_stiffness);  // stiffness preset [0,1]
 		qbmove_point.time_from_start = ros::Duration(0.1); // check this ------------------------------------------------------------------------------!
 		// Add point to trajectory message
 		qbmove_command.points.push_back(qbmove_point);
 		// Send message to the qbmove wrist
 		pub_softcommand.publish(qbmove_command);
+	} else {
+		theta_control = wrist_theta;
 	}
 
 	/* Publish theta_control value */
@@ -328,7 +331,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 	
 	/* Publish current stiffness value */
 	std_msgs::Float64 stiffness_msg;
-	stiffness_msg.data = stiffness;
+	stiffness_msg.data = wrist_stiffness;
 	this->pub_stiffness.publish(stiffness_msg);
 
 	/* Publish messages to track torque and gravity */
