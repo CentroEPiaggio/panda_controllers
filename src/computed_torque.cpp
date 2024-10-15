@@ -217,8 +217,21 @@ void ComputedTorque::starting(const ros::Time& time){
 	std::cout << G.transpose() << std::endl;
 
 	// initializing wrist
-	// if (wrist_fixed){
-	// 	theta_control
+	if (wrist_fixed){
+		theta_control = wrist_theta;
+		trajectory_msgs::JointTrajectory qbmove_command;
+		trajectory_msgs::JointTrajectoryPoint qbmove_point;
+		qbmove_command.header.stamp = ros::Time::now();
+		qbmove_command.joint_names.push_back("qbmove2_shaft_joint");                    // shaft position
+		qbmove_command.joint_names.push_back("qbmove2_stiffness_preset_virtual_joint"); // stiffness preset
+		qbmove_point.positions.push_back(wrist_theta);    // shaft position [rad]
+		qbmove_point.positions.push_back(wrist_stiffness);  // stiffness preset [0,1]
+		qbmove_point.time_from_start = ros::Duration(1.0);
+		// Add point to trajectory message
+		qbmove_command.points.push_back(qbmove_point);
+		// Send message to the qbmove wrist
+		pub_softcommand.publish(qbmove_command);
+	}
 }
 
 void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
@@ -228,8 +241,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 	std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
 	std::array<double, 7> gravity_vector = model_handle_->getGravity();
 
-	M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
-	C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());	
+	// M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+	// C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());	
     G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(gravity_vector.data());
 	
 	/* Actual position and velocity of the joints */
@@ -284,7 +297,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 
 	/* Compute qbmove stiffness */
 	// stiffness = a1*k1*cosh(a1*(q_wrist(7)-theta1)) + a2*k2*cosh(a2*(q_wrist(7)-theta2));
-	stiffness = wrist_stiffness * 2.3 / 0.4; 	// [0-1] different from phisical stiffness above
+	stiffness = wrist_stiffness * 2.3 / 0.4; 	// phisical stiffness driven by the imposed one [0-1]
 
 	if (wrist_fixed){
 		theta_control = wrist_theta;
@@ -307,7 +320,7 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 	// this->pub_gravity.publish(gravity_msg);
 
 	/* Set the command for qbmove soft joint using position and preset trajectory controller */
-	if(!wrist_fixed) {
+	if (!wrist_fixed) {
 		trajectory_msgs::JointTrajectory qbmove_command;
 		trajectory_msgs::JointTrajectoryPoint qbmove_point;
 		qbmove_command.header.stamp = ros::Time::now();
@@ -320,8 +333,6 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period){
 		qbmove_command.points.push_back(qbmove_point);
 		// Send message to the qbmove wrist
 		pub_softcommand.publish(qbmove_command);
-	} else {
-		theta_control = wrist_theta;
 	}
 
 	/* Publish theta_control value */
