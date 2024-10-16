@@ -18,15 +18,24 @@ find_package(catkin REQUIRED COMPONENTS
 	realtime_tools
 	roscpp
 	rospy
+	sensor_msgs
 )
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-# add_message_files(
-# 	FILES
-# )
+add_message_files(
+  FILES
+  Commands.msg
+  CommandParams.msg
+)
+
+generate_messages(
+ 	DEPENDENCIES
+ 	sensor_msgs
+ )
+
 
 # generate_messages(
 # 	DEPENDENCIES
@@ -58,6 +67,8 @@ catkin_package(
 	roscpp
 	DEPENDS Franka
 )
+
+
 
 add_library(${PROJECT_NAME}   
 	src/computed_torque.cpp #Computed Torque controller
