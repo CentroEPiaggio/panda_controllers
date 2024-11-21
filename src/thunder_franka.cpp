@@ -1,32 +1,47 @@
 #include "thunder_franka.h"
 #include "franka_gen.h"
 
-// constexpr std::string path_yaml_DH_REG = "../frankas/franka/generatedFiles/inertial_REG_stored";
-// constexpr std::string path_copy_DH_REG = "../frankas/franka/generatedFiles/inertial_REG_stored_copy";
-
-const int N_JOINTS = 7;
-const int N_PAR_LINK = 10;
-
-
 thunder_franka::thunder_franka(){
-	num_joints = N_JOINTS;
 	resizeVariables();
 }
 
 void thunder_franka::resizeVariables(){
-	q = Eigen::VectorXd::Zero(num_joints);
-	dq = Eigen::VectorXd::Zero(num_joints);
-	dqr = Eigen::VectorXd::Zero(num_joints);
-	ddqr = Eigen::VectorXd::Zero(num_joints);
-	par_REG = Eigen::VectorXd::Zero(N_PAR_LINK*num_joints);
-	par_DYN = Eigen::VectorXd::Zero(N_PAR_LINK*num_joints);
+	q = Eigen::VectorXd::Zero(n_joints);
+	dq = Eigen::VectorXd::Zero(n_joints);
+	dqr = Eigen::VectorXd::Zero(n_joints);
+	ddqr = Eigen::VectorXd::Zero(n_joints);
+	x = Eigen::VectorXd::Zero(numElasticJoints);
+	dx = Eigen::VectorXd::Zero(numElasticJoints);
+	ddxr = Eigen::VectorXd::Zero(numElasticJoints);
+	w = Eigen::VectorXd::Zero(6);
+	par_REG = Eigen::VectorXd::Zero(STD_PAR_LINK*n_joints);
+	par_DYN = Eigen::VectorXd::Zero(STD_PAR_LINK*n_joints);
+	par_Dl = Eigen::VectorXd::Zero(Dl_order*n_joints);
+	par_K = Eigen::VectorXd::Zero(K_order*numElasticJoints);
+	par_D = Eigen::VectorXd::Zero(D_order*numElasticJoints);
+	par_Dm = Eigen::VectorXd::Zero(Dm_order*numElasticJoints);
+	DHtable = Eigen::MatrixXd::Zero(n_joints,4);
+	world2L0 = Eigen::VectorXd::Zero(6);
+	Ln2EE = Eigen::VectorXd::Zero(6);
+	gravity = Eigen::VectorXd::Zero(3);
+	gravity_symb.resize(3);
+	for (int i=0; i<3; i++) gravity_symb[i] = 0;
+	world2L0_symb.resize(6);
+	Ln2EE_symb.resize(6);
+	for (int i=0; i<6; i++){
+		world2L0_symb[i] = 0;
+		Ln2EE_symb[i] = 0;
+	}
 }
 
-int thunder_franka::get_numJoints() {return num_joints;};
-int thunder_franka::get_numParams() {return par_REG.size();};
+int thunder_franka::get_numJoints() {return n_joints;};
+// int thunder_franka::get_numParLink() {return n_joints;};
+int thunder_franka::get_numParDYN() {return STD_PAR_LINK*n_joints;};
+int thunder_franka::get_numParREG() {return STD_PAR_LINK*n_joints;};
+// int thunder_franka::get_numParELA() {return numParELA;};
 
 void thunder_franka::setArguments(const Eigen::VectorXd& q_, const Eigen::VectorXd& dq_, const Eigen::VectorXd& dqr_, const Eigen::VectorXd& ddqr_){
-	if(q_.size() == num_joints && dq_.size()== num_joints && dqr_.size()==num_joints && ddqr_.size()==num_joints){
+	if(q_.size() == n_joints && dq_.size()== n_joints && dqr_.size()==n_joints && ddqr_.size()==n_joints){
 		q = q_;
 		dq = dq_;
 		dqr = dqr_;
@@ -37,24 +52,72 @@ void thunder_franka::setArguments(const Eigen::VectorXd& q_, const Eigen::Vector
 }
 
 void thunder_franka::set_q(const Eigen::VectorXd& q_){
-	q = q_;
+	if(q_.size() == n_joints){
+		q = q_;
+	} else{
+		std::cout<<"in set_q: invalid dimensions of arguments\n";
+	}
 }
 
 void thunder_franka::set_dq(const Eigen::VectorXd& dq_){
-	dq = dq_;
+	if(dq_.size() == n_joints){
+		dq = dq_;
+	} else{
+		std::cout<<"in set_dq: invalid dimensions of arguments\n";
+	}
 }
 
 void thunder_franka::set_dqr(const Eigen::VectorXd& dqr_){
-	dqr = dqr_;
+	if(dqr_.size() == n_joints){
+		dqr = dqr_;
+	} else{
+		std::cout<<"in set_dqr: invalid dimensions of arguments\n";
+	}
 }
 
 void thunder_franka::set_ddqr(const Eigen::VectorXd& ddqr_){
-	ddqr = ddqr_;
+	if(ddqr_.size() == n_joints){
+		ddqr = ddqr_;
+	} else{
+		std::cout<<"in set_ddqr: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_x(const Eigen::VectorXd& x_){
+	if(x_.size() == numElasticJoints){
+		x = x_;
+	} else{
+		std::cout<<"in set_x: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_dx(const Eigen::VectorXd& dx_){
+	if(dx_.size() == numElasticJoints){
+		dx = dx_;
+	} else{
+		std::cout<<"in set_dx: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_ddxr(const Eigen::VectorXd& ddxr_){
+	if(ddxr_.size() == numElasticJoints){
+		ddxr = ddxr_;
+	} else{
+		std::cout<<"in set_ddxr: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_w(const Eigen::VectorXd& w_){
+	if(w_.size() == 6){
+		w = w_;
+	} else{
+		std::cout<<"in set_ddxr: invalid dimensions of arguments\n";
+	}
 }
 
 void thunder_franka::update_inertial_DYN(){
-	for (int i=0; i<num_joints; i++){
-		Eigen::VectorXd p_reg = par_REG.segment(N_PAR_LINK*i, N_PAR_LINK);
+	for (int i=0; i<n_joints; i++){
+		Eigen::VectorXd p_reg = par_REG.segment(STD_PAR_LINK*i, STD_PAR_LINK);
 		double mass = p_reg(0);
 		Eigen::Vector3d CoM = {p_reg(1)/mass, p_reg(2)/mass, p_reg(3)/mass};
 		Eigen::Matrix3d I_tmp = mass * hat(CoM) * hat(CoM).transpose();
@@ -62,13 +125,13 @@ void thunder_franka::update_inertial_DYN(){
 		I_tmp_v << I_tmp(0,0), I_tmp(0,1), I_tmp(0,2), I_tmp(1,1), I_tmp(1,2), I_tmp(2,2);
 		Eigen::Matrix<double, 6, 1> I;
 		I << p_reg(4), p_reg(5), p_reg(6), p_reg(7), p_reg(8), p_reg(9);
-		par_DYN.segment(N_PAR_LINK*i, N_PAR_LINK) << mass, CoM, I-I_tmp_v;
+		par_DYN.segment(STD_PAR_LINK*i, STD_PAR_LINK) << mass, CoM, I-I_tmp_v;
 	}
 }
 
 void thunder_franka::update_inertial_REG(){
-	for (int i=0; i<num_joints; i++){
-		Eigen::VectorXd p_dyn = par_DYN.segment(N_PAR_LINK*i, N_PAR_LINK);
+	for (int i=0; i<n_joints; i++){
+		Eigen::VectorXd p_dyn = par_DYN.segment(STD_PAR_LINK*i, STD_PAR_LINK);
 		double mass = p_dyn(0);
 		Eigen::Vector3d CoM = {p_dyn(1), p_dyn(2), p_dyn(3)};
 		Eigen::Vector3d m_CoM = mass * CoM;
@@ -77,116 +140,406 @@ void thunder_franka::update_inertial_REG(){
 		I_tmp_v << I_tmp(0,0), I_tmp(0,1), I_tmp(0,2), I_tmp(1,1), I_tmp(1,2), I_tmp(2,2);
 		Eigen::Matrix<double, 6, 1> I;
 		I << p_dyn(4), p_dyn(5), p_dyn(6), p_dyn(7), p_dyn(8), p_dyn(9);
-		par_REG.segment(N_PAR_LINK*i, N_PAR_LINK) << mass, CoM, I+I_tmp_v;
+		par_REG.segment(STD_PAR_LINK*i, STD_PAR_LINK) << mass, CoM, I+I_tmp_v;
 	}
 }
 
-void thunder_franka::set_inertial_REG(const Eigen::VectorXd& par_){
-	if(par_.size() == N_PAR_LINK*num_joints){
-		par_REG = par_;
-	} else{
-		std::cout<<"in setArguments: invalid dimensions of arguments\n";
-	}
-	// conversion from REG to DYN
-	update_inertial_DYN();
-}
-
-void thunder_franka::set_inertial_DYN(const Eigen::VectorXd& par_){
-	if(par_.size() == N_PAR_LINK*num_joints){
+void thunder_franka::set_par_DYN(const Eigen::VectorXd& par_, bool update_REG){
+	if(par_.size() == par_DYN.size()){
 		par_DYN = par_;
 	} else{
 		std::cout<<"in setArguments: invalid dimensions of arguments\n";
 	}
 	// conversion from REG to DYN
-	update_inertial_REG();
+	if (update_REG)	update_inertial_REG();
 }
 
-Eigen::VectorXd thunder_franka::get_inertial_REG(){
-	return par_REG;
+void thunder_franka::set_par_REG(const Eigen::VectorXd& par_, bool update_DYN){
+	if(par_.size() == par_REG.size()){
+		par_REG = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+	// conversion from REG to DYN
+	if (update_DYN)	update_inertial_DYN();
 }
 
-Eigen::VectorXd thunder_franka::get_inertial_DYN(){
+void thunder_franka::set_par_K(const Eigen::VectorXd& par_){
+	if(par_.size() == par_K.size()){
+		par_K = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_par_D(const Eigen::VectorXd& par_){
+	if(par_.size() == par_D.size()){
+		par_D = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_par_Dm(const Eigen::VectorXd& par_){
+	if(par_.size() == par_Dm.size()){
+		par_Dm = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_par_Dl(const Eigen::VectorXd& par_){
+	if(par_.size() == par_Dl.size()){
+		par_Dl = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_DHtable(const Eigen::MatrixXd& par_){
+	if(par_.size() == DHtable.size()){
+		DHtable = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_gravity(const Eigen::VectorXd& par_){
+	if(par_.size() == gravity.size()){
+		gravity = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_world2L0(const Eigen::VectorXd& par_){
+	if(par_.size() == world2L0.size()){
+		world2L0 = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+void thunder_franka::set_Ln2EE(const Eigen::VectorXd& par_){
+	if(par_.size() == Ln2EE.size()){
+		Ln2EE = par_;
+	} else{
+		std::cout<<"in setArguments: invalid dimensions of arguments\n";
+	}
+}
+
+Eigen::VectorXd thunder_franka::get_par_DYN(){
 	return par_DYN;
 }
 
-void thunder_franka::load_inertial_REG(std::string file_path){
+Eigen::VectorXd thunder_franka::get_par_REG(){
+	return par_REG;
+}
+
+Eigen::VectorXd thunder_franka::get_par_K(){
+	return par_K;
+}
+
+Eigen::VectorXd thunder_franka::get_par_D(){
+	return par_D;
+}
+
+Eigen::VectorXd thunder_franka::get_par_Dm(){
+	return par_Dm;
+}
+
+Eigen::VectorXd thunder_franka::get_par_Dl(){
+	return par_Dl;
+}
+
+Eigen::MatrixXd thunder_franka::get_DHtable(){
+	return DHtable;
+}
+
+Eigen::VectorXd thunder_franka::get_gravity(){
+	return gravity;
+}
+
+Eigen::VectorXd thunder_franka::get_world2L0(){
+	return world2L0;
+}
+
+Eigen::VectorXd thunder_franka::get_Ln2EE(){
+	return Ln2EE;
+}
+
+Eigen::VectorXd thunder_franka::load_par_REG(std::string file_path, bool update_DYN){
 	try {
 		YAML::Node config = YAML::LoadFile(file_path);
-		
-		double mass, m_cmx, m_cmy, m_cmz, xx, xy, xz, yy, yz, zz;
-		int i = 0;
-		for (const auto& node : config) {
-			std::string linkName = node.first.as<std::string>();
-			mass = node.second["mass"].as<double>();
-			m_cmx = node.second["m_CoM_x"].as<double>();
-			m_cmy = node.second["m_CoM_y"].as<double>();
-			m_cmz = node.second["m_CoM_z"].as<double>();
-			xx = node.second["Ixx"].as<double>();
-			xy = node.second["Ixy"].as<double>();
-			xz = node.second["Ixz"].as<double>();
-			yy = node.second["Iyy"].as<double>();
-			yz = node.second["Iyz"].as<double>();
-			zz = node.second["Izz"].as<double>();
+		int i;
+		// --- Parse dynamics REG --- //
+		if (config["dynamics"]){
+			YAML::Node dynamics = config["dynamics"];
+			double mass, m_cmx, m_cmy, m_cmz, xx, xy, xz, yy, yz, zz;
+			i = 0;
+			for (const auto& node : dynamics) {
+				if (i==n_joints) break;
+				YAML::Node inertial = node.second["inertial"];
+				std::string linkName = node.first.as<std::string>();
+				mass = inertial["mass"].as<double>();
+				m_cmx = inertial["m_CoM_x"].as<double>();
+				m_cmy = inertial["m_CoM_y"].as<double>();
+				m_cmz = inertial["m_CoM_z"].as<double>();
+				xx = inertial["Ixx"].as<double>();
+				xy = inertial["Ixy"].as<double>();
+				xz = inertial["Ixz"].as<double>();
+				yy = inertial["Iyy"].as<double>();
+				yz = inertial["Iyz"].as<double>();
+				zz = inertial["Izz"].as<double>();
 
-			par_REG.segment(N_PAR_LINK*i, N_PAR_LINK) << mass,m_cmx,m_cmy,m_cmz,xx,xy,xz,yy,yz,zz;
-			i++;
+				par_REG.segment(STD_PAR_LINK*i, STD_PAR_LINK) << mass,m_cmx,m_cmy,m_cmz,xx,xy,xz,yy,yz,zz;
+				
+				i++;
+			}
+			if (update_DYN) update_inertial_DYN();
 		}
 	} catch (const YAML::Exception& e) {
 		std::cerr << "Error while parsing YAML: " << e.what() << std::endl;
 	}
-	update_inertial_DYN();
+	return par_REG;
 }
 
-void thunder_franka::load_inertial_DYN(std::string file_path){
+void thunder_franka::load_conf(std::string file_path, bool update_REG){
 	try {
 		YAML::Node config = YAML::LoadFile(file_path);
-		
-		double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-		int i = 0;
-		for (const auto& node : config) {
-			std::string linkName = node.first.as<std::string>();
-			mass = node.second["mass"].as<double>();
-			cmx = node.second["CoM_x"].as<double>();
-			cmy = node.second["CoM_y"].as<double>();
-			cmz = node.second["CoM_z"].as<double>();
-			xx = node.second["Ixx"].as<double>();
-			xy = node.second["Ixy"].as<double>();
-			xz = node.second["Ixz"].as<double>();
-			yy = node.second["Iyy"].as<double>();
-			yz = node.second["Iyz"].as<double>();
-			zz = node.second["Izz"].as<double>();
+		int index;
+		// --- Parse kinematics --- //
+		if (config["kinematics"]){
+			// Denavit-Hartenberg
+			YAML::Node kinematics = config["kinematics"];
+			std::vector<double> dh_vect = kinematics["DH"].as<std::vector<double>>();
+			// DHtable = Eigen::Map<Eigen::VectorXd>(&dh_vect[0], nj*4).reshaped<Eigen::RowMajor>(nj, 4);
+			DHtable.resize(n_joints,4);
+			for (int i=0; i<n_joints; i++){
+				for (int j=0; j<4; j++){
+					DHtable(i,j) = dh_vect[4*i + j];
+				}
+			}
+		}
+		// - Frame Offsets - //
+		if (config["Base_to_L0"]){
+			world2L0.resize(6);
+			YAML::Node frame_base = config["Base_to_L0"];
+			if (frame_base["symb"]){
+				world2L0_symb = frame_base["symb"].as<std::vector<int>>();
+			} else {
+				// no parameters here
+			}
+			// int sz = 0;
+			// for (int v : world2L0_symb) if (v) sz++;
+			// std::cout << "sz: " << sz << std::endl;
+			std::vector<double> tr = frame_base["tr"].as<std::vector<double>>();
+			std::vector<double> ypr = frame_base["ypr"].as<std::vector<double>>();
+			// Eigen::VectorXd world2L0_new(sz);
+			int sz1=0, sz2=0;
+			for (int i=0; i<3; i++){
+				if (world2L0_symb[i]){
+					world2L0(sz1) = tr[i];
+					sz1++;
+				}
+			}
+			for (int i=0; i<3; i++){
+				if (world2L0_symb[i+3]){
+					world2L0(sz1+sz2) = ypr[i];
+					sz2++;
+				}
+			}
+			world2L0.conservativeResize(sz1+sz2);
+			// world2L0 = world2L0_new;
+		}
 
-			par_DYN.segment(N_PAR_LINK*i, N_PAR_LINK) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
-			i++;
+		if (config["Ln_to_EE"]){
+			Ln2EE.resize(6);
+			YAML::Node frame_ee = config["Ln_to_EE"];
+			if (frame_ee["symb"]){
+				Ln2EE_symb = frame_ee["symb"].as<std::vector<int>>();
+			} else {
+				// no parameters here
+			}
+			// int sz = 0;
+			// for (int v : Ln2EE_symb) if (v) sz++;
+			// std::cout << "sz: " << sz << std::endl;
+			std::vector<double> tr = frame_ee["tr"].as<std::vector<double>>();
+			std::vector<double> ypr = frame_ee["ypr"].as<std::vector<double>>();
+			// Eigen::VectorXd Ln2EE_new(sz);
+			int sz1=0, sz2=0;
+			for (int i=0; i<3; i++){
+				if (Ln2EE_symb[i]){
+					Ln2EE(sz1) = tr[i];
+					sz1++;
+				}
+			}
+			for (int i=0; i<3; i++){
+				if (Ln2EE_symb[i+3]){
+					Ln2EE(sz1+sz2) = ypr[i];
+					sz2++;
+				}
+			}
+			Ln2EE.conservativeResize(sz1+sz2);
+			// Ln2EE = Ln2EE_new;
+		}
+		
+		// --- Parse dynamics --- //
+		if (config["dynamics"]){
+			YAML::Node dynamics = config["dynamics"];
+			double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
+			index=0;
+			for (const auto& node : dynamics) {
+				if (index==n_joints) break;
+				YAML::Node inertial = node.second["inertial"];
+				// - inertial parameters - //
+				std::string linkName = node.first.as<std::string>();
+				mass = inertial["mass"].as<double>();
+				cmx = inertial["CoM_x"].as<double>();
+				cmy = inertial["CoM_y"].as<double>();
+				cmz = inertial["CoM_z"].as<double>();
+				xx = inertial["Ixx"].as<double>();
+				xy = inertial["Ixy"].as<double>();
+				xz = inertial["Ixz"].as<double>();
+				yy = inertial["Iyy"].as<double>();
+				yz = inertial["Iyz"].as<double>();
+				zz = inertial["Izz"].as<double>();
+
+				par_DYN.segment(STD_PAR_LINK*index, STD_PAR_LINK) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
+				
+				// - link friction - //
+				if (node.second["friction"]){
+					std::vector<double> Dl = node.second["friction"]["Dl"].as<std::vector<double>>();
+					for (int j=0; j<Dl_order; j++){
+						par_Dl(Dl_order*index + j) = Dl[j];
+					}
+				}
+				index++;
+			}
+			if (update_REG) update_inertial_REG();
+		}
+		// - Gravity - //
+		if (config["gravity"]){
+			gravity.resize(3);
+			YAML::Node gravity_node = config["gravity"];
+			if (gravity_node["symb"]){
+				gravity_symb = gravity_node["symb"].as<std::vector<int>>();
+			} else {
+				// no parameters here
+			}
+			// int sz = 0;
+			// for (int v : gravity_symb) if (v) sz++;
+			std::vector<double> grav = gravity_node["value"].as<std::vector<double>>();
+			// Eigen::VectorXd gravity_new(sz);
+			int sz1 = 0;
+			for (int i=0; i<3; i++){
+				if (gravity_symb[i]){
+					gravity(sz1) = grav[i];
+					sz1++;
+				}
+			}
+			gravity.conservativeResize(sz1);
+			// gravity = gravity_new;
+		}
+
+		// --- Parse elastic --- //
+		if (config["elastic"]){
+			YAML::Node elastic = config["elastic"];
+			index = 0;
+			for (const auto& node : elastic["joints"]) {
+				if (index==numElasticJoints) break;
+				std::string jointName = node.first.as<std::string>();
+				// stiffness
+				for (int j=0; j<K_order; j++){
+					std::vector<double> K = node.second["K"].as<std::vector<double>>();
+					par_K(K_order*index+j) = K[j];
+					std::cout<<"K_"<<j<<": "<<K[j] << std::endl;
+				}
+				// coupling friction
+				for (int j=0; j<D_order; j++){
+					std::vector<double> D = node.second["D"].as<std::vector<double>>();
+					par_D(D_order*index + j) = D[j];
+					std::cout<<"D_"<<j<<": "<<D[j] << std::endl;
+				}
+				// motor friction
+				for (int j=0; j<Dm_order; j++){
+					std::vector<double> Dm = node.second["Dm"].as<std::vector<double>>();
+					par_Dm(Dm_order*index + j) = Dm[j];
+					std::cout<<"Dm_"<<j<<": "<<Dm[j] << std::endl;
+				}
+				index++;
+			}
 		}
 	} catch (const YAML::Exception& e) {
 		std::cerr << "Error while parsing YAML: " << e.what() << std::endl;
 	}
-	update_inertial_REG();
 }
 
-void thunder_franka::save_inertial_REG(std::string path_yaml_DH_REG){
+// void thunder_franka::load_par_elastic(std::string file_path){
+// 	// ----- parsing yaml elastic ----- //
+// 	try {
+// 		// load yaml
+// 		YAML::Node config_file = YAML::LoadFile(file_path);
+// 		// parse elastic
+// 		YAML::Node elastic = config_file["elastic"];
+// 		int i = 0;
+// 		for (const auto& node : elastic["joints"]) {
+			
+// 			if (i==numElasticJoints) break;
+// 			std::string jointName = node.first.as<std::string>();
+// 			// stiffness
+// 			for (int j=0; j<K_order; j++){
+// 				std::vector<double> K = node.second["K"].as<std::vector<double>>();
+// 				par_K(K_order*i+j) = K[j];
+// 				std::cout<<"K_"<<j<<": "<<K[j] << std::endl;
+// 			}
+// 			// coupling friction
+// 			for (int j=0; j<D_order; j++){
+// 				std::vector<double> D = node.second["D"].as<std::vector<double>>();
+// 				par_D(D_order*i + j) = D[j];
+// 				std::cout<<"D_"<<j<<": "<<D[j] << std::endl;
+// 			}
+// 			// motor friction
+// 			for (int j=0; j<Dm_order; j++){
+// 				std::vector<double> Dm = node.second["Dm"].as<std::vector<double>>();
+// 				par_Dm(Dm_order*i + j) = Dm[j];
+// 				std::cout<<"Dm_"<<j<<": "<<Dm[j] << std::endl;
+// 			}
+// 			i++;
+// 		}
+// 		// std::cout<<"YAML_DH letto"<<std::endl;
+// 		// std::cout<<"\nparam DYN \n"<<param_DYN<<std::endl;
+// 	} catch (const YAML::Exception& e) {
+// 		std::cerr << "Error while parsing YAML: " << e.what() << std::endl;
+// 	}
+// }
+
+void thunder_franka::save_par_REG(std::string path_yaml_DH_REG){
 	std::vector<std::string> keys_reg;
 	keys_reg.resize(5);
 	keys_reg[0] = "mass"; keys_reg[1] = "m_CoM_"; keys_reg[2] = "I"; keys_reg[3] = "REG"; keys_reg[4] = "regressor";
 	std::vector<LinkProp> links_prop_REG;
-	links_prop_REG.resize(num_joints);
+	links_prop_REG.resize(n_joints);
 
-	for(int i=0; i<num_joints; i++){
+	for(int i=0; i<n_joints; i++){
+		links_prop_REG[i].Dl.resize(Dl_order);
 		links_prop_REG[i].name = "link" + std::to_string(i+1);
-		links_prop_REG[i].mass = par_REG[N_PAR_LINK*i + 0];
-		links_prop_REG[i].xyz = {par_REG[N_PAR_LINK*i + 1], par_REG[N_PAR_LINK*i + 2], par_REG[N_PAR_LINK*i + 3]};
-		links_prop_REG[i].parI[0] = par_REG[N_PAR_LINK*i + 4];
-		links_prop_REG[i].parI[1] = par_REG[N_PAR_LINK*i + 5];
-		links_prop_REG[i].parI[2] = par_REG[N_PAR_LINK*i + 6];
-		links_prop_REG[i].parI[3] = par_REG[N_PAR_LINK*i + 7];
-		links_prop_REG[i].parI[4] = par_REG[N_PAR_LINK*i + 8];
-		links_prop_REG[i].parI[5] = par_REG[N_PAR_LINK*i + 9];
+		links_prop_REG[i].mass = par_REG[STD_PAR_LINK*i + 0];
+		links_prop_REG[i].xyz = {par_REG[STD_PAR_LINK*i + 1], par_REG[STD_PAR_LINK*i + 2], par_REG[STD_PAR_LINK*i + 3]};
+		links_prop_REG[i].parI[0] = par_REG[STD_PAR_LINK*i + 4];
+		links_prop_REG[i].parI[1] = par_REG[STD_PAR_LINK*i + 5];
+		links_prop_REG[i].parI[2] = par_REG[STD_PAR_LINK*i + 6];
+		links_prop_REG[i].parI[3] = par_REG[STD_PAR_LINK*i + 7];
+		links_prop_REG[i].parI[4] = par_REG[STD_PAR_LINK*i + 8];
+		links_prop_REG[i].parI[5] = par_REG[STD_PAR_LINK*i + 9];
+		for (int j=0; j<Dl_order; j++){
+			links_prop_REG[i].Dl[j] = par_Dl[Dl_order*i + j];
+		}
 	}
 	// create file
 	try {
 		YAML::Emitter emitter;
-		fillInertialYaml(num_joints, emitter, links_prop_REG, keys_reg);
+		fillInertialYaml(n_joints, emitter, links_prop_REG, keys_reg);
 		std::ofstream fout(path_yaml_DH_REG);
 		fout << emitter.c_str();
 		fout.close();
@@ -198,28 +551,32 @@ void thunder_franka::save_inertial_REG(std::string path_yaml_DH_REG){
 	}
 }
 
-void thunder_franka::save_inertial_DYN(std::string path_yaml_DH_DYN){
+void thunder_franka::save_par_DYN(std::string path_yaml_DH_DYN){
 	std::vector<std::string> keys_reg;
 	keys_reg.resize(5);
 	keys_reg[0] = "mass"; keys_reg[1] = "CoM_"; keys_reg[2] = "I"; keys_reg[3] = "DYN"; keys_reg[4] = "dynamics";
 	std::vector<LinkProp> links_prop_DYN;
-	links_prop_DYN.resize(num_joints);
+	links_prop_DYN.resize(n_joints);
 
-	for(int i=0; i<num_joints; i++){
+	for(int i=0; i<n_joints; i++){
+		links_prop_DYN[i].Dl.resize(Dl_order);
 		links_prop_DYN[i].name = "link" + std::to_string(i+1);
-		links_prop_DYN[i].mass = par_DYN[N_PAR_LINK*i + 0];
-		links_prop_DYN[i].xyz = {par_DYN[N_PAR_LINK*i + 1], par_DYN[N_PAR_LINK*i + 2], par_DYN[N_PAR_LINK*i + 3]};
-		links_prop_DYN[i].parI[0] = par_DYN[N_PAR_LINK*i + 4];
-		links_prop_DYN[i].parI[1] = par_DYN[N_PAR_LINK*i + 5];
-		links_prop_DYN[i].parI[2] = par_DYN[N_PAR_LINK*i + 6];
-		links_prop_DYN[i].parI[3] = par_DYN[N_PAR_LINK*i + 7];
-		links_prop_DYN[i].parI[4] = par_DYN[N_PAR_LINK*i + 8];
-		links_prop_DYN[i].parI[5] = par_DYN[N_PAR_LINK*i + 9];
+		links_prop_DYN[i].mass = par_DYN[STD_PAR_LINK*i + 0];
+		links_prop_DYN[i].xyz = {par_DYN[STD_PAR_LINK*i + 1], par_DYN[STD_PAR_LINK*i + 2], par_DYN[STD_PAR_LINK*i + 3]};
+		links_prop_DYN[i].parI[0] = par_DYN[STD_PAR_LINK*i + 4];
+		links_prop_DYN[i].parI[1] = par_DYN[STD_PAR_LINK*i + 5];
+		links_prop_DYN[i].parI[2] = par_DYN[STD_PAR_LINK*i + 6];
+		links_prop_DYN[i].parI[3] = par_DYN[STD_PAR_LINK*i + 7];
+		links_prop_DYN[i].parI[4] = par_DYN[STD_PAR_LINK*i + 8];
+		links_prop_DYN[i].parI[5] = par_DYN[STD_PAR_LINK*i + 9];
+		for (int j=0; j<Dl_order; j++){
+			links_prop_DYN[i].Dl[j] = par_Dl[Dl_order*i + j];
+		}
 	}
 	// create file
 	try {
 		YAML::Emitter emitter;
-		fillInertialYaml(num_joints, emitter, links_prop_DYN, keys_reg);
+		fillInertialYaml(n_joints, emitter, links_prop_DYN, keys_reg);
 		std::ofstream fout(path_yaml_DH_DYN);
 		fout << emitter.c_str();
 		fout.close();
@@ -232,8 +589,9 @@ void thunder_franka::save_inertial_DYN(std::string path_yaml_DH_DYN){
 }
 
 // Other functions
-void thunder_franka::fillInertialYaml(int num_joints, YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_){
-	YAML::Node control;
+void thunder_franka::fillInertialYaml(int n_joints, YAML::Emitter &emitter_, std::vector<LinkProp> &links_prop_, std::vector<std::string> keys_){
+	YAML::Node yamlFile;
+	YAML::Node dynamicsNode;
 
 	emitter_.SetIndent(2);
 	emitter_.SetSeqFormat(YAML::Flow);
@@ -241,29 +599,34 @@ void thunder_franka::fillInertialYaml(int num_joints, YAML::Emitter &emitter_, s
 		"Inertial parameters referred to Denavit-Hartenberg parametrization to use " + keys_[4] + "\n");
 	emitter_ << YAML::Newline;
 
-	for (int i=0;  i<num_joints;  i++) {
+	for (int i=0;  i<n_joints;  i++) {
 
 		LinkProp link = links_prop_[i];    
 		YAML::Node linkNode;
 		std::string nodeName;
+		YAML::Node linkInertia;
+		YAML::Node linkFric;
 
 		nodeName = link.name;
-		linkNode[keys_[0]] = link.mass;
-		linkNode[keys_[1]+"x"] = link.xyz[0];
-		linkNode[keys_[1]+"y"] = link.xyz[1];
-		linkNode[keys_[1]+"z"] = link.xyz[2];
-		linkNode[keys_[2]+"xx"] = link.parI[0];
-		linkNode[keys_[2]+"xy"] = link.parI[1];
-		linkNode[keys_[2]+"xz"] = link.parI[2];
-		linkNode[keys_[2]+"yy"] = link.parI[3];
-		linkNode[keys_[2]+"yz"] = link.parI[4];
-		linkNode[keys_[2]+"zz"] = link.parI[5];
+		linkInertia[keys_[0]] = link.mass;
+		linkInertia[keys_[1]+"x"] = link.xyz[0];
+		linkInertia[keys_[1]+"y"] = link.xyz[1];
+		linkInertia[keys_[1]+"z"] = link.xyz[2];
+		linkInertia[keys_[2]+"xx"] = link.parI[0];
+		linkInertia[keys_[2]+"xy"] = link.parI[1];
+		linkInertia[keys_[2]+"xz"] = link.parI[2];
+		linkInertia[keys_[2]+"yy"] = link.parI[3];
+		linkInertia[keys_[2]+"yz"] = link.parI[4];
+		linkInertia[keys_[2]+"zz"] = link.parI[5];
+		// link friction
+		linkFric["Dl"] = link.Dl;
 
-		emitter_ << YAML::BeginMap;
-		emitter_ << YAML::Key << nodeName;
-		emitter_ << linkNode;
-		emitter_ << YAML::EndMap << YAML::Newline;
+		linkNode["inertial"] = linkInertia;
+		linkNode["friction"] = linkFric;
+		dynamicsNode[nodeName] = linkNode;
 	}
+	yamlFile["dynamics"] = dynamicsNode;
+	emitter_ << yamlFile << YAML::Newline;
 }
 
 Eigen::Matrix3d thunder_franka::hat(const Eigen::Vector3d v){
@@ -327,15 +690,16 @@ Eigen::Matrix3d thunder_franka::createI(const std::vector<double> parI){
 }
 
 // ----- generated functions ----- //
+
 // - Manipulator Coriolis matrix - //
 Eigen::MatrixXd thunder_franka::get_C(){
 	Eigen::MatrixXd out;
 	out.resize(7,7);
-	long long p3[C_fun_SZ_IW];
-	double p4[C_fun_SZ_W];
+	long long p3[franka_C_fun_SZ_IW];
+	double p4[franka_C_fun_SZ_W];
 	const double* input_[] = {q.data(), dq.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = C_fun(input_, output_, p3, p4, 0);
+	int check = franka_C_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -343,11 +707,11 @@ Eigen::MatrixXd thunder_franka::get_C(){
 Eigen::MatrixXd thunder_franka::get_C_std(){
 	Eigen::MatrixXd out;
 	out.resize(7,7);
-	long long p3[C_std_fun_SZ_IW];
-	double p4[C_std_fun_SZ_W];
+	long long p3[franka_C_std_fun_SZ_IW];
+	double p4[franka_C_std_fun_SZ_W];
 	const double* input_[] = {q.data(), dq.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = C_std_fun(input_, output_, p3, p4, 0);
+	int check = franka_C_std_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -355,11 +719,11 @@ Eigen::MatrixXd thunder_franka::get_C_std(){
 Eigen::MatrixXd thunder_franka::get_G(){
 	Eigen::MatrixXd out;
 	out.resize(7,1);
-	long long p3[G_fun_SZ_IW];
-	double p4[G_fun_SZ_W];
+	long long p3[franka_G_fun_SZ_IW];
+	double p4[franka_G_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = G_fun(input_, output_, p3, p4, 0);
+	int check = franka_G_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -367,11 +731,11 @@ Eigen::MatrixXd thunder_franka::get_G(){
 Eigen::MatrixXd thunder_franka::get_J_0(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_0_fun_SZ_IW];
-	double p4[J_0_fun_SZ_W];
+	long long p3[franka_J_0_fun_SZ_IW];
+	double p4[franka_J_0_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_0_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_0_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -379,11 +743,11 @@ Eigen::MatrixXd thunder_franka::get_J_0(){
 Eigen::MatrixXd thunder_franka::get_J_1(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_1_fun_SZ_IW];
-	double p4[J_1_fun_SZ_W];
+	long long p3[franka_J_1_fun_SZ_IW];
+	double p4[franka_J_1_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_1_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_1_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -391,11 +755,11 @@ Eigen::MatrixXd thunder_franka::get_J_1(){
 Eigen::MatrixXd thunder_franka::get_J_2(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_2_fun_SZ_IW];
-	double p4[J_2_fun_SZ_W];
+	long long p3[franka_J_2_fun_SZ_IW];
+	double p4[franka_J_2_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_2_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_2_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -403,11 +767,11 @@ Eigen::MatrixXd thunder_franka::get_J_2(){
 Eigen::MatrixXd thunder_franka::get_J_3(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_3_fun_SZ_IW];
-	double p4[J_3_fun_SZ_W];
+	long long p3[franka_J_3_fun_SZ_IW];
+	double p4[franka_J_3_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_3_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_3_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -415,11 +779,11 @@ Eigen::MatrixXd thunder_franka::get_J_3(){
 Eigen::MatrixXd thunder_franka::get_J_4(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_4_fun_SZ_IW];
-	double p4[J_4_fun_SZ_W];
+	long long p3[franka_J_4_fun_SZ_IW];
+	double p4[franka_J_4_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_4_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_4_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -427,11 +791,11 @@ Eigen::MatrixXd thunder_franka::get_J_4(){
 Eigen::MatrixXd thunder_franka::get_J_5(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_5_fun_SZ_IW];
-	double p4[J_5_fun_SZ_W];
+	long long p3[franka_J_5_fun_SZ_IW];
+	double p4[franka_J_5_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_5_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_5_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -439,11 +803,11 @@ Eigen::MatrixXd thunder_franka::get_J_5(){
 Eigen::MatrixXd thunder_franka::get_J_6(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_6_fun_SZ_IW];
-	double p4[J_6_fun_SZ_W];
+	long long p3[franka_J_6_fun_SZ_IW];
+	double p4[franka_J_6_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = J_6_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_6_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -451,11 +815,11 @@ Eigen::MatrixXd thunder_franka::get_J_6(){
 Eigen::MatrixXd thunder_franka::get_J_7(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_7_fun_SZ_IW];
-	double p4[J_7_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	long long p3[franka_J_7_fun_SZ_IW];
+	double p4[franka_J_7_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = J_7_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_7_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -463,11 +827,11 @@ Eigen::MatrixXd thunder_franka::get_J_7(){
 Eigen::MatrixXd thunder_franka::get_J_cm_0(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_0_fun_SZ_IW];
-	double p4[J_cm_0_fun_SZ_W];
+	long long p3[franka_J_cm_0_fun_SZ_IW];
+	double p4[franka_J_cm_0_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_0_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_0_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -475,11 +839,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_0(){
 Eigen::MatrixXd thunder_franka::get_J_cm_1(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_1_fun_SZ_IW];
-	double p4[J_cm_1_fun_SZ_W];
+	long long p3[franka_J_cm_1_fun_SZ_IW];
+	double p4[franka_J_cm_1_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_1_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_1_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -487,11 +851,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_1(){
 Eigen::MatrixXd thunder_franka::get_J_cm_2(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_2_fun_SZ_IW];
-	double p4[J_cm_2_fun_SZ_W];
+	long long p3[franka_J_cm_2_fun_SZ_IW];
+	double p4[franka_J_cm_2_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_2_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_2_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -499,11 +863,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_2(){
 Eigen::MatrixXd thunder_franka::get_J_cm_3(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_3_fun_SZ_IW];
-	double p4[J_cm_3_fun_SZ_W];
+	long long p3[franka_J_cm_3_fun_SZ_IW];
+	double p4[franka_J_cm_3_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_3_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_3_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -511,11 +875,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_3(){
 Eigen::MatrixXd thunder_franka::get_J_cm_4(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_4_fun_SZ_IW];
-	double p4[J_cm_4_fun_SZ_W];
+	long long p3[franka_J_cm_4_fun_SZ_IW];
+	double p4[franka_J_cm_4_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_4_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_4_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -523,11 +887,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_4(){
 Eigen::MatrixXd thunder_franka::get_J_cm_5(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_5_fun_SZ_IW];
-	double p4[J_cm_5_fun_SZ_W];
+	long long p3[franka_J_cm_5_fun_SZ_IW];
+	double p4[franka_J_cm_5_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_5_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_5_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -535,11 +899,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_5(){
 Eigen::MatrixXd thunder_franka::get_J_cm_6(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_cm_6_fun_SZ_IW];
-	double p4[J_cm_6_fun_SZ_W];
+	long long p3[franka_J_cm_6_fun_SZ_IW];
+	double p4[franka_J_cm_6_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = J_cm_6_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_cm_6_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -547,11 +911,11 @@ Eigen::MatrixXd thunder_franka::get_J_cm_6(){
 Eigen::MatrixXd thunder_franka::get_J_ee(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_ee_fun_SZ_IW];
-	double p4[J_ee_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	long long p3[franka_J_ee_fun_SZ_IW];
+	double p4[franka_J_ee_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = J_ee_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_ee_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -559,11 +923,11 @@ Eigen::MatrixXd thunder_franka::get_J_ee(){
 Eigen::MatrixXd thunder_franka::get_J_ee_dot(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[J_ee_dot_fun_SZ_IW];
-	double p4[J_ee_dot_fun_SZ_W];
-	const double* input_[] = {q.data(), dq.data()};
+	long long p3[franka_J_ee_dot_fun_SZ_IW];
+	double p4[franka_J_ee_dot_fun_SZ_W];
+	const double* input_[] = {q.data(), dq.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = J_ee_dot_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_ee_dot_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -571,11 +935,11 @@ Eigen::MatrixXd thunder_franka::get_J_ee_dot(){
 Eigen::MatrixXd thunder_franka::get_J_ee_pinv(){
 	Eigen::MatrixXd out;
 	out.resize(7,6);
-	long long p3[J_ee_pinv_fun_SZ_IW];
-	double p4[J_ee_pinv_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	long long p3[franka_J_ee_pinv_fun_SZ_IW];
+	double p4[franka_J_ee_pinv_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = J_ee_pinv_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_ee_pinv_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -583,11 +947,11 @@ Eigen::MatrixXd thunder_franka::get_J_ee_pinv(){
 Eigen::MatrixXd thunder_franka::get_M(){
 	Eigen::MatrixXd out;
 	out.resize(7,7);
-	long long p3[M_fun_SZ_IW];
-	double p4[M_fun_SZ_W];
+	long long p3[franka_M_fun_SZ_IW];
+	double p4[franka_M_fun_SZ_W];
 	const double* input_[] = {q.data(), par_DYN.data()};
 	double* output_[] = {out.data()};
-	int check = M_fun(input_, output_, p3, p4, 0);
+	int check = franka_M_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -595,11 +959,11 @@ Eigen::MatrixXd thunder_franka::get_M(){
 Eigen::MatrixXd thunder_franka::get_T_0(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_fun_SZ_IW];
-	double p4[T_0_fun_SZ_W];
+	long long p3[franka_T_0_fun_SZ_IW];
+	double p4[franka_T_0_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -607,11 +971,11 @@ Eigen::MatrixXd thunder_franka::get_T_0(){
 Eigen::MatrixXd thunder_franka::get_T_0_0(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_0_fun_SZ_IW];
-	double p4[T_0_0_fun_SZ_W];
+	long long p3[franka_T_0_0_fun_SZ_IW];
+	double p4[franka_T_0_0_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_0_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_0_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -619,11 +983,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_0(){
 Eigen::MatrixXd thunder_franka::get_T_0_1(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_1_fun_SZ_IW];
-	double p4[T_0_1_fun_SZ_W];
+	long long p3[franka_T_0_1_fun_SZ_IW];
+	double p4[franka_T_0_1_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_1_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_1_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -631,11 +995,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_1(){
 Eigen::MatrixXd thunder_franka::get_T_0_2(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_2_fun_SZ_IW];
-	double p4[T_0_2_fun_SZ_W];
+	long long p3[franka_T_0_2_fun_SZ_IW];
+	double p4[franka_T_0_2_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_2_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_2_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -643,11 +1007,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_2(){
 Eigen::MatrixXd thunder_franka::get_T_0_3(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_3_fun_SZ_IW];
-	double p4[T_0_3_fun_SZ_W];
+	long long p3[franka_T_0_3_fun_SZ_IW];
+	double p4[franka_T_0_3_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_3_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_3_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -655,11 +1019,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_3(){
 Eigen::MatrixXd thunder_franka::get_T_0_4(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_4_fun_SZ_IW];
-	double p4[T_0_4_fun_SZ_W];
+	long long p3[franka_T_0_4_fun_SZ_IW];
+	double p4[franka_T_0_4_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_4_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_4_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -667,11 +1031,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_4(){
 Eigen::MatrixXd thunder_franka::get_T_0_5(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_5_fun_SZ_IW];
-	double p4[T_0_5_fun_SZ_W];
+	long long p3[franka_T_0_5_fun_SZ_IW];
+	double p4[franka_T_0_5_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_5_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_5_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -679,11 +1043,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_5(){
 Eigen::MatrixXd thunder_franka::get_T_0_6(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_6_fun_SZ_IW];
-	double p4[T_0_6_fun_SZ_W];
+	long long p3[franka_T_0_6_fun_SZ_IW];
+	double p4[franka_T_0_6_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_6_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_6_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -691,11 +1055,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_6(){
 Eigen::MatrixXd thunder_franka::get_T_0_7(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_7_fun_SZ_IW];
-	double p4[T_0_7_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	long long p3[franka_T_0_7_fun_SZ_IW];
+	double p4[franka_T_0_7_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_7_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_7_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -703,11 +1067,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_7(){
 Eigen::MatrixXd thunder_franka::get_T_0_ee(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_0_ee_fun_SZ_IW];
-	double p4[T_0_ee_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	long long p3[franka_T_0_ee_fun_SZ_IW];
+	double p4[franka_T_0_ee_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = T_0_ee_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_0_ee_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -715,11 +1079,11 @@ Eigen::MatrixXd thunder_franka::get_T_0_ee(){
 Eigen::MatrixXd thunder_franka::get_T_1(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_1_fun_SZ_IW];
-	double p4[T_1_fun_SZ_W];
+	long long p3[franka_T_1_fun_SZ_IW];
+	double p4[franka_T_1_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_1_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_1_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -727,11 +1091,11 @@ Eigen::MatrixXd thunder_franka::get_T_1(){
 Eigen::MatrixXd thunder_franka::get_T_2(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_2_fun_SZ_IW];
-	double p4[T_2_fun_SZ_W];
+	long long p3[franka_T_2_fun_SZ_IW];
+	double p4[franka_T_2_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_2_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_2_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -739,11 +1103,11 @@ Eigen::MatrixXd thunder_franka::get_T_2(){
 Eigen::MatrixXd thunder_franka::get_T_3(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_3_fun_SZ_IW];
-	double p4[T_3_fun_SZ_W];
+	long long p3[franka_T_3_fun_SZ_IW];
+	double p4[franka_T_3_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_3_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_3_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -751,11 +1115,11 @@ Eigen::MatrixXd thunder_franka::get_T_3(){
 Eigen::MatrixXd thunder_franka::get_T_4(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_4_fun_SZ_IW];
-	double p4[T_4_fun_SZ_W];
+	long long p3[franka_T_4_fun_SZ_IW];
+	double p4[franka_T_4_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_4_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_4_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -763,11 +1127,11 @@ Eigen::MatrixXd thunder_franka::get_T_4(){
 Eigen::MatrixXd thunder_franka::get_T_5(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_5_fun_SZ_IW];
-	double p4[T_5_fun_SZ_W];
+	long long p3[franka_T_5_fun_SZ_IW];
+	double p4[franka_T_5_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_5_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_5_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -775,11 +1139,11 @@ Eigen::MatrixXd thunder_franka::get_T_5(){
 Eigen::MatrixXd thunder_franka::get_T_6(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
-	long long p3[T_6_fun_SZ_IW];
-	double p4[T_6_fun_SZ_W];
+	long long p3[franka_T_6_fun_SZ_IW];
+	double p4[franka_T_6_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = T_6_fun(input_, output_, p3, p4, 0);
+	int check = franka_T_6_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -787,11 +1151,11 @@ Eigen::MatrixXd thunder_franka::get_T_6(){
 Eigen::MatrixXd thunder_franka::get_Yr(){
 	Eigen::MatrixXd out;
 	out.resize(7,70);
-	long long p3[Yr_fun_SZ_IW];
-	double p4[Yr_fun_SZ_W];
+	long long p3[franka_Yr_fun_SZ_IW];
+	double p4[franka_Yr_fun_SZ_W];
 	const double* input_[] = {q.data(), dq.data(), dqr.data(), ddqr.data()};
 	double* output_[] = {out.data()};
-	int check = Yr_fun(input_, output_, p3, p4, 0);
+	int check = franka_Yr_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -799,11 +1163,11 @@ Eigen::MatrixXd thunder_franka::get_Yr(){
 Eigen::MatrixXd thunder_franka::get_reg_C(){
 	Eigen::MatrixXd out;
 	out.resize(7,70);
-	long long p3[reg_C_fun_SZ_IW];
-	double p4[reg_C_fun_SZ_W];
+	long long p3[franka_reg_C_fun_SZ_IW];
+	double p4[franka_reg_C_fun_SZ_W];
 	const double* input_[] = {q.data(), dq.data(), dqr.data()};
 	double* output_[] = {out.data()};
-	int check = reg_C_fun(input_, output_, p3, p4, 0);
+	int check = franka_reg_C_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -811,11 +1175,35 @@ Eigen::MatrixXd thunder_franka::get_reg_C(){
 Eigen::MatrixXd thunder_franka::get_reg_G(){
 	Eigen::MatrixXd out;
 	out.resize(7,70);
-	long long p3[reg_G_fun_SZ_IW];
-	double p4[reg_G_fun_SZ_W];
+	long long p3[franka_reg_G_fun_SZ_IW];
+	double p4[franka_reg_G_fun_SZ_W];
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
-	int check = reg_G_fun(input_, output_, p3, p4, 0);
+	int check = franka_reg_G_fun(input_, output_, p3, p4, 0);
+	return out;
+}
+
+// - Regressor matrix of the quantity J^T*w - //
+Eigen::MatrixXd thunder_franka::get_reg_JTw(){
+	Eigen::MatrixXd out;
+	out.resize(7,3);
+	long long p3[franka_reg_JTw_fun_SZ_IW];
+	double p4[franka_reg_JTw_fun_SZ_W];
+	const double* input_[] = {q.data(), w.data(), Ln2EE.data()};
+	double* output_[] = {out.data()};
+	int check = franka_reg_JTw_fun(input_, output_, p3, p4, 0);
+	return out;
+}
+
+// - Regressor matrix of the quantity J*dq - //
+Eigen::MatrixXd thunder_franka::get_reg_Jdq(){
+	Eigen::MatrixXd out;
+	out.resize(6,3);
+	long long p3[franka_reg_Jdq_fun_SZ_IW];
+	double p4[franka_reg_Jdq_fun_SZ_W];
+	const double* input_[] = {q.data(), dq.data(), Ln2EE.data()};
+	double* output_[] = {out.data()};
+	int check = franka_reg_Jdq_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -823,10 +1211,11 @@ Eigen::MatrixXd thunder_franka::get_reg_G(){
 Eigen::MatrixXd thunder_franka::get_reg_M(){
 	Eigen::MatrixXd out;
 	out.resize(7,70);
-	long long p3[reg_M_fun_SZ_IW];
-	double p4[reg_M_fun_SZ_W];
+	long long p3[franka_reg_M_fun_SZ_IW];
+	double p4[franka_reg_M_fun_SZ_W];
 	const double* input_[] = {q.data(), ddqr.data()};
 	double* output_[] = {out.data()};
-	int check = reg_M_fun(input_, output_, p3, p4, 0);
+	int check = franka_reg_M_fun(input_, output_, p3, p4, 0);
 	return out;
 }
+

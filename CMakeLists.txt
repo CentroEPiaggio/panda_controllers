@@ -24,6 +24,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.5.0 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 #find_package(Boost REQUIRED)
 
 #find_package(CasADi REQUIRED) # for regressor
@@ -152,6 +153,7 @@ add_dependencies(trajectory_rviz
 target_link_libraries(${PROJECT_NAME} PUBLIC
 	${Franka_LIBRARIES}
 	${catkin_LIBRARIES}
+	${YAML_CPP_LIBRARIES}
 	#${Boost_LIBRARIES}
 	#${CASADI_LIB}
 )

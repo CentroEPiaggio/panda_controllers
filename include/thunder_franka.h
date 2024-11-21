@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 
@@ -15,10 +15,15 @@ Usable only for generated code from casadi library! */
 class thunder_franka{
 
 	private:
-		/* Number of joints */
-		int num_joints;
+		// standard number of parameters
+		const int STD_PAR_LINK = 10;
 		/* Joints' variables */
-		Eigen::VectorXd q, dq, dqr, ddqr, par_REG, par_DYN;
+		Eigen::VectorXd q, dq, dqr, ddqr, par_DYN, par_REG, par_Dl;
+		Eigen::VectorXd x, dx, ddxr, par_K, par_D, par_Dm;
+		Eigen::VectorXd w;
+		Eigen::MatrixXd DHtable;
+		Eigen::VectorXd gravity, world2L0, Ln2EE;
+		std::vector<int> gravity_symb, world2L0_symb, Ln2EE_symb;
 
 		void update_inertial_DYN();
 		void update_inertial_REG();
@@ -28,6 +33,7 @@ class thunder_franka{
 			std::vector<double> parI = std::vector<double>(6); // Inertia in the order xx, xy, xz, yy, yz, zz
 			std::vector<double> xyz = std::vector<double>(3); // Origin xyz as std::vector
 			std::vector<double> rpy = std::vector<double>(3);
+			std::vector<double> Dl = std::vector<double>(1);
 			std::string name;
 		};
 
@@ -45,6 +51,19 @@ class thunder_franka{
 		Eigen::Matrix3d hat(const Eigen::Vector3d v);
 		
 	public:
+		const std::string frankaName = "franka";
+		const int n_joints = 7;
+		const bool ELASTIC = 0;
+		const int numElasticJoints = 0;
+		const int K_order = 0;
+		const int D_order = 0;
+		const int Dl_order = 0;
+		const int Dm_order = 0;
+		const int numParDYN = STD_PAR_LINK*n_joints;
+		const int numParREG = STD_PAR_LINK*n_joints;
+		// const int numParELA = /*#-numParELA-#*/;
+		const int isElasticJoint[7] = {0, 0, 0, 0, 0, 0, 0};
+
 		/* Empty constructor, initialization inside */
 		thunder_franka();
 		/* Constructor to init variables*/
@@ -62,20 +81,51 @@ class thunder_franka{
 		void set_dq(const Eigen::VectorXd& dq_);
 		void set_dqr(const Eigen::VectorXd& dqr_);
 		void set_ddqr(const Eigen::VectorXd& ddqr_);
-		void set_inertial_REG(const Eigen::VectorXd& par_);
-		void set_inertial_DYN(const Eigen::VectorXd& par_);
-		Eigen::VectorXd get_inertial_REG();
-		Eigen::VectorXd get_inertial_DYN();
+		void set_x(const Eigen::VectorXd& x_);
+		void set_dx(const Eigen::VectorXd& dx_);
+		void set_ddxr(const Eigen::VectorXd& ddxr_);
+		void set_w(const Eigen::VectorXd& w_);
+		void set_par_REG(const Eigen::VectorXd& par_, bool update_DYN = true);
+		void set_par_DYN(const Eigen::VectorXd& par_, bool update_REG = true);
+		void set_par_K(const Eigen::VectorXd& par_);
+		void set_par_D(const Eigen::VectorXd& par_);
+		void set_par_Dm(const Eigen::VectorXd& par_);
+		void set_par_Dl(const Eigen::VectorXd& par_);
+		void set_DHtable(const Eigen::MatrixXd& par_);
+		void set_gravity(const Eigen::VectorXd& par_);
+		void set_world2L0(const Eigen::VectorXd& par_);
+		void set_Ln2EE(const Eigen::VectorXd& par_);
+		// void set_par_ELA(const Eigen::VectorXd& par_);
+		Eigen::VectorXd get_par_REG();
+		Eigen::VectorXd get_par_DYN();
+		Eigen::VectorXd get_par_K();
+		Eigen::VectorXd get_par_D();
+		Eigen::VectorXd get_par_Dm();
+		Eigen::VectorXd get_par_Dl();
+		Eigen::MatrixXd get_DHtable();
+		Eigen::VectorXd get_gravity();
+		Eigen::VectorXd get_world2L0();
+		Eigen::VectorXd get_Ln2EE();
+		// Eigen::VectorXd get_par_ELA();
 
-		void load_inertial_REG(std::string);
-		void save_inertial_REG(std::string);
-		void load_inertial_DYN(std::string);
-		void save_inertial_DYN(std::string);
+		Eigen::VectorXd load_par_REG(std::string, bool update_DYN = true);
+		void save_par_REG(std::string);
+		void load_conf(std::string, bool update_REG = true);
+		void save_par_DYN(std::string);
+		// void load_par_DYN(std::string);
+		// void save_par_DYN(std::string);
+		// void load_par_elastic(std::string);
+		// void load_par_ELA(std::string);
+		// void save_par_ELA(std::string);
 
 		int get_numJoints();
-		int get_numParams();
+		// int get_numParLink();
+		int get_numParDYN();
+		int get_numParREG();
+		// int get_numParELA();
 
 		// ----- generated functions ----- //
+		
 		// - Manipulator Coriolis matrix - //
 		Eigen::MatrixXd get_C();
 
@@ -198,6 +248,12 @@ class thunder_franka{
 
 		// - Regressor matrix of term G - //
 		Eigen::MatrixXd get_reg_G();
+
+		// - Regressor matrix of the quantity J^T*w - //
+		Eigen::MatrixXd get_reg_JTw();
+
+		// - Regressor matrix of the quantity J*dq - //
+		Eigen::MatrixXd get_reg_Jdq();
 
 		// - Regressor matrix of term M*ddqr - //
 		Eigen::MatrixXd get_reg_M();

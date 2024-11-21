@@ -27,6 +27,7 @@
 #include "panda_controllers/link_params.h"
 #include "panda_controllers/log_adaptive_cartesian.h"
 #include "panda_controllers/flag.h"
+#include <franka_msgs/SetEEFrame.h>
 
 #include "thunder_franka.h"
 #include "utils_cartesian.h"
@@ -121,7 +122,7 @@ private:
 
     /* Parameter vector */
 
-    Eigen::Matrix<double, NJ*PARAM, 1> param;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_REG;
     Eigen::Matrix<double, NJ*PARAM, 1> param_init;
     
     Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
