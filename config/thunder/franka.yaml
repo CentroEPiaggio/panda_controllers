@@ -36,7 +36,7 @@ Base_to_L0:
 # Link_n to EE
 Ln_to_EE:
   symb: [1,1,1, 0,0,0]
-  tr: [0, 0, 0]
+  tr: [0.15, 0.15, 0.15]
   ypr: [0, 0, 0]
 
 

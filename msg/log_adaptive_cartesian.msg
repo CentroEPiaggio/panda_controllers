@@ -10,6 +10,8 @@ float32[9] L
 float32[36] conv0
 float32[36] conv1
 float32[36] conv2
+float32[3] ee_tr
+float32[6] e_kin
 
 link_params link1
 link_params link2

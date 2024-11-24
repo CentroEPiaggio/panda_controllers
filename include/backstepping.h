@@ -91,7 +91,8 @@ private:
     Eigen::Matrix<double, NJ, NJ> Kd;
     //Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
-    bool update_param_flag;
+    bool update_kin_flag;
+	bool update_dyn_flag;
     bool UB_s_flag;
 
     /* Defining q_current, dot_q_current, s and tau_cmd */
@@ -123,6 +124,7 @@ private:
     /* Parameter vector */
 
     Eigen::Matrix<double, NJ*PARAM, 1> param_REG;
+	Eigen::Matrix<double,3,1> ee_tr;
     Eigen::Matrix<double, NJ*PARAM, 1> param_init;
     
     Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
