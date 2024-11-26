@@ -13,14 +13,17 @@
 #include "gen_traj_fun.h"
 
 typedef Eigen::Vector3d vec3d;
+typedef Eigen::Matrix<double,4,1> vec4d;
 
 using std::cout;
 using std::cin;
 using std::endl;
 
 /* End-effector current position */
-vec3d pose_EE;
-vec3d pose_EE_start;
+vec3d pos_EE;
+Eigen::Quaterniond or_EE;
+vec3d pos_EE_start;
+Eigen::Quaterniond or_EE_start;
 
 /* Global flag */
 bool init_start = false;
@@ -38,7 +41,8 @@ double minjerk_xf, minjerk_yf, minjerk_zf;
 double duration
 
 /* variables for message */ ;
-vec3d position_t, velocity_t, acceleration_t;
+vec3d position_t, velocity_t, acceleration_t, ang_vel_t, ang_acc_t;
+vec4d orientation_t;
 
 /* Obtain end-effector pose */
 void poseCallback(const panda_controllers::pointConstPtr& msg);
@@ -48,13 +52,14 @@ void lissajous  (const double dt_, const vec3d p0);
 void minjerk    (const double dt_, const vec3d p0);
 void stay_in_p0 (const double dt_, const vec3d p0);
 void trajFun    (const double dt_, const vec3d p0);
+void computeOscillatingOrientation(double dt, const Eigen::Quaterniond& q0);
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "command_node");
 	ros::NodeHandle node_handle;
-    double frequency = 100;
-	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
+    double frequency = 1000;
+	ros::Rate loop_rate(frequency);
 	
 	/* Publisher */
 	ros::Publisher pub_cmd_cartesian = node_handle.advertise<panda_controllers::desTrajEE>("command_cartesian", 1000);
@@ -132,13 +137,14 @@ int main(int argc, char **argv)
             dt = t.toSec() - t_start;
         }else if(!end_motion){
             cout<<"\n=== tempo terminato ===\n";
-            pose_EE_start = pose_EE;
+            pos_EE_start = pos_EE;
+			or_EE_start = or_EE;
             traj_ptr = stay_in_p0;
             end_motion = true;
         }
         
-        //cout<<"\nend_motion: "<<end_motion<<"\npos_E_start: \n"<<pose_EE_start<<endl;
-        (*traj_ptr)(dt,pose_EE_start);
+        //cout<<"\nend_motion: "<<end_motion<<"\npos_E_start: \n"<<pos_EE_start<<endl;
+        (*traj_ptr)(dt, pos_EE_start);
         msg_cartesian.header.stamp = t;
 
         /* UPDATE MESSAGE */
@@ -153,6 +159,19 @@ int main(int argc, char **argv)
         msg_cartesian.acceleration.x = acceleration_t(0);
         msg_cartesian.acceleration.y = acceleration_t(1);
         msg_cartesian.acceleration.z = acceleration_t(2);
+
+		msg_cartesian.orientation.w = orientation_t(0);
+        msg_cartesian.orientation.x = orientation_t(1);
+        msg_cartesian.orientation.y = orientation_t(2);
+		msg_cartesian.orientation.z = orientation_t(3);
+
+		msg_cartesian.ang_vel.x = ang_vel_t(0);
+        msg_cartesian.ang_vel.y = ang_vel_t(1);
+        msg_cartesian.ang_vel.z = ang_vel_t(2);
+
+		msg_cartesian.ang_acc.x = ang_acc_t(0);
+        msg_cartesian.ang_acc.y = ang_acc_t(1);
+        msg_cartesian.ang_acc.z = ang_acc_t(2);
 
         pub_cmd_cartesian.publish(msg_cartesian);  
 
@@ -170,12 +189,25 @@ void poseCallback(const panda_controllers::pointConstPtr& msg){
 	EE_y = msg->xyz.y;
 	EE_z = msg->xyz.z;
 
-	pose_EE << EE_x, EE_y, EE_z;
-
+	pos_EE << EE_x, EE_y, EE_z;
+	Eigen::Quaterniond or_EE_tmp(0.0268247, 0.922474, -0.381482, -0.0528501);
+	or_EE = or_EE_tmp;
+	// insert the pose callback with orientation
+	// Eigen::Matrix3d rotation_matrix;
+	// rotation_matrix << 	0.7031485305992036, -0.7067694330104566, -0.07784030111875523,
+	// 					-0.7011826008400694, -0.7073983045971645, 0.08905391025784827,
+	// 					-0.11800467870104367, -0.008037861353296398, -0.9929805076583974;
+	// rotation_matrix = rotation_matrix.transpose();
+	// or_EE = Eigen::Quaterniond(rotation_matrix);
+	// or_EE.normalized();
+	
 	if (!init_start){
-		pose_EE_start = pose_EE;
+		// cout << "or_EE: " << or_EE.vec() << ", " << or_EE.w() << endl;
+		pos_EE_start = pos_EE;
+		// Eigen::Quaterniond or_EE_tmp(0.0268247, 0.922474, -0.381482, -0.0528501);
+		or_EE_start = or_EE;
 		init_start = true;
-        std::cout<<"\n==============\n"<<"pose_EE_start:"<<"\n==============\n"<<pose_EE_start<<"\n==============\n";
+        std::cout<<"\n==============\n"<<"pos_EE_start:"<<"\n==============\n"<<pos_EE_start<<"\n==============\n";
 	}
 }
 
@@ -195,7 +227,6 @@ void lissajous(const double dt_, const vec3d p0){
     x0 = 0.380 + offX;
     y0 = 0.000 + offY;
     z0 = 0.400 + offZ;
-        
 
     position_t << 
         x0 + A * std::sin(2*M_PI * a * (dt-t0) + dx),
@@ -209,6 +240,69 @@ void lissajous(const double dt_, const vec3d p0){
         -2*M_PI *2*M_PI *A * a * a * std::sin(2*M_PI * a * (dt-t0) + dx),
         -2*M_PI *2*M_PI *B * b * b * std::cos(2*M_PI * b * (dt-t0)), 
         -2*M_PI *2*M_PI *C * c * c * std::sin(2*M_PI * c * (dt-t0) + dz);
+
+	// --- Orientation --- //
+	
+	// orientation_t << 
+    //     x0 + A * std::sin(2*M_PI * a * (dt-t0) + dx),
+    //     y0 + B * std::cos(2*M_PI * b * (dt-t0)),
+    //     z0 + C * std::sin(2*M_PI * c * (dt-t0) + dz);
+	// Eigen::Quaterniond q0(1.0, 0.0, 0.0, 0.0);
+	// q0 << 1.0, 0.0, 0.0, 0.0;
+	// computeOscillatingOrientation(dt, or_EE_start);
+}
+
+// Eigen::Quaterniond quatMul(Eigen::Quaterniond q1, Eigen::Quaterniond q2) {
+// 	Eigen::Quaterniond resultQ;
+
+// 	resultQ.w() = q1.w() * q2.w() - q1.vec().dot(q2.vec());
+// 	resultQ.vec() = q1.w() * q2.vec() + q2.w() * q1.vec() + q1.vec().cross(q2.vec());
+
+// 	resultQ.normalized();
+
+// 	return resultQ;
+// }
+
+void computeOscillatingOrientation(double dt, const Eigen::Quaterniond& q0){
+	double t0 = 0;
+	double omega = 1;
+	double A = 0.1;
+	double phase = 0;
+	Eigen::Vector3d rotation_axis;
+	rotation_axis << 1, 0, 0;
+
+	Eigen::Vector3d axis = rotation_axis.normalized();
+
+	// axis: θ(t) = A * sin(ωt + φ)
+	double theta = A * std::sin(omega * (dt-t0) + phase);
+
+	// angular velocity: θ'(t) = A * ω * cos(ωt + φ)
+	double theta_dot = A * omega * std::cos(omega * (dt-t0) + phase);
+
+	// angular acceleration: θ''(t) = -A * ω^2 * sin(ωt + φ)
+	double theta_ddot = - A * omega * omega * std::sin(omega * (dt-t0) + phase);
+
+	// quaternion from agle-axis
+	Eigen::Quaterniond q_t(Eigen::AngleAxisd(theta, axis));
+	// Eigen::Quaterniond q_t(
+	// 	std::cos(theta / 2),
+	// 	std::sin(theta / 2) * axis.x(),
+	// 	std::sin(theta / 2) * axis.y(),
+	// 	std::sin(theta / 2) * axis.z()
+	// );
+
+	// orientation
+	// Eigen::Quaterniond orientation = quatMul(q0, q_t);
+	Eigen::Quaterniond orientation = q_t * q0;
+
+	// Velocità angolare nel frame globale: ω = θ'(t) * axis
+	ang_vel_t = theta_dot * axis;
+
+	// Accelerazione angolare nel frame globale: α = θ''(t) * axis
+	ang_acc_t = theta_ddot * axis;
+
+	// Salva l'orientazione attuale
+	orientation_t << orientation.w(), orientation.x(), orientation.y(), orientation.z();
 }
 
 void minjerk(const double dt_, const vec3d p0){
@@ -226,9 +320,14 @@ void minjerk(const double dt_, const vec3d p0){
 void stay_in_p0(const double dt_, const vec3d p0){
 
     position_t<< p0(0), p0(1), p0(2);
-    
     velocity_t.setZero();
     acceleration_t.setZero();
+
+	Eigen::Quaterniond or_EE_tmp(0.0268247, 0.922474, -0.381482, -0.0528501);
+	Eigen::Quaterniond orientation = or_EE_tmp;
+	orientation_t << orientation.w(), orientation.x(), orientation.y(), orientation.z();
+	ang_vel_t.setZero();
+	ang_acc_t.setZero();
 }
 
 void trajFun(const double dt_, const vec3d p0){
