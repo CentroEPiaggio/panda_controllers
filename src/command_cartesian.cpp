@@ -269,18 +269,18 @@ void computeOscillatingOrientation(double dt, const Eigen::Quaterniond& q0){
 	double A = 0.1;
 	double phase = 0;
 	Eigen::Vector3d rotation_axis;
-	rotation_axis << 1, 0, 0;
+	rotation_axis << 0, 0, 1;
 
 	Eigen::Vector3d axis = rotation_axis.normalized();
 
 	// axis: θ(t) = A * sin(ωt + φ)
-	double theta = A * std::sin(omega * (dt-t0) + phase);
+	double theta = omega*dt; //A * std::sin(omega * (dt-t0) + phase);
 
 	// angular velocity: θ'(t) = A * ω * cos(ωt + φ)
-	double theta_dot = A * omega * std::cos(omega * (dt-t0) + phase);
+	double theta_dot = 1; //A * omega * std::cos(omega * (dt-t0) + phase);
 
 	// angular acceleration: θ''(t) = -A * ω^2 * sin(ωt + φ)
-	double theta_ddot = - A * omega * omega * std::sin(omega * (dt-t0) + phase);
+	double theta_ddot = 0; // - A * omega * omega * std::sin(omega * (dt-t0) + phase);
 
 	// quaternion from agle-axis
 	Eigen::Quaterniond q_t(Eigen::AngleAxisd(theta, axis));

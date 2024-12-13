@@ -140,7 +140,7 @@ void thunder_franka::update_inertial_REG(){
 		I_tmp_v << I_tmp(0,0), I_tmp(0,1), I_tmp(0,2), I_tmp(1,1), I_tmp(1,2), I_tmp(2,2);
 		Eigen::Matrix<double, 6, 1> I;
 		I << p_dyn(4), p_dyn(5), p_dyn(6), p_dyn(7), p_dyn(8), p_dyn(9);
-		par_REG.segment(STD_PAR_LINK*i, STD_PAR_LINK) << mass, CoM, I+I_tmp_v;
+		par_REG.segment(STD_PAR_LINK*i, STD_PAR_LINK) << mass, m_CoM, I+I_tmp_v;
 	}
 }
 
@@ -727,18 +727,6 @@ Eigen::MatrixXd thunder_franka::get_G(){
 	return out;
 }
 
-// - Jacobian of frame 0 - //
-Eigen::MatrixXd thunder_franka::get_J_0(){
-	Eigen::MatrixXd out;
-	out.resize(6,7);
-	long long p3[franka_J_0_fun_SZ_IW];
-	double p4[franka_J_0_fun_SZ_W];
-	const double* input_[] = {q.data()};
-	double* output_[] = {out.data()};
-	int check = franka_J_0_fun(input_, output_, p3, p4, 0);
-	return out;
-}
-
 // - Jacobian of frame 1 - //
 Eigen::MatrixXd thunder_franka::get_J_1(){
 	Eigen::MatrixXd out;
@@ -817,21 +805,21 @@ Eigen::MatrixXd thunder_franka::get_J_7(){
 	out.resize(6,7);
 	long long p3[franka_J_7_fun_SZ_IW];
 	double p4[franka_J_7_fun_SZ_W];
-	const double* input_[] = {q.data(), Ln2EE.data()};
+	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
 	int check = franka_J_7_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
-// - Jacobian of center of mass of link 0 - //
-Eigen::MatrixXd thunder_franka::get_J_cm_0(){
+// - Jacobian of frame 8 - //
+Eigen::MatrixXd thunder_franka::get_J_8(){
 	Eigen::MatrixXd out;
 	out.resize(6,7);
-	long long p3[franka_J_cm_0_fun_SZ_IW];
-	double p4[franka_J_cm_0_fun_SZ_W];
-	const double* input_[] = {q.data(), par_DYN.data()};
+	long long p3[franka_J_8_fun_SZ_IW];
+	double p4[franka_J_8_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
 	double* output_[] = {out.data()};
-	int check = franka_J_cm_0_fun(input_, output_, p3, p4, 0);
+	int check = franka_J_8_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -907,6 +895,18 @@ Eigen::MatrixXd thunder_franka::get_J_cm_6(){
 	return out;
 }
 
+// - Jacobian of center of mass of link 7 - //
+Eigen::MatrixXd thunder_franka::get_J_cm_7(){
+	Eigen::MatrixXd out;
+	out.resize(6,7);
+	long long p3[franka_J_cm_7_fun_SZ_IW];
+	double p4[franka_J_cm_7_fun_SZ_W];
+	const double* input_[] = {q.data(), par_DYN.data()};
+	double* output_[] = {out.data()};
+	int check = franka_J_cm_7_fun(input_, output_, p3, p4, 0);
+	return out;
+}
+
 // - Jacobian of the end-effector - //
 Eigen::MatrixXd thunder_franka::get_J_ee(){
 	Eigen::MatrixXd out;
@@ -961,7 +961,7 @@ Eigen::MatrixXd thunder_franka::get_T_0(){
 	out.resize(4,4);
 	long long p3[franka_T_0_fun_SZ_IW];
 	double p4[franka_T_0_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	const double* input_[] = {};
 	double* output_[] = {out.data()};
 	int check = franka_T_0_fun(input_, output_, p3, p4, 0);
 	return out;
@@ -973,13 +973,13 @@ Eigen::MatrixXd thunder_franka::get_T_0_0(){
 	out.resize(4,4);
 	long long p3[franka_T_0_0_fun_SZ_IW];
 	double p4[franka_T_0_0_fun_SZ_W];
-	const double* input_[] = {q.data()};
+	const double* input_[] = {};
 	double* output_[] = {out.data()};
 	int check = franka_T_0_0_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
-// - absolute transformation from frame base to frame 2 - //
+// - absolute transformation from frame base to frame 1 - //
 Eigen::MatrixXd thunder_franka::get_T_0_1(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -991,7 +991,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_1(){
 	return out;
 }
 
-// - absolute transformation from frame base to frame 3 - //
+// - absolute transformation from frame base to frame 2 - //
 Eigen::MatrixXd thunder_franka::get_T_0_2(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1003,7 +1003,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_2(){
 	return out;
 }
 
-// - absolute transformation from frame base to frame 4 - //
+// - absolute transformation from frame base to frame 3 - //
 Eigen::MatrixXd thunder_franka::get_T_0_3(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1015,7 +1015,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_3(){
 	return out;
 }
 
-// - absolute transformation from frame base to frame 5 - //
+// - absolute transformation from frame base to frame 4 - //
 Eigen::MatrixXd thunder_franka::get_T_0_4(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1027,7 +1027,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_4(){
 	return out;
 }
 
-// - absolute transformation from frame base to frame 6 - //
+// - absolute transformation from frame base to frame 5 - //
 Eigen::MatrixXd thunder_franka::get_T_0_5(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1039,7 +1039,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_5(){
 	return out;
 }
 
-// - absolute transformation from frame base to frame 7 - //
+// - absolute transformation from frame base to frame 6 - //
 Eigen::MatrixXd thunder_franka::get_T_0_6(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1051,15 +1051,27 @@ Eigen::MatrixXd thunder_franka::get_T_0_6(){
 	return out;
 }
 
-// - absolute transformation from frame base to end_effector - //
+// - absolute transformation from frame base to frame 7 - //
 Eigen::MatrixXd thunder_franka::get_T_0_7(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
 	long long p3[franka_T_0_7_fun_SZ_IW];
 	double p4[franka_T_0_7_fun_SZ_W];
-	const double* input_[] = {q.data(), Ln2EE.data()};
+	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
 	int check = franka_T_0_7_fun(input_, output_, p3, p4, 0);
+	return out;
+}
+
+// - absolute transformation from frame base to end_effector - //
+Eigen::MatrixXd thunder_franka::get_T_0_8(){
+	Eigen::MatrixXd out;
+	out.resize(4,4);
+	long long p3[franka_T_0_8_fun_SZ_IW];
+	double p4[franka_T_0_8_fun_SZ_W];
+	const double* input_[] = {q.data(), Ln2EE.data()};
+	double* output_[] = {out.data()};
+	int check = franka_T_0_8_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 
@@ -1075,7 +1087,7 @@ Eigen::MatrixXd thunder_franka::get_T_0_ee(){
 	return out;
 }
 
-// - relative transformation from frame1to frame 2 - //
+// - relative transformation from frame0to frame 1 - //
 Eigen::MatrixXd thunder_franka::get_T_1(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1087,7 +1099,7 @@ Eigen::MatrixXd thunder_franka::get_T_1(){
 	return out;
 }
 
-// - relative transformation from frame2to frame 3 - //
+// - relative transformation from frame1to frame 2 - //
 Eigen::MatrixXd thunder_franka::get_T_2(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1099,7 +1111,7 @@ Eigen::MatrixXd thunder_franka::get_T_2(){
 	return out;
 }
 
-// - relative transformation from frame3to frame 4 - //
+// - relative transformation from frame2to frame 3 - //
 Eigen::MatrixXd thunder_franka::get_T_3(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1111,7 +1123,7 @@ Eigen::MatrixXd thunder_franka::get_T_3(){
 	return out;
 }
 
-// - relative transformation from frame4to frame 5 - //
+// - relative transformation from frame3to frame 4 - //
 Eigen::MatrixXd thunder_franka::get_T_4(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1123,7 +1135,7 @@ Eigen::MatrixXd thunder_franka::get_T_4(){
 	return out;
 }
 
-// - relative transformation from frame5to frame 6 - //
+// - relative transformation from frame4to frame 5 - //
 Eigen::MatrixXd thunder_franka::get_T_5(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1135,7 +1147,7 @@ Eigen::MatrixXd thunder_franka::get_T_5(){
 	return out;
 }
 
-// - relative transformation from frame6to frame 7 - //
+// - relative transformation from frame5to frame 6 - //
 Eigen::MatrixXd thunder_franka::get_T_6(){
 	Eigen::MatrixXd out;
 	out.resize(4,4);
@@ -1144,6 +1156,18 @@ Eigen::MatrixXd thunder_franka::get_T_6(){
 	const double* input_[] = {q.data()};
 	double* output_[] = {out.data()};
 	int check = franka_T_6_fun(input_, output_, p3, p4, 0);
+	return out;
+}
+
+// - relative transformation from frame6to frame 7 - //
+Eigen::MatrixXd thunder_franka::get_T_7(){
+	Eigen::MatrixXd out;
+	out.resize(4,4);
+	long long p3[franka_T_7_fun_SZ_IW];
+	double p4[franka_T_7_fun_SZ_W];
+	const double* input_[] = {q.data()};
+	double* output_[] = {out.data()};
+	int check = franka_T_7_fun(input_, output_, p3, p4, 0);
 	return out;
 }
 

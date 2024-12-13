@@ -9,7 +9,7 @@
 
     <!-- flag -->
     <arg name="command_node"    default="true" />
-    <arg name="flag_node"       default="true"/>
+    <arg name="flag_node"       default="false"/>
 
     <!-- rosbag -->
     <arg name="t1"          value="/backstepping_controller/current_config"/>
@@ -20,16 +20,16 @@
 
     <arg name="bag_path"    default="$(find panda_controllers)/rosbag"/>
     <arg name="bag_name"    default="$(arg bag_path)/backstepping"/>
-    <arg name="duration"    default="120"/>
+    <arg name="duration"    default="30"/>
     
     <!-- rosbag file name -->
-    <arg name="gainL"  		default="L_1_03"/>
+    <arg name="gainL"  		default="L_1_02"/>
     <arg name="gainR"       default="R_01"/> <!-- R_01 -->
     <arg name="gainKd"      default="Kd_10_5_2"/> <!-- Kd_10_5_2 -->
-    <arg name="adapt"       default="adpKinIndDyn_$(arg flag_node)"/>
+    <arg name="adapt"       default="adpDir_$(arg flag_node)"/>
 	<arg name="dur"       	default="$(arg duration)s"/>
     <arg name="traj_type"   default="liss"/> <!-- liss - circ - minjerk -->
-    <arg name="param_off"   default="kinEE"/>  <!-- p0, p2, p5, p10, p20 -->
+    <arg name="param_off"   default="kinDH"/>  <!-- p0, p2, p5, p10, p20 -->
     <arg name="gains"        default="$(arg gainL)_$(arg gainR)_$(arg gainKd)"/>
     
     

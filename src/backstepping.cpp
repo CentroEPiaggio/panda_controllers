@@ -96,7 +96,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	std::string path_conf = package_path + "/config/thunder/franka.yaml";
 	std::string path_par_REG = package_path + "/config/thunder/franka_par_REG_pW.yaml";
 	frankaRobot.load_conf(path_conf);
-	frankaRobot.load_par_REG(path_par_REG);
+	// frankaRobot.load_par_REG(path_par_REG);
 	param_REG = frankaRobot.get_par_REG();
 	param_init = param_REG;
 	// ee_tr.setZero();
@@ -216,6 +216,8 @@ void Backstepping::starting(const ros::Time& time)
 
 	frankaRobot.set_q(q_curr);
 	frankaRobot.set_dq(dot_q_curr);
+	frankaRobot.set_dqr(dot_q_curr);
+	frankaRobot.set_ddqr(ddot_qr.setOnes());
 	T0EE = frankaRobot.get_T_0_ee();
 	ee_tr = frankaRobot.get_Ln2EE();
 	cout << "ee_tr: " << ee_tr << endl;
@@ -241,6 +243,18 @@ void Backstepping::starting(const ros::Time& time)
 	Eigen::Matrix<double,NJ,1> G = frankaRobot.get_G();
 	cout << "G_real: \n" << G_real << endl<<endl;
 	cout << "G_thunder: \n" << G << endl<<endl;
+
+	Eigen::Matrix<double,NJ,1> G_reg = frankaRobot.get_reg_G() * param_REG;
+	cout << "G_reg: \n" << G_reg << endl<<endl;
+
+	cout << "M_reg_real: \n" << (M_real*ddot_qr).transpose() << endl<<endl;
+	cout << "M_reg_thunder: \n" << (frankaRobot.get_reg_M()*param_REG).transpose() << endl<<endl;
+
+	cout << "C_reg_real: \n" << Cdq_real.transpose() << endl<<endl;
+	cout << "C_reg_thunder: \n" << (frankaRobot.get_reg_C()*param_REG).transpose() << endl<<endl;
+
+	frankaRobot.set_dqr(dot_qr.setZero());
+	frankaRobot.set_ddqr(ddot_qr.setZero());
 
 	/* Secure initialization command */
 	ee_pos_cmd = T0EE_real.block<3,1>(0,3);
@@ -343,9 +357,12 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	Eigen::Matrix<double,6,1> e_kin;
 	e_kin.head(3) = e_pos_kin;
 	e_kin.tail(3) = e_rot_kin;
+	Eigen::Matrix<double,3,3> L_kin = createL(ee_rot_real, ee_rot);
 	Eigen::Matrix<double,6,1> dot_e_kin;
+	// dot_e_kin.head(3) = ee_vel_real - ee_vel;
+	// dot_e_kin.tail(3) = ee_omega_real - ee_omega;
 	dot_e_kin.head(3) = ee_vel_real - ee_vel;
-	dot_e_kin.tail(3) = ee_omega_real - ee_omega;
+	dot_e_kin.tail(3) = L_kin.transpose()*ee_omega_real - L_kin*ee_omega;
 	
 	// conversions
 	tmp_position = ee_vel_cmd_tot + Lambda * error;
@@ -403,11 +420,11 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 		// Eigen::MatrixXd Yk = frankaRobot.get_reg_JTw();
 		// Eigen::VectorXd dot_kin_par = -Yk.transpose() * dot_qr;
 		// - J method - //
-		// Eigen::MatrixXd Yk = frankaRobot.get_reg_Jdq();
-		// Eigen::VectorXd dot_kin_par = - Yk.transpose() * tmp_conversion0.transpose() * error_real;
-		// - Indirect method - //
 		Eigen::MatrixXd Yk = frankaRobot.get_reg_Jdq();
-		Eigen::VectorXd dot_kin_par = Yk.transpose() * dot_e_kin;
+		Eigen::VectorXd dot_kin_par = - Yk.transpose() * tmp_conversion0.transpose() * error_real;
+		// - Indirect method - //
+		// Eigen::MatrixXd Yk = frankaRobot.get_reg_Jdq();
+		// Eigen::VectorXd dot_kin_par = Yk.transpose() * (dot_e_kin + e_kin);
 
 		ee_tr += dt * dot_kin_par;
 		frankaRobot.set_Ln2EE(ee_tr);
@@ -417,10 +434,10 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	
 	// --- dynamics adaptive law --- //
 	if (update_dyn_flag){// && !saturate_s_flag){
-		dot_param = Rinv*Yr.transpose()*s;//_temp;
-/* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
-		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
-		param_REG += dt*dot_param;
+// 		dot_param = Rinv*Yr.transpose()*s;//_temp;
+// /* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
+// 		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
+// 		param_REG += dt*dot_param;
 	}
 	// --- end --- //
 
@@ -433,7 +450,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute tau command */
 	tau_tilde = Yr*(param_init-param_REG);
-	tau_cmd = Yr*param_REG + Kd*s + Jee.transpose()*tmp_conversion0.transpose()*error;
+	tau_cmd = Yr*param_REG + Kd*s + Jee.transpose()*tmp_conversion0.transpose()*error_real;
 	//tau_cmd.setZero(); // gravity compensation check (spoiler: it is not perfect)
 	
 	/* Saturate the derivate of tau_cmd */

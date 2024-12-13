@@ -135,9 +135,6 @@ class thunder_franka{
 		// - Manipulator gravity terms - //
 		Eigen::MatrixXd get_G();
 
-		// - Jacobian of frame 0 - //
-		Eigen::MatrixXd get_J_0();
-
 		// - Jacobian of frame 1 - //
 		Eigen::MatrixXd get_J_1();
 
@@ -159,8 +156,8 @@ class thunder_franka{
 		// - Jacobian of frame 7 - //
 		Eigen::MatrixXd get_J_7();
 
-		// - Jacobian of center of mass of link 0 - //
-		Eigen::MatrixXd get_J_cm_0();
+		// - Jacobian of frame 8 - //
+		Eigen::MatrixXd get_J_8();
 
 		// - Jacobian of center of mass of link 1 - //
 		Eigen::MatrixXd get_J_cm_1();
@@ -180,6 +177,9 @@ class thunder_franka{
 		// - Jacobian of center of mass of link 6 - //
 		Eigen::MatrixXd get_J_cm_6();
 
+		// - Jacobian of center of mass of link 7 - //
+		Eigen::MatrixXd get_J_cm_7();
+
 		// - Jacobian of the end-effector - //
 		Eigen::MatrixXd get_J_ee();
 
@@ -198,47 +198,53 @@ class thunder_franka{
 		// - absolute transformation from frame base to frame 1 - //
 		Eigen::MatrixXd get_T_0_0();
 
-		// - absolute transformation from frame base to frame 2 - //
+		// - absolute transformation from frame base to frame 1 - //
 		Eigen::MatrixXd get_T_0_1();
 
-		// - absolute transformation from frame base to frame 3 - //
+		// - absolute transformation from frame base to frame 2 - //
 		Eigen::MatrixXd get_T_0_2();
 
-		// - absolute transformation from frame base to frame 4 - //
+		// - absolute transformation from frame base to frame 3 - //
 		Eigen::MatrixXd get_T_0_3();
 
-		// - absolute transformation from frame base to frame 5 - //
+		// - absolute transformation from frame base to frame 4 - //
 		Eigen::MatrixXd get_T_0_4();
 
-		// - absolute transformation from frame base to frame 6 - //
+		// - absolute transformation from frame base to frame 5 - //
 		Eigen::MatrixXd get_T_0_5();
 
-		// - absolute transformation from frame base to frame 7 - //
+		// - absolute transformation from frame base to frame 6 - //
 		Eigen::MatrixXd get_T_0_6();
 
-		// - absolute transformation from frame base to end_effector - //
+		// - absolute transformation from frame base to frame 7 - //
 		Eigen::MatrixXd get_T_0_7();
+
+		// - absolute transformation from frame base to end_effector - //
+		Eigen::MatrixXd get_T_0_8();
 
 		// - absolute transformation from frame 0 to end_effector - //
 		Eigen::MatrixXd get_T_0_ee();
 
-		// - relative transformation from frame1to frame 2 - //
+		// - relative transformation from frame0to frame 1 - //
 		Eigen::MatrixXd get_T_1();
 
-		// - relative transformation from frame2to frame 3 - //
+		// - relative transformation from frame1to frame 2 - //
 		Eigen::MatrixXd get_T_2();
 
-		// - relative transformation from frame3to frame 4 - //
+		// - relative transformation from frame2to frame 3 - //
 		Eigen::MatrixXd get_T_3();
 
-		// - relative transformation from frame4to frame 5 - //
+		// - relative transformation from frame3to frame 4 - //
 		Eigen::MatrixXd get_T_4();
 
-		// - relative transformation from frame5to frame 6 - //
+		// - relative transformation from frame4to frame 5 - //
 		Eigen::MatrixXd get_T_5();
 
-		// - relative transformation from frame6to frame 7 - //
+		// - relative transformation from frame5to frame 6 - //
 		Eigen::MatrixXd get_T_6();
+
+		// - relative transformation from frame6to frame 7 - //
+		Eigen::MatrixXd get_T_7();
 
 		// - Manipulator regressor matrix - //
 		Eigen::MatrixXd get_Yr();
