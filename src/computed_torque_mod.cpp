@@ -319,13 +319,13 @@ namespace panda_controllers{
         
 
         // Filtro velocità e accelerazioni dopo calcolo errore
-        aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
-        dq_est = calcolaMedia(buffer_dq);
+        addValue(buffer_dq, dot_q_curr, WIN_LEN);
+        dq_est = obtainMean(buffer_dq);
         // dot_q_curr = dq_est;
         ddot_q_curr = (dq_est - dot_q_curr_old)/dt;
         dot_q_curr_old = dq_est;
-        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
-        ddot_q_curr = calcolaMedia(buffer_ddq);
+        addValue(buffer_ddq, ddot_q_curr, WIN_LEN);
+        ddot_q_curr = obtainMean(buffer_ddq);
         
 
         /* Update and Compute Regressor mod e Regressor Classic*/
@@ -351,10 +351,10 @@ namespace panda_controllers{
 
         /*Gravità compensata non va nel calcolo del residuo*/
         tau_J = tau_cmd + G;
-        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
+        addValue(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
-        tau_J = calcolaMedia(buffer_tau);
+        tau_J = obtainMean(buffer_tau);
         // Y_mod_D << Y_mod, Y_D; // concatenation
         // Y_norm_D << Y_norm, Y_D; // concatenation
         
@@ -413,7 +413,7 @@ namespace panda_controllers{
         fillMsg(msg_log.tau_cmd, err_param);
         fillMsg(msg_log.ddot_q_curr, ddot_q_curr);
 
-        msg_config.header.stamp  = time_now; // publico tempo attuale nodo
+        msg_config.header.stamp  = time_now;
         msg_config.xyz.x = T0EE.translation()(0); 
         msg_config.xyz.y = T0EE.translation()(1);
         msg_config.xyz.z = T0EE.translation()(2);
@@ -429,15 +429,15 @@ namespace panda_controllers{
 
 
     // Funzione per l'aggiunta di un dato al buffer_dq
-    void ComputedTorqueMod::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
+    void ComputedTorqueMod::addValue(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int win_len) {
         buffer_.push_back(dato_);
-        if (buffer_.size() > lunghezza_finestra) {
+        if (buffer_.size() > win_len) {
             buffer_.erase(buffer_.begin());
         }
     }
 
     // Funzione per il calcolo della media
-    Eigen::Matrix<double,7, 1> ComputedTorqueMod::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
+    Eigen::Matrix<double,7, 1> ComputedTorqueMod::obtainMean(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
         Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
         for (const auto& vettore : buffer_) {
             media += vettore;

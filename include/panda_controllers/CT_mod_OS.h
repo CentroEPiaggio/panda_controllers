@@ -210,8 +210,8 @@ std::vector<Eigen::Matrix<double, 6, 1>> buffer_dot_error;
     /* Check the effort limits */
     
     /*Filter function*/
-    void aggiungiDato(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int lunghezza_finestra_);
-    Eigen::Matrix<double, 7, 1> calcolaMedia(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
+    void addValue(std::vector<Eigen::Matrix<double, 7, 1>>& buffer_, const Eigen::Matrix<double, 7, 1>& dato_, int win_len_);
+    Eigen::Matrix<double, 7, 1> obtainMean(const std::vector<Eigen::Matrix<double, 7, 1>>& buffer_);
     double deltaCompute (double a);
 
     Eigen::Matrix<double, NJ, 1> saturateTorqueRate (

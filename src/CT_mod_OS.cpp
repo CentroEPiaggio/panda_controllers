@@ -384,13 +384,13 @@ namespace panda_controllers{
             // Dest(i,i) = param_frict((FRICTION)*i,0) + param_frict((FRICTION)*i+1,0)*fabs(dot_q_curr[i]);
         }
 
-        aggiungiDato(buffer_dq, dot_q_curr, WIN_LEN);
-        dot_q_curr = calcolaMedia(buffer_dq);
+        addValue(buffer_dq, dot_q_curr, WIN_LEN);
+        dot_q_curr = obtainMean(buffer_dq);
 
 
-        aggiungiDato(buffer_ddq, ddot_q_curr, WIN_LEN);
+        addValue(buffer_ddq, ddot_q_curr, WIN_LEN);
         //Media dei dati nella finestra del filtro
-        ddot_q_curr = calcolaMedia(buffer_ddq);
+        ddot_q_curr = obtainMean(buffer_ddq);
 
         /* Update and Compute Regressor */
 	    // fastRegMat.setArguments(q_curr, dot_q_curr, J_pinv*ee_vel_cmd_tot, J_pinv*ee_acc_cmd_tot - J_pinv*J_dot*J_pinv*ee_vel_cmd_tot);
@@ -414,10 +414,10 @@ namespace panda_controllers{
         // ROS_INFO_STREAM(Rinv_fric);
 
         tau_J = tau_cmd + G;
-        aggiungiDato(buffer_tau, tau_J, WIN_LEN);
+        addValue(buffer_tau, tau_J, WIN_LEN);
 
         // Media dei dati nella finestra del filtro
-        tau_J = calcolaMedia(buffer_tau);
+        tau_J = obtainMean(buffer_tau);
         
         err_param = tau_J - Y_norm*param - Y_D_norm*param_frict; 
         // err_param_frict = tau_J - Y_D_norm*param_frict;
@@ -509,15 +509,15 @@ namespace panda_controllers{
     }
 
 
-    void CTModOS::aggiungiDato(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int lunghezza_finestra) {
+    void CTModOS::addValue(std::vector<Eigen::Matrix<double,7, 1>>& buffer_, const Eigen::Matrix<double,7, 1>& dato_, int win_len) {
         buffer_.push_back(dato_);
-        if (buffer_.size() > lunghezza_finestra) {
+        if (buffer_.size() > win_len) {
             buffer_.erase(buffer_.begin());
         }
     }
 
     // Funzione per il calcolo della media
-    Eigen::Matrix<double,7, 1> CTModOS::calcolaMedia(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
+    Eigen::Matrix<double,7, 1> CTModOS::obtainMean(const std::vector<Eigen::Matrix<double,7, 1>>& buffer_) {
         Eigen::Matrix<double,7, 1> media = Eigen::Matrix<double,7, 1>::Zero();
         for (const auto& vettore : buffer_) {
             media += vettore;
