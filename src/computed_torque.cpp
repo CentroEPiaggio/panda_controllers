@@ -108,8 +108,8 @@ void ComputedTorque::starting(const ros::Time& time)
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
 
-	M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
-	C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
+	// M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+	// C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 
 	/* Secure Initialization */
 	command_q_d = q_curr;
@@ -130,11 +130,11 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 {
 	franka::RobotState robot_state = state_handle_->getRobotState();
 
-	std::array<double, 49> mass_array = model_handle_->getMass();
-	std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
+	// std::array<double, 49> mass_array = model_handle_->getMass();
+	// std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
 
-	M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
-	C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
+	// M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(mass_array.data());
+	// C = Eigen::Map<Eigen::Matrix<double, 7, 1>>(coriolis_array.data());
 	
 	/* Actual position and velocity of the joints */
 
@@ -171,7 +171,8 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 	Kp_apix = Kp;
 	Kv_apix = Kv;
 
-	tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
+	// tau_cmd = M * command_dot_dot_q_d + C + Kp_apix * error + Kv_apix * dot_error;  // C->C*dq
+	tau_cmd = command_dot_dot_q_d + Kp_apix * error + Kv_apix * dot_error;
 	
 	/* Verify the tau_cmd not exceed the desired joint torque value tau_J_d */
 	tau_cmd = saturateTorqueRate(tau_cmd, tau_J_d);
