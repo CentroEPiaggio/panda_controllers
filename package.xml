@@ -17,6 +17,7 @@
 	<build_depend>eigen</build_depend>
 
 	<build_export_depend>message_runtime</build_export_depend>
+	<build_export_depend>std_msgs</build_export_depend>
 
 	<depend>controller_interface</depend>
 	<depend>dynamic_reconfigure</depend>
@@ -34,6 +35,7 @@
 	<exec_depend>message_runtime</exec_depend>
 	<exec_depend>panda_moveit_config</exec_depend>
 	<exec_depend>rospy</exec_depend>
+	<exec_depend>std_msgs</exec_depend>
 
 	<export>
 		<controller_interface plugin="${prefix}/panda_controllers_plugin.xml"/>

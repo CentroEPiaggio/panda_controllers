@@ -1,1 +1,13 @@
 *.kdev4
+**/build/
+scripts/c_generated_code_tracking/**
+scripts/DistanceFunctions.py
+esperimenti
+*.bag
+frankino_generatedFiles
+scripts/ball_marker_publisher.py
+scripts/ee_trajectory_visualizer.py
+scripts/wall_marker_publisher.py
+src/menu_acados_ddq.cpp
+src/menu_acados_jerk_soft_constr_fase_finale.cpp
+src/menu_acados_jerk.cpp

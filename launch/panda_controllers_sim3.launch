@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <!-- Imposta il mondo -->
+  <arg name="world_file" default="$(find panda_controllers)/worlds/palla.world" />
+
+  <!-- Avvia il robot e gazebo insieme -->
+  <include file="$(find franka_gazebo)/launch/panda.launch">
+    <arg name="gazebo" value="true" />
+    <arg name="rviz" value="true" />
+    <arg name="world" value="$(arg world_file)" />
+    <arg name="controller" value="computed_torque_controller" />
+    <arg name="use_gripper" value="false" />
+    <arg name="arm_id" value="panda" />
+    <arg name="initial_joint_positions" value="-J panda_joint1 -1.2596132435374552 -J panda_joint2 -0.6634185106461509 -J panda_joint3 -0.6927487535235402 -J panda_joint4 -2.171625619268133 -J panda_joint5 -0.26422693835292665 -J panda_joint6 1.5070607352519412 -J panda_joint7 0.06353219221245718" />
+  </include>
+
+  <!-- Carica i parametri dei controller -->
+  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+  <node name="mpc_integrator_node" pkg="panda_controllers" type="mpc_integrator_node" output="screen" />
+
+</launch>
