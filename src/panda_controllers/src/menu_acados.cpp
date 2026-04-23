@@ -442,6 +442,10 @@ int main(int argc, char **argv)
             //                        0.0, 0.0, 0.0,
             //                        0.0, 0.0, 1.0};
 
+            // Parametri per ostacoli (da aggiornare ad ogni loop)
+            double p_values[NP] = {tf, 110.11, -0.35, 0.53, 0.05,
+                                   0.31, 0.2, 0.5, 0.05};
+
             std::vector<std::string> constraint_names;
 
             // 1. Aggiungi le 8 auto-collisioni
@@ -482,10 +486,7 @@ int main(int argc, char **argv)
                 double Tf = max(time_to_go, t_hor_lim);
                 // Tf = 1.0; // Per testare con orizzonte fisso a 1 secondo (debug)
                 double dt_mpc_node = Tf / N_HORIZON;
-                // Parametri per ostacoli (da aggiornare ad ogni loop)
-                double p_values[NP] = {Tf, 0.11, -0.35, 0.53, 0.05,
-                                       0.31, 0.2, 0.5, 0.05};
-                // p_values[0] = Tf; // Aggiorna l'orizzonte temporale per il solver
+                p_values[0] = Tf; // Aggiorna l'orizzonte temporale per il solver
                 // if (t < 2.0)
                 // {
                 //     // L'ostacolo parte da x = 1.0 e "scivola"

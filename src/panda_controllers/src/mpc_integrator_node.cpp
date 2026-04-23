@@ -184,10 +184,10 @@ namespace panda_controllers
                 ddq_int_.setZero();
                 has_solution_ = true;
             }
-            else
-            {
-                ddq_int_ = ddq_filt_;
-            }
+            // else
+            // {
+            //     ddq_int_ = ddq_filt_;
+            // }
 
             if (msg->jerk.size() >= 7)
                 for (int i = 0; i < 7; i++)
