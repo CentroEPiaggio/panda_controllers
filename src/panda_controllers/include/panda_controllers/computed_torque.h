@@ -101,6 +101,7 @@ private:
     ros::NodeHandle cvc_nh;
     ros::Subscriber sub_command_;
     ros::Publisher pub_err_;
+    ros::Publisher pub_joint_states_fast_;
     
     /* Setting Command Callback*/
     

@@ -40,6 +40,18 @@ namespace panda_controllers
         double alpha_dq_ = 0.2;   // velocità: filtro medio
         double alpha_ddq_ = 0.05; // accelerazione: filtro molto aggressivo (era 0.1)
 
+        // Limiti accelerazione per clamp
+        const double q_min[7] = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
+        const double q_max[7] = {2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973};
+        const double dq_min[7] = {-2.175, -2.175, -2.175, -2.175, -2.61, -2.61, -2.61};
+        const double dq_max[7] = {2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61};
+        const double ddq_min[7] = {-15, -7.5, -10, -12.5, -15, -20, -20};
+        const double ddq_max[7] = {15, 7.5, 10, 12.5, 15, 20, 20};
+
+        ros::Time last_control_time_;
+        ros::Time last_joint_time_;
+        bool first_control_ = true;
+
     public:
         MpcIntegratorNode()
         {
@@ -63,11 +75,11 @@ namespace panda_controllers
 
             // Subscriber
             sub_mpc_sol = nh.subscribe(
-                "mpc_solution", 1,
+                "/mpc_solution", 1,
                 &MpcIntegratorNode::mpcCallback, this);
 
             sub_joint_states = nh.subscribe(
-                "/franka_state_controller/joint_states", 1,
+                "/franka/joint_states_1khz", 1,
                 &MpcIntegratorNode::jointStatesCallback, this);
 
             // Publisher
@@ -81,6 +93,28 @@ namespace panda_controllers
             timer = nh.createTimer(
                 ros::Duration(dt_ctrl_),
                 &MpcIntegratorNode::controlLoop, this);
+        }
+
+        // ----------------------------------------------------------------
+        // Metodo per pubblicare lo stato filtrato
+        // ----------------------------------------------------------------
+        void publishFilteredStateNow()
+        {
+            if (first_joint_msg_)
+                return;
+
+            sensor_msgs::JointState state_msg;
+            state_msg.header.stamp = ros::Time::now();
+            state_msg.name = {"panda_joint1", "panda_joint2", "panda_joint3",
+                              "panda_joint4", "panda_joint5", "panda_joint6",
+                              "panda_joint7"};
+            for (int i = 0; i < 7; i++)
+            {
+                state_msg.position.push_back(q_filt_(i));
+                state_msg.velocity.push_back(dq_filt_(i));
+                state_msg.effort.push_back(ddq_filt_(i));
+            }
+            pub_filtered_state.publish(state_msg);
         }
 
         // ----------------------------------------------------------------
@@ -104,6 +138,7 @@ namespace panda_controllers
                 dq_filt_ = dq_raw;
                 ddq_filt_.setZero();
                 dq_prev_ = dq_raw;
+                last_joint_time_ = msg->header.stamp;
                 first_joint_msg_ = false;
 
                 // Pubblica subito anche il primo stato
@@ -112,11 +147,16 @@ namespace panda_controllers
             }
 
             // Stima accelerazione con derivata numerica a 1kHz
-            Eigen::VectorXd ddq_raw = (dq_raw - dq_prev_) / dt_ctrl_;
+            double dt = (msg->header.stamp - last_joint_time_).toSec();
+            last_joint_time_ = msg->header.stamp;
 
-            // Clamp anti-spike — limite fisico Franka ~10 rad/s²
+            if (dt > 0.001 && dt < 0.01)
+            { // dt realistico tra 1ms e 10ms
+            Eigen::VectorXd ddq_raw = (dq_raw - dq_prev_) / dt;
+
+            // Clamp — limite fisico Franka 
             for (int i = 0; i < 7; i++)
-                ddq_raw(i) = std::max(-10.0, std::min(10.0, ddq_raw(i)));
+                ddq_raw(i) = std::max(ddq_min[i], std::min(ddq_max[i], ddq_raw(i)));
 
             // Filtro IIR passa-basso
             q_filt_ = alpha_q_ * q_raw + (1.0 - alpha_q_) * q_filt_;
@@ -128,44 +168,6 @@ namespace panda_controllers
             // Pubblico immediatamente lo stato filtrato (così il menu ha dati sempre freschi)
             publishFilteredStateNow();
         }
-
-        // ----------------------------------------------------------------
-        // Metodo per pubblicare lo stato filtrato
-        // ----------------------------------------------------------------
-        void publishFilteredStateNow()
-        {
-            if (first_joint_msg_)
-                return;
-
-            // SCELTA ddq per x0 MPC:
-            // - Se l'MPC è attivo usiamo ddq_int_ : è liscia, vincolata dal jerk ottimale
-            //   e coerente col modello del triple integrator → niente falsi allarmi collisione.
-            // - Se l'MPC non è ancora partito usiamo ddq_filt_ (già clampata a ±10 rad/s²).
-            Eigen::VectorXd ddq_for_mpc = has_solution_ ? ddq_int_ : ddq_filt_;
-
-            sensor_msgs::JointState state_msg;
-            static bool names_set = false;
-            if (!names_set)
-            {
-                state_msg.name = {"panda_joint1", "panda_joint2", "panda_joint3",
-                                  "panda_joint4", "panda_joint5", "panda_joint6",
-                                  "panda_joint7"};
-                names_set = true;
-            }
-            else
-            {
-                state_msg.name = {"panda_joint1", "panda_joint2", "panda_joint3",
-                                  "panda_joint4", "panda_joint5", "panda_joint6",
-                                  "panda_joint7"};
-            }
-            state_msg.header.stamp = ros::Time::now();
-            for (int i = 0; i < 7; i++)
-            {
-                state_msg.position.push_back(q_filt_(i));
-                state_msg.velocity.push_back(dq_filt_(i));
-                state_msg.effort.push_back(ddq_for_mpc(i)); // ddq nel campo effort
-            }
-            pub_filtered_state.publish(state_msg);
         }
 
         // ----------------------------------------------------------------
@@ -179,15 +181,11 @@ namespace panda_controllers
             q_int_ = q_filt_;
             dq_int_ = dq_filt_;
 
-            if (!has_solution_)
-            {
-                ddq_int_.setZero();
-                has_solution_ = true;
-            }
-            // else
-            // {
-            //     ddq_int_ = ddq_filt_;
-            // }
+            // Usa ddq_start dal messaggio MPC come condizione iniziale
+            for (int i = 0; i < 7; i++)
+                ddq_int_(i) = msg->ddq_start[i];
+
+            has_solution_ = true;
 
             if (msg->jerk.size() >= 7)
                 for (int i = 0; i < 7; i++)
@@ -197,7 +195,7 @@ namespace panda_controllers
         // ----------------------------------------------------------------
         // TIMER 1kHz: integrazione triple integrator
         // ----------------------------------------------------------------
-        void controlLoop(const ros::TimerEvent &)
+        void controlLoop(const ros::TimerEvent &event)
         {
             if (!has_solution_)
                 return;
@@ -210,9 +208,28 @@ namespace panda_controllers
             }
 
             double dt = dt_ctrl_;
+            if (!first_control_)
+            {
+                dt = (event.current_real - last_control_time_).toSec();
+                if (dt > 0.01)
+                    dt = 0.01;
+                if (dt < 0.0001)
+                    dt = 0.001;
+            }
+            last_control_time_ = event.current_real;
+            first_control_ = false;
+
+            // Integrazione (usando la dt già calcolata, senza ridefinirla)
             q_int_ += dq_int_ * dt + 0.5 * ddq_int_ * dt * dt + (1.0 / 6.0) * jerk_opt_ * dt * dt * dt;
             dq_int_ += ddq_int_ * dt + 0.5 * jerk_opt_ * dt * dt;
             ddq_int_ += jerk_opt_ * dt;
+
+            for (int i = 0; i < 7; i++)
+            {
+                q_int_(i) = std::max(q_min[i], std::min(q_max[i], q_int_(i)));
+                dq_int_(i) = std::max(dq_min[i], std::min(dq_max[i], dq_int_(i)));
+                ddq_int_(i) = std::max(ddq_min[i], std::min(ddq_max[i], ddq_int_(i)));
+            }
 
             // Pubblico comando al computed_torque
             sensor_msgs::JointState cmd_msg;

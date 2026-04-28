@@ -92,7 +92,7 @@ bool ComputedTorque::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle
 	/*Start command subscriber */
 	this->sub_command_ = node_handle.subscribe<sensor_msgs::JointState> ("command", 1, &ComputedTorque::setCommandCB, this);   //it verify with the callback that the command has been received
 	this->pub_err_ = node_handle.advertise<sensor_msgs::JointState> ("tracking_error", 1);
-	
+	this->pub_joint_states_fast_ = node_handle.advertise<sensor_msgs::JointState>("/franka/joint_states_1khz", 1);
 	return true;
 }
 
@@ -140,6 +140,21 @@ void ComputedTorque::update(const ros::Time&, const ros::Duration& period)
 
 	q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+		//Pubblica i joint states letti dal robot a 1kHz
+		sensor_msgs::JointState fast_state_msg;
+		fast_state_msg.header.stamp = ros::Time::now();
+		fast_state_msg.name = {"panda_joint1", "panda_joint2", "panda_joint3",
+							   "panda_joint4", "panda_joint5", "panda_joint6",
+							   "panda_joint7"};
+		for (int i = 0; i < 7; i++)
+		{
+			fast_state_msg.position.push_back(q_curr(i));
+			fast_state_msg.velocity.push_back(dot_q_curr(i));
+			// effort non necessario
+			fast_state_msg.effort.push_back(0.0);
+		}
+
+		pub_joint_states_fast_.publish(fast_state_msg);
 
 	/* tau_J_d is the desired link-side joint torque sensor signals without gravity */
 

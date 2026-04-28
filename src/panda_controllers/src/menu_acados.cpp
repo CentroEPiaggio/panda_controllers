@@ -148,8 +148,8 @@ void jointsCallback(const sensor_msgs::JointStateConstPtr &msg)
 {
     q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->position.data());
     dq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->velocity.data());
-    if (msg->effort.size() == 7)
-        ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->effort.data());
+    // if (msg->effort.size() == 7)
+    //     ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->effort.data());
     init_q0 = true;
 }
 
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
     robot.load_conf(conf_file);
     // ros::Subscriber sub_joints = node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &jointsCallback);
     ros::Subscriber sub_joints = node_handle.subscribe<sensor_msgs::JointState>("/mpc/filtered_joint_state", 1, &jointsCallback);
-    ros::Publisher pub_mpc_solution = node_handle.advertise<panda_controllers::MpcSolution>("mpc_solution", 1);
+    ros::Publisher pub_mpc_solution = node_handle.advertise<panda_controllers::MpcSolution>("/mpc_solution", 1);
     ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
     // ros::Publisher pub_jerk_cmd = node_handle.advertise<sensor_msgs::JointState>("/mpc_jerk_command", 1000);
 
@@ -301,7 +301,7 @@ int main(int argc, char **argv)
 
             // --- DEFINIZIONE TARGET CARTESIANO E CLIK ---
             Vector3d p_des(0.33, -0.35, 0.45);
-            Vector3d v_des(0.0, 0.0, -0.0);
+            Vector3d v_des(0.0, 0.0, -0.5);
 
             cout << "Posizione target cartesiana: " << p_des.transpose() << endl;
             cout << "Velocità target cartesiana: " << v_des.transpose() << endl;
@@ -407,7 +407,7 @@ int main(int argc, char **argv)
 
             // Target per vincoli terminali
             double x_target_ub[NX], x_target_lb[NX], x_target_ub_terminal[NX], x_target_lb_terminal[NX];
-            double tolerance = 1e-3;
+            double tolerance = 1e-6;
             double eps = 1e-6;
             for (int i = 0; i < NJ; i++)
             {
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
             //                        0.0, 0.0, 1.0};
 
             // Parametri per ostacoli (da aggiornare ad ogni loop)
-            double p_values[NP] = {tf, 110.11, -0.35, 0.53, 0.05,
+            double p_values[NP] = {tf, 0.11, -0.35, 0.53, 0.05,
                                    0.31, 0.2, 0.5, 0.05};
 
             std::vector<std::string> constraint_names;
@@ -471,9 +471,9 @@ int main(int argc, char **argv)
             // for (int i = 1; i <= N_capsule - 1; i++)
             //     constraint_names.push_back("Sfera 3 vs Cap " + std::to_string(i));
 
-            // 5. Aggiungi Piano (Capsule da 3)
-            for (int i = 3; i <= N_capsule - 1; i++)
-                constraint_names.push_back("Piano vs Cap " + std::to_string(i));
+            // // 5. Aggiungi Piano (Capsule da 3)
+            // for (int i = 3; i <= N_capsule - 1; i++)
+            //     constraint_names.push_back("Piano vs Cap " + std::to_string(i));
 
             // Loop di controllo MPC
             while (t <= tf + eps && ros::ok())
@@ -481,7 +481,7 @@ int main(int argc, char **argv)
                 ros::spinOnce(); // Aggiorna q0, dq0 dal robot reale dovrei aggiornare anche ddq0 se avessi un sensore o stima
 
                 std::cout << "Stato: " << "q = " << q0.transpose() << ", dq = " << dq0.transpose() << ", ddq = " << ddq0.transpose() << std::endl;
-                planner.init(q0, qf, dq0, dqf, ddq0, ddqf, t, tf);
+
                 double time_to_go = tf - t;
                 double Tf = max(time_to_go, t_hor_lim);
                 // Tf = 1.0; // Per testare con orizzonte fisso a 1 secondo (debug)
@@ -534,16 +534,6 @@ int main(int argc, char **argv)
                     x0[2 * NJ + i] = ddq0(i);
                 }
 
-                // cout << "Stato corrente x0: [";
-                // for (int i = 0; i < NX; i++)
-                // {
-                //     cout << x0[i] << (i < NX - 1 ? ", " : "");
-                // }
-                // cout << "]" << endl;
-
-                // --- LOGICA MPC ---
-
-                // Set stato iniziale
                 ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "lbx", x0);
                 ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "ubx", x0);
                 ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, 0, "x", x0);
@@ -687,23 +677,75 @@ int main(int argc, char **argv)
                         // --- 2. VINCOLI E RIFERIMENTI ---
                         if (i == NODO)
                         {
-                            ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "lbx", x_target_lb_terminal);
-                            ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "ubx", x_target_ub_terminal);
+                            // 1. PROTEZIONE NODO 0: Imponiamo i limiti rigidi al target SOLO se ci troviamo nel futuro.
+                            // Se i == 0, lasciamo i limiti intatti (già vincolati a x0 reale) per evitare Infeasible QP.
+                            if (i > 0)
+                            {
+                                ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "lbx", x_target_lb_terminal);
+                                ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "ubx", x_target_ub_terminal);
+                            }
 
-                            // Attivo slack tolleranti per il nodo target
-                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_target);
-                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zl", zl_target);
-                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zu", Zu_target);
-                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zu", zu_target);
+                            // 2. SLACK DINAMICI: Riduciamo la penalità da 10000 a 100 negli ultimi 3 nodi (circa 100-150ms).
+                            // Questo elimina il "colpo di frusta" finale, permettendo un assestamento fluido.
+                            double current_slack_penalty = (NODO <= 3) ? 1e2 : 1e4;
+                            double Zl_dyn[N_SH_TOT], zl_dyn[N_SH_TOT], Zu_dyn[N_SH_TOT], zu_dyn[N_SH_TOT];
+
+                            for (int s = 0; s < NX; s++)
+                            {
+                                Zl_dyn[s] = Zl_target[s];
+                                zl_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
+                                Zu_dyn[s] = Zu_target[s];
+                                zu_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
+                            }
+                            for (int s = 21; s < N_SH_TOT; s++)
+                            {
+                                // Gli ostacoli rimangono intoccabili e rigidissimi
+                                Zl_dyn[s] = Zl_target[s];
+                                zl_dyn[s] = zl_target[s];
+                                Zu_dyn[s] = Zu_target[s];
+                                zu_dyn[s] = zu_target[s];
+                            }
+
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_dyn);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zl", zl_dyn);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zu", Zu_dyn);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zu", zu_dyn);
+
+                            // 3. REFERENCE (yref): Fondamentale specialmente quando NODO == 0.
+                            // Dicendo alla funzione di costo dov'è il target, l'MPC continuerà a inseguirlo
+                            // anche se abbiamo tolto i limiti rigidi lbx/ubx al Nodo 0.
+                            if (i < N_HORIZON)
+                            {
+                                double yref_stage[NY] = {0.0};
+                                for (int j = 0; j < NJ; j++)
+                                {
+                                    yref_stage[j] = qf(j);
+                                    yref_stage[NJ + j] = dqf(j);
+                                    yref_stage[2 * NJ + j] = ddqf(j);
+                                    yref_stage[3 * NJ + j] = 0.0;
+                                }
+                                ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_stage);
+                            }
+                            else
+                            {
+                                double yref_e[NYN] = {0.0}; // NYN = 21 nel terminal cost
+                                for (int j = 0; j < NJ; j++)
+                                {
+                                    yref_e[j] = qf(j);
+                                    yref_e[NJ + j] = dqf(j);
+                                    yref_e[2 * NJ + j] = ddqf(j);
+                                }
+                                ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_e);
+                            }
                         }
                         else if (i > NODO)
                         {
                             ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "lbx", lb);
                             ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "ubx", ub);
-                            // ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_normal);
-                            // ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zl", zl_normal);
-                            // ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zu", Zu_normal);
-                            // ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zu", zu_normal);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_normal);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zl", zl_normal);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zu", Zu_normal);
+                            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "zu", zu_normal);
 
                             // Distinzione Stage/Terminale per la size di yref
                             if (i < N_HORIZON)
@@ -720,13 +762,12 @@ int main(int argc, char **argv)
                             }
                             else
                             {
-                                double yref_e[NY] = {0.0};
+                                double yref_e[NYN] = {0.0};
                                 for (int j = 0; j < NJ; j++)
                                 {
                                     yref_e[j] = qf(j) + dqf(j) * dt_mpc_node * (i - NODO) + 0.5 * ddqf(j) * pow(dt_mpc_node * (i - NODO), 2);
                                     yref_e[NJ + j] = dqf(j) + ddqf(j) * dt_mpc_node * (i - NODO);
                                     yref_e[2 * NJ + j] = ddqf(j);
-                                    yref_e[3 * NJ + j] = 0.0; // Jerk target a 0 per i nodi dopo il target, tanto W_u = 0
                                 }
                                 ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_e);
                             }
@@ -782,50 +823,54 @@ int main(int argc, char **argv)
                 printf("t=%.3f | dt_node=%.4f | Tf=%.3f\n", t, dt_mpc_node, Tf);
 
                 // --- F. SUPERVISORE: CONTROLLO VIOLAZIONE OSTACOLI TRAMITE SLACK ---
-                double slacks[N_SH_TOT];
-                bool collision_detected = false;
-                const double tolleranza_slack = 1e-2; // 1 cm
-
-                for (int node = 1; node <= N_HORIZON; node++)
+                bool collision_risk = false;
+                if (collision_risk==true)
                 {
-                    // Salta i nodi che seguono il nodo target: i vincoli lì sono stati ridefiniti
-                    // e non rappresentano più distanze di sicurezza reali
-                    if (NODO_corrente < N_HORIZON && node > NODO_corrente)
-                        continue;
+                    double slacks[N_SH_TOT];
+                    bool collision_detected = false;
+                    const double tolleranza_slack = 1e-2; // 1 cm
 
-                    ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, node, "sl", slacks);
-
-                    for (int idx = 0; idx < N_DIST; idx++)
+                    for (int node = 1; node <= N_HORIZON; node++)
                     {
-                        // I primi 21 slot sono gli slack di stato (q, dq, ddq)
-                        // Dal 21 in poi ci sono gli slack delle distanze ostacoli
-                        double slack_val = slacks[NX + idx];
-                        if (slack_val > tolleranza_slack)
+                        // Salta i nodi che seguono il nodo target: i vincoli lì sono stati ridefiniti
+                        // e non rappresentano più distanze di sicurezza reali
+                        if (NODO_corrente < N_HORIZON && node > NODO_corrente)
+                            continue;
+
+                        ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, node, "sl", slacks);
+
+                        for (int idx = 0; idx < N_DIST; idx++)
                         {
-                            collision_detected = true;
-                            ROS_ERROR("\n>>> ALLARME PREDIZIONE! Rischio collisione al nodo %d (t=%.3f s)", node, t);
+                            // I primi 21 slot sono gli slack di stato (q, dq, ddq)
+                            // Dal 21 in poi ci sono gli slack delle distanze ostacoli
+                            double slack_val = slacks[NX + idx];
+                            if (slack_val > tolleranza_slack)
+                            {
+                                collision_detected = true;
+                                ROS_ERROR("\n>>> ALLARME PREDIZIONE! Rischio collisione al nodo %d (t=%.3f s)", node, t);
 
-                            if (idx < (int)constraint_names.size())
-                            {
-                                ROS_WARN(">>> CAUSA: %s (violazione di %.4f m)",
-                                         constraint_names[idx].c_str(), slack_val);
+                                if (idx < (int)constraint_names.size())
+                                {
+                                    ROS_WARN(">>> CAUSA: %s (violazione di %.4f m)",
+                                             constraint_names[idx].c_str(), slack_val);
+                                }
+                                else
+                                {
+                                    ROS_WARN(">>> CAUSA: Vincolo sconosciuto (indice %d, violazione di %.4f m)",
+                                             idx, slack_val);
+                                }
+                                break;
                             }
-                            else
-                            {
-                                ROS_WARN(">>> CAUSA: Vincolo sconosciuto (indice %d, violazione di %.4f m)",
-                                         idx, slack_val);
-                            }
-                            break;
                         }
+                        if (collision_detected)
+                            break;
                     }
-                    if (collision_detected)
-                        break;
-                }
 
-                if (collision_detected)
-                {
-                    ROS_FATAL("\n>>> TRAIETTORIA NON SICURA: Fermo il robot a t = %.3f s.\n", t);
-                    break;
+                    if (collision_detected)
+                    {
+                        ROS_FATAL("\n>>> TRAIETTORIA NON SICURA: Fermo il robot a t = %.3f s.\n", t);
+                        break;
+                    }
                 }
 
                 // Recupera jerk ottimo
@@ -860,7 +905,7 @@ int main(int argc, char **argv)
                     mpc_msg.q_start.push_back(q0(i));
                     mpc_msg.dq_start.push_back(dq0(i));
                     mpc_msg.ddq_start.push_back(ddq0(i));
-                    mpc_msg.jerk.push_back(u0_temp[i]);
+                    mpc_msg.jerk.push_back(current_jerk(i));
                 }
 
                 // Pubblico la soluzione per il nodo integratore
@@ -875,7 +920,7 @@ int main(int argc, char **argv)
 
                 // INTEGRAZIONE DI EULERO PER RIMEDIARE ALLA MANCANZA DI FEEDBACK REALE SULL'ACCELERAZIONE (ddq0)
                 // current_jerk mantiene l'ultimo valore valido grazie al sample-and-hold
-                // ddq0 += current_jerk * 1.0 / loop_mpc;
+                ddq0 += current_jerk * 1.0 / loop_mpc;
                 loop_rate.sleep(); // preferisco usare questo sleep per non tardare ancor più la pubblicazione del messaggio MPC_SOLUTION, dato che ci mette già solve di per se a risolvere, integrare e pubblicare tutto entro i 40 ms
                 // mpc_rate.sleep(); // FREQUENZA DI CONTROLLO MPC
                 t = (ros::Time::now() - t_init).toSec();

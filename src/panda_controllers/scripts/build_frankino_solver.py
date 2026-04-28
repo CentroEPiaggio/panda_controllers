@@ -60,9 +60,9 @@ def get_self_collision_whitelist():
     # Definiamo le coppie critiche (indice capsula A, indice capsula B)
     return [
         (1, 7), (1, 8)
-        # ,(1, 10), (1, 11),
-        # (2, 10), (2, 11),
-        # (3, 10), (3, 11)
+        ,(1, 10), (1, 11)
+        ,(2, 10), (2, 11)
+        ,(3, 10), (3, 11)
     ]
 
 def get_capsule_endpoints(q, cap_def):
@@ -141,7 +141,7 @@ def export_frankino_model():
     dist_obs1_list = []
     dist_obs2_list = []
     # dist_obs3_list = []
-    dist_plane_list = []
+    #dist_plane_list = []
 
     # 2. Collisione Ostacoli Esterni
     for i, cap_def in enumerate(capsule_defs):
