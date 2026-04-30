@@ -150,8 +150,8 @@ namespace panda_controllers
             double dt = (msg->header.stamp - last_joint_time_).toSec();
             last_joint_time_ = msg->header.stamp;
 
-            if (dt > 0.001 && dt < 0.01)
-            { // dt realistico tra 1ms e 10ms
+            // if (dt > 0.0001 && dt < 0.01)
+            // { // dt realistico tra 0.1ms e 10ms
             Eigen::VectorXd ddq_raw = (dq_raw - dq_prev_) / dt;
 
             // Clamp — limite fisico Franka 
@@ -167,7 +167,7 @@ namespace panda_controllers
 
             // Pubblico immediatamente lo stato filtrato (così il menu ha dati sempre freschi)
             publishFilteredStateNow();
-        }
+            // }
         }
 
         // ----------------------------------------------------------------

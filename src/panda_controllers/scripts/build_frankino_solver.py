@@ -42,27 +42,27 @@ def create_capsule_definitions():
     """Definizioni geometriche dei link del robot Frankino"""
     capsules = []
     # --- Robot Capsule Definitions (Frankino) ---
-    capsules.append(CapsuleDefinition(0, 0.06, 0.03, [[0,0,1,-0.075], [0,1,0,0], [-1,0,0,0.06], [0,0,0,1]])) # idx 0
+    capsules.append(CapsuleDefinition(0, 0.065, 0.105, [[0,0,1,-0.075], [0,1,0,0], [-1,0,0,0.06], [0,0,0,1]])) # idx 0
     capsules.append(CapsuleDefinition(1, 0.06, 0.283, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.1915], [0,0,0,1]])) # idx 1
-    capsules.append(CapsuleDefinition(2, 0.06, 0.12, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 2
+    capsules.append(CapsuleDefinition(2, 0.06, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 2
     capsules.append(CapsuleDefinition(3, 0.06, 0.15, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.145], [0,0,0,1]])) # idx 3
-    capsules.append(CapsuleDefinition(4, 0.06, 0.12, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 4
-    capsules.append(CapsuleDefinition(5, 0.06, 0.10, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.26], [0,0,0,1]]))  # idx 5
+    capsules.append(CapsuleDefinition(4, 0.06, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 4
+    capsules.append(CapsuleDefinition(5, 0.06, 0.13, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.26], [0,0,0,1]]))  # idx 5
     capsules.append(CapsuleDefinition(5, 0.025, 0.14, [[0.9968,-0.0799,0,0], [0.0799,0.9968,0,0.08], [0,0,1,-0.13], [0,0,0,1]])) # idx 6
-    capsules.append(CapsuleDefinition(6, 0.05, 0.08, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.03], [0,0,0,1]]))  # idx 7 
-    capsules.append(CapsuleDefinition(7, 0.04, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,0.01], [0,0,0,1]]))  # idx 8
-    capsules.append(CapsuleDefinition(7, 0.03, 0.10, [[0,0,1,0.06], [0,1,0,0], [-1,0,0,0.082], [0,0,0,1]])) # idx 9
-    capsules.append(CapsuleDefinition(8, 0.07, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.04], [0,0,0,1]])) # idx 10
-    capsules.append(CapsuleDefinition(8, 0.05, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.10], [0,0,0,1]])) # idx 11
+    capsules.append(CapsuleDefinition(6, 0.05, 0.15, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.035], [0,0,0,1]]))  # idx 7 
+    capsules.append(CapsuleDefinition(7, 0.045, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.10], [0,0,0,1]]))  # idx 8
+    capsules.append(CapsuleDefinition(7, 0.04, 0.11, [[0.0,-0.7071,0.7071,0.01], [0.0,0.7071,0.7071,0.01], [-1.0,0.0,0.0,-0.025], [0.0,0.0,0.0,1.0]])) # idx 9
+    # capsules.append(CapsuleDefinition(8, 0.07, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.04], [0,0,0,1]])) # idx 10
+    # capsules.append(CapsuleDefinition(8, 0.05, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.10], [0,0,0,1]])) # idx 11
     return capsules
 
 def get_self_collision_whitelist():
     # Definiamo le coppie critiche (indice capsula A, indice capsula B)
     return [
         (1, 7), (1, 8)
-        ,(1, 10), (1, 11)
-        ,(2, 10), (2, 11)
-        ,(3, 10), (3, 11)
+        # ,(1, 10), (1, 11)
+        ,(2, 7), (2, 8)
+        ,(3, 7), (3, 8)
     ]
 
 def get_capsule_endpoints(q, cap_def):
@@ -99,16 +99,16 @@ def export_frankino_model():
     # r_obs3 = ca.SX.sym("r_obs3", 1)
     
     # 1 Piano (Punto di passaggio e Vettore normale)
-    # p_plane = ca.SX.sym("p_plane", 3)
-    # n_plane = ca.SX.sym("n_plane", 3)
+    p_plane = ca.SX.sym("p_plane", 3)
+    n_plane = ca.SX.sym("n_plane", 3)
 
     # Concateniamo tutto nel vettore dei parametri
     model.p = ca.vertcat(
         Tf, 
-        p_obs1, r_obs1, 
-        p_obs2, r_obs2
-        # p_obs3, r_obs3, 
-        # p_plane, n_plane
+        p_obs1, r_obs1
+        ,p_obs2, r_obs2
+        # ,p_obs3, r_obs3 
+        ,p_plane, n_plane
     )
 
     # --- DINAMICA ---
@@ -141,7 +141,7 @@ def export_frankino_model():
     dist_obs1_list = []
     dist_obs2_list = []
     # dist_obs3_list = []
-    #dist_plane_list = []
+    dist_plane_list = []
 
     # 2. Collisione Ostacoli Esterni
     for i, cap_def in enumerate(capsule_defs):
@@ -163,15 +163,15 @@ def export_frankino_model():
         # dist_obs3_list.append(dist_obs3)
         
         # Piano (SOLO per i link dal 3 in poi)
-        # if cap_def.link_index > 2:
-        #     dist_plane, _ = geom.dist_capsule_plane(A, B, r_cap, p_plane, n_plane)
-        #     dist_plane_list.append(dist_plane)
+        if cap_def.link_index > 2:
+            dist_plane, _ = geom.dist_capsule_plane(A, B, r_cap, p_plane, n_plane)
+            dist_plane_list.append(dist_plane)
 
     # 3. Impiliamo tutto ordinatamente nella lista principale
     dist_constraints.extend(dist_obs1_list)
     dist_constraints.extend(dist_obs2_list)
     # dist_constraints.extend(dist_obs3_list)
-    # dist_constraints.extend(dist_plane_list)
+    dist_constraints.extend(dist_plane_list)
     
     # --- h EXPR ---
     model.con_h_expr = ca.vertcat(tau_expr, *dist_constraints)
@@ -229,7 +229,7 @@ def create_solver():
     tau_lim = 87.0
     jerk_lim = 5000.0
     d_safe_obs= 5e-2 # cm sicurezza
-    d_safe_coll = 2e-3 # cm sicurezza per autocollisioni
+    d_safe_coll = 5e-3 # cm sicurezza per autocollisioni
     
     
      # 1. State Bounds (x)
@@ -252,36 +252,27 @@ def create_solver():
     # Diciamo ad Acados che possiamo ammorbidire i limiti di stato (x) nei nodi intermedi
     ocp.constraints.idxsbx = np.arange(21)
 
-    # La dimensione totale degli slack: 21 (stati) + n_dist (ostacoli)
-    n_sh_total = 21 + n_dist
+    # La dimensione totale degli slack: SOLO 21 (stati), niente slack per distanze
+    n_sh_total = 21
     ocp.dims.nsh = n_sh_total
-    
-    # Gli slack per le distanze vengono scalati dopo i 21 degli stati
-    ocp.constraints.idxsh = np.arange(n_tau, n_tau + n_dist)
-
-    # Configurazione di default per i nodi intermedi (Stati = HARD, Ostacoli = SOFT)
-    # Mettere peso 0 su Zl/zl significa che lo slack è spento e il vincolo è rigido.
-    slack_Zl = np.concatenate([np.full(21, 1e3), np.full(n_dist, 1e5)])
-    slack_zl = np.concatenate([np.full(21, 1e3), np.full(n_dist, 1e4)])
-
-    slack_Zu = np.concatenate([np.full(21, 1e3), np.full(n_dist, 0.0)])
-    slack_zu = np.concatenate([np.full(21, 1e3), np.full(n_dist, 0.0)])
-    
+    # Configurazione slack SOLO per gli stati
+    slack_Zl = np.full(21, 1e3)
+    slack_zl = np.full(21, 1e3)
+    slack_Zu = np.full(21, 1e3)
+    slack_zu = np.full(21, 1e3)
     ocp.cost.zl = slack_zl
     ocp.cost.Zl = slack_Zl
     ocp.cost.zu = slack_zu
     ocp.cost.Zu = slack_Zu
 
     # ---------------- SLACK TERMINALI ----------------
-    # State Bounds Terminali - Servono affinché idxsbx_e abbia un riferimento!
+    # State Bounds Terminali
     ocp.constraints.idxbx_e = np.arange(21)
     ocp.constraints.lbx_e = np.concatenate([q_min, dq_min, ddq_min])
     ocp.constraints.ubx_e = np.concatenate([q_max, dq_max, ddq_max])
 
     ocp.constraints.idxsbx_e = np.arange(21)
-    ocp.dims.nsh_e = n_sh_total
-    ocp.constraints.idxsh_e = np.arange(n_tau, n_tau + n_dist)
-    
+    ocp.dims.nsh_e = n_sh_total  # 21
     ocp.cost.zl_e = slack_zl
     ocp.cost.Zl_e = slack_Zl
     ocp.cost.zu_e = slack_zu
@@ -310,8 +301,8 @@ def create_solver():
         1000.0, 1000.0, 1000.0, 0.05, # Sfera 1 (x, y, z, r)
         1000.0, 1000.0, 900.0, 0.05, # Sfera 2 (x, y, z, r) 
         # 1000.0, 1000.0, 800.0, 0.0, # Sfera 3 (x, y, z, r) 
-        # 0.0, 0.0, 0.0,            # Punto del piano 
-        # 0.0, 0.0, 1.0             # Normale del piano 
+        0.0, 0.0, 0.0,            # Punto del piano 
+        0.0, 0.0, 1.0             # Normale del piano 
     ])
     
     ocp.parameter_values = param_init

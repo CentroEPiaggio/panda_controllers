@@ -31,6 +31,7 @@ extern "C"
 #include "acados_c/ocp_nlp_interface.h"
 }
 #include "utils/KinematicsSolver.h" // Aggiunto per CLIK
+#include <gazebo_msgs/ModelState.h>
 
 const std::string conf_file = "../config/frankino_conf.yaml";
 using namespace std;
@@ -43,13 +44,13 @@ using namespace Eigen;
 #define NY 28                                                                                // [q, dq, ddq, jerk] nel cost stage
 #define NYN 21                                                                               // [q,dq,ddq] nel cost terminale
 #define NJ 7                                                                                 // Numero giunti Franka
-#define NP 9                                                                                 // N Parametri ostacoli
+#define NP 15                                                                                // N Parametri ostacoli
 int N_sfere = 2;                                                                             // Numero di sfere per approssimazione ostacoli
-int N_capsule = 12;                                                                          // Numero di capsule per approssimazione robot (dipende da come segmentiamo il robot)
-int N_piani = 0;                                                                             // Numero di piani per approssimazione ambiente.
+int N_capsule = 10;                                                                          // Numero di capsule per approssimazione robot (dipende da come segmentiamo il robot)
+int N_piani = 1;                                                                             // Numero di piani per approssimazione ambiente.
 int N_autocollisioni = 2;                                                                    // Numero di auto-collisioni che vogliamo considerare (es. tra 2 coppie di capsule)
 const int N_DIST = N_autocollisioni + (N_capsule - 1) * N_sfere + (N_capsule - 3) * N_piani; // 2 auto-collisioni + 9 capsule * 3 sfere + 7 capsule * piano  2 e 3 capsile escluse
-const int N_SH_TOT = NX + N_DIST;
+const int N_SH_TOT = NX;
 
 // Globals
 bool init_q0 = false;
@@ -112,38 +113,6 @@ void signal_callback_handler(int signum)
 }
 
 // Callback per leggere POSIZIONE, VELOCITÀ
-// void jointsCallback(const sensor_msgs::JointStateConstPtr &msg)
-// {
-//     q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->position).data());
-
-//     if (msg->velocity.size() == 7)
-//     {
-//         dq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->velocity).data());
-//         has_velocity = true;
-//     }
-//     else
-//     {
-//         dq0.setZero();
-//         has_velocity = true;
-//     }
-
-//     // if (msg->acceleration.size() == 7)
-//     // {
-//     //     ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>((msg->acceleration).data());
-//     //     has_acceleration = true;
-//     // }
-//     // else
-//     // {
-//     //     ddq0.setZero();
-//     //     has_acceleration = true;
-//     // }
-
-//     // NOTA: Il JointState non ha l'accelerazione,
-//     // dovremmo stimarla o avere un sensore dedicato
-
-//     init_q0 = true;
-// }
-
 void jointsCallback(const sensor_msgs::JointStateConstPtr &msg)
 {
     q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->position.data());
@@ -190,13 +159,14 @@ int main(int argc, char **argv)
     ros::Publisher pub_mpc_solution = node_handle.advertise<panda_controllers::MpcSolution>("/mpc_solution", 1);
     ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
     // ros::Publisher pub_jerk_cmd = node_handle.advertise<sensor_msgs::JointState>("/mpc_jerk_command", 1000);
+    ros::Publisher pub_gazebo_model = node_handle.advertise<gazebo_msgs::ModelState>("/gazebo/set_model_state", 1);
 
     sensor_msgs::JointState traj_msg;
     // panda_controllers::MpcSolution mpc_msg;
 
     // Setup loop rates
     double loop_hz = 1000.0; // Per scelta 1-2-3
-    double loop_mpc = 30.0;
+    double loop_mpc = 50.0;
     ros::Rate loop_rate(loop_hz);
     ros::Rate mpc_rate(loop_mpc);
 
@@ -301,7 +271,16 @@ int main(int argc, char **argv)
 
             // --- DEFINIZIONE TARGET CARTESIANO E CLIK ---
             Vector3d p_des(0.33, -0.35, 0.45);
-            Vector3d v_des(0.0, 0.0, -0.5);
+            Vector3d v_des(0.0, 0.0, 0.0);
+
+            // // --- DEFINIZIONE TARGET CARTESIANO E CLIK ---
+            // Vector3d p_des;
+            // Vector3d v_des;
+
+            // cout << "Inserisci posizione target cartesiana (x y z): ";
+            // cin >> p_des[0] >> p_des[1] >> p_des[2];
+            // cout << "Inserisci velocità target cartesiana (vx vy vz): ";
+            // cin >> v_des[0] >> v_des[1] >> v_des[2];
 
             cout << "Posizione target cartesiana: " << p_des.transpose() << endl;
             cout << "Velocità target cartesiana: " << v_des.transpose() << endl;
@@ -444,12 +423,13 @@ int main(int argc, char **argv)
 
             // Parametri per ostacoli (da aggiornare ad ogni loop)
             double p_values[NP] = {tf, 0.11, -0.35, 0.53, 0.05,
-                                   0.31, 0.2, 0.5, 0.05};
+                                   0.31, 0.2, 0.5, 0.05,
+                                   0.0, 0.0, 0.0,
+                                   0.0, 0.0, 1.0};
 
             std::vector<std::string> constraint_names;
 
             // 1. Aggiungi le 8 auto-collisioni
-            int N_capsule = 12; // Numero totale di capsule
             constraint_names.push_back("Self: Cap 1 vs Cap 7");
             constraint_names.push_back("Self: Cap 1 vs Cap 8");
             // constraint_names.push_back("Self: Cap 1 vs Cap 10");
@@ -471,9 +451,9 @@ int main(int argc, char **argv)
             // for (int i = 1; i <= N_capsule - 1; i++)
             //     constraint_names.push_back("Sfera 3 vs Cap " + std::to_string(i));
 
-            // // 5. Aggiungi Piano (Capsule da 3)
-            // for (int i = 3; i <= N_capsule - 1; i++)
-            //     constraint_names.push_back("Piano vs Cap " + std::to_string(i));
+            // 5. Aggiungi Piano (Capsule da 3)
+            for (int i = 3; i <= N_capsule - 1; i++)
+                constraint_names.push_back("Piano vs Cap " + std::to_string(i));
 
             // Loop di controllo MPC
             while (t <= tf + eps && ros::ok())
@@ -486,7 +466,9 @@ int main(int argc, char **argv)
                 double Tf = max(time_to_go, t_hor_lim);
                 // Tf = 1.0; // Per testare con orizzonte fisso a 1 secondo (debug)
                 double dt_mpc_node = Tf / N_HORIZON;
-                p_values[0] = Tf; // Aggiorna l'orizzonte temporale per il solver
+                p_values[0] = Tf; // Aggiorna l'orizzonte temporale per il solve
+
+                // //--CASO 1
                 // if (t < 2.0)
                 // {
                 //     // L'ostacolo parte da x = 1.0 e "scivola"
@@ -504,27 +486,55 @@ int main(int argc, char **argv)
 
                 // //--CASO 2: Movimento avanti-indietro lungo x
                 // // Definiamo i parametri del movimento
-                // double t_inizio_movimento = 0.0;
-                // double t_fine_movimento = 5.0; // Durata del transito (es. 4 secondi)
-                // double x_start = 0.3;
-                // double x_end = -0.3;
+                double t_inizio_movimento = 0.0;
+                double t_fine_movimento = 40;    // Durata del transito (es. 4 secondi)
+                double x_start_p1 = p_values[1]; // Posizione iniziale dell'ostacolo da parametri
+                double x_end_p1 = -0.5;
 
-                // if (t>= t_inizio_movimento && t <= t_fine_movimento)
-                // {
-                //     // Calcoliamo il progresso normalizzato (da 0 a 1)
-                //     double progresso = (t - t_inizio_movimento) / (t_fine_movimento - t_inizio_movimento);
+                double x_start_p2 = p_values[6]; // Posizione iniziale dell'ostacolo da parametri
+                double x_end_p2 = -0.41;
 
-                //     // Interpolazione lineare tra x_start e x_end
-                //     p_values[1] = x_start + (x_end - x_start) * progresso;
-                // }
-                // else if (t > t_fine_movimento)
-                // {
-                //     p_values[1] = x_start; // Rimane ferma nel punto di arrivo
-                // }
-                // else
-                // {
-                //     p_values[1] = x_start; // Ferma al punto di partenza prima dell'inizio
-                // }
+                if (t >= t_inizio_movimento && t <= t_fine_movimento)
+                {
+                    // Calcoliamo il progresso normalizzato (da 0 a 1) comune a entrambe
+                    double progresso = (t - t_inizio_movimento) / (t_fine_movimento - t_inizio_movimento);
+
+                    // Interpolazione Palla 1 (Indici 1,2,3)
+                    p_values[1] = x_start_p1 + (x_end_p1 - x_start_p1) * progresso;
+
+                    // Interpolazione Palla 2 (Indici 5,6,7)
+                    p_values[5] = x_start_p2 + (x_end_p2 - x_start_p2) * progresso;
+                }
+                else if (t > t_fine_movimento)
+                {
+                    p_values[1] = x_end_p1; // Rimane nel punto di arrivo
+                    p_values[5] = x_end_p2;
+                }
+                else
+                {
+                    p_values[1] = x_start_p1; // Ferma al punto di partenza
+                    p_values[5] = x_start_p2;
+                }
+
+                // --- AGGIORNAMENTO POSIZIONE PALLA IN GAZEBO ---
+                gazebo_msgs::ModelState sphere_state;
+                sphere_state.model_name = "palla";
+                sphere_state.pose.position.x = p_values[1];
+                sphere_state.pose.position.y = p_values[2];
+                sphere_state.pose.position.z = p_values[3];
+                sphere_state.pose.orientation.w = 1.0;
+                sphere_state.reference_frame = "world";
+                pub_gazebo_model.publish(sphere_state);
+
+                // --- AGGIORNAMENTO POSIZIONE PALLA 2 IN GAZEBO ---
+                gazebo_msgs::ModelState sphere_state2;
+                sphere_state2.model_name = "palla2";
+                sphere_state2.pose.position.x = p_values[5];
+                sphere_state2.pose.position.y = p_values[6];
+                sphere_state2.pose.position.z = p_values[7];
+                sphere_state2.pose.orientation.w = 1.0;
+                sphere_state2.reference_frame = "world";
+                pub_gazebo_model.publish(sphere_state2);
                 // --- FEEDBACK STATO CORRENTE ---
                 double x0[NX];
                 for (int i = 0; i < NJ; i++)
@@ -629,31 +639,16 @@ int main(int argc, char **argv)
                     for (int s = 0; s < NX; s++)
                     {
                         // Nodi normali: limiti fisici (q, dq, ddq) INVALICABILI
-                        Zl_normal[s] = 1e3;
-                        zl_normal[s] = 1e3;
-                        Zu_normal[s] = 1e3;
-                        zu_normal[s] = 1e3;
+                        Zl_normal[s] = 1e5;
+                        zl_normal[s] = 1e5;
+                        Zu_normal[s] = 1e5;
+                        zu_normal[s] = 1e5;
 
                         // Nodo target: slack stato tolleranti ma punitivi
-                        Zl_target[s] = 1e3;
-                        zl_target[s] = 1e4;
-                        Zu_target[s] = 1e3;
-                        zu_target[s] = 1e4;
-                    }
-                    for (int s = 21; s < N_SH_TOT; s++)
-                    {
-                        // LIMITI INFERIORI (Distanze minime di sicurezza):
-                        Zl_normal[s] = 1e7;
-                        zl_normal[s] = 1e6;
-                        Zl_target[s] = 1e7;
-                        zl_target[s] = 1e6;
-
-                        // LIMITI SUPERIORI (Distanze massime)
-                        // Non c'è limite a quanto il robot possa allontanarsi da un ostacolo!
-                        Zu_normal[s] = 0.0;
-                        zu_normal[s] = 0.0;
-                        Zu_target[s] = 0.0;
-                        zu_target[s] = 0.0;
+                        Zl_target[s] = 1e5;
+                        zl_target[s] = 1e5;
+                        Zu_target[s] = 1e5;
+                        zu_target[s] = 1e5;
                     }
                     for (int i = 0; i <= N_HORIZON; i++)
                     {
@@ -696,14 +691,6 @@ int main(int argc, char **argv)
                                 zl_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
                                 Zu_dyn[s] = Zu_target[s];
                                 zu_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
-                            }
-                            for (int s = 21; s < N_SH_TOT; s++)
-                            {
-                                // Gli ostacoli rimangono intoccabili e rigidissimi
-                                Zl_dyn[s] = Zl_target[s];
-                                zl_dyn[s] = zl_target[s];
-                                Zu_dyn[s] = Zu_target[s];
-                                zu_dyn[s] = zu_target[s];
                             }
 
                             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_dyn);
@@ -812,66 +799,15 @@ int main(int argc, char **argv)
                 // Controlla slack su tutti i nodi
                 for (int node = 1; node <= N_HORIZON; node++)
                 {
-                    double sl_check[N_SH_TOT];
+                    double sl_check[N_SH_TOT]; // N_SH_TOT ora è solo NX (21)
                     ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, node, "sl", sl_check);
                     double max_s = 0.0;
-                    for (int idx = 0; idx < N_DIST; idx++)
-                        max_s = std::max(max_s, sl_check[NX + idx]);
+                    for (int idx = 0; idx < NX; idx++) // Solo stati, non distanze
+                        max_s = std::max(max_s, sl_check[idx]);
                     if (max_s > 1e-4)
-                        printf("  >> nodo %d: slack_obs=%.5f\n", node, max_s);
+                        printf("  >> nodo %d: slack_state=%.5f\n", node, max_s);
                 }
-                printf("t=%.3f | dt_node=%.4f | Tf=%.3f\n", t, dt_mpc_node, Tf);
 
-                // --- F. SUPERVISORE: CONTROLLO VIOLAZIONE OSTACOLI TRAMITE SLACK ---
-                bool collision_risk = false;
-                if (collision_risk==true)
-                {
-                    double slacks[N_SH_TOT];
-                    bool collision_detected = false;
-                    const double tolleranza_slack = 1e-2; // 1 cm
-
-                    for (int node = 1; node <= N_HORIZON; node++)
-                    {
-                        // Salta i nodi che seguono il nodo target: i vincoli lì sono stati ridefiniti
-                        // e non rappresentano più distanze di sicurezza reali
-                        if (NODO_corrente < N_HORIZON && node > NODO_corrente)
-                            continue;
-
-                        ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, node, "sl", slacks);
-
-                        for (int idx = 0; idx < N_DIST; idx++)
-                        {
-                            // I primi 21 slot sono gli slack di stato (q, dq, ddq)
-                            // Dal 21 in poi ci sono gli slack delle distanze ostacoli
-                            double slack_val = slacks[NX + idx];
-                            if (slack_val > tolleranza_slack)
-                            {
-                                collision_detected = true;
-                                ROS_ERROR("\n>>> ALLARME PREDIZIONE! Rischio collisione al nodo %d (t=%.3f s)", node, t);
-
-                                if (idx < (int)constraint_names.size())
-                                {
-                                    ROS_WARN(">>> CAUSA: %s (violazione di %.4f m)",
-                                             constraint_names[idx].c_str(), slack_val);
-                                }
-                                else
-                                {
-                                    ROS_WARN(">>> CAUSA: Vincolo sconosciuto (indice %d, violazione di %.4f m)",
-                                             idx, slack_val);
-                                }
-                                break;
-                            }
-                        }
-                        if (collision_detected)
-                            break;
-                    }
-
-                    if (collision_detected)
-                    {
-                        ROS_FATAL("\n>>> TRAIETTORIA NON SICURA: Fermo il robot a t = %.3f s.\n", t);
-                        break;
-                    }
-                }
 
                 // Recupera jerk ottimo
                 double u0_temp[NU];

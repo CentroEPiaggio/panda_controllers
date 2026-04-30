@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 	controller_interface
 	dynamic_reconfigure
 	franka_hw
+    gazebo_msgs
 	geometry_msgs
 	franka_msgs
 	hardware_interface
@@ -135,6 +136,13 @@ target_link_libraries(mpc_integrator_node
     ${PROJECT_NAME}
 )
 add_dependencies(mpc_integrator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(capsule_visualizer_node src/capsule_visualizer_node.cpp)
+target_link_libraries(capsule_visualizer_node 
+    ${catkin_LIBRARIES}
+    ${EIGEN3_LIBRARIES}
+    ${PROJECT_NAME}
+)
 
 # --- 10. Installation ---
 install(TARGETS ${PROJECT_NAME}
