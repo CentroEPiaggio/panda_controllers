@@ -484,54 +484,109 @@ int main(int argc, char **argv)
                 //     p_values[1] = 10.11; // Se ne va
                 // }
 
-                // //--CASO 2: Movimento avanti-indietro lungo x
-                // // Definiamo i parametri del movimento
-                double t_inizio_movimento = 0.0;
-                double t_fine_movimento = 40;    // Durata del transito (es. 4 secondi)
-                double x_start_p1 = p_values[1]; // Posizione iniziale dell'ostacolo da parametri
-                double x_end_p1 = -0.5;
+                // // //--CASO 2: Traiettoria circolare attorno al robot
+                // // Centro di rotazione
+                // double cx = 0.0;
+                // double cy = 0.0;
 
-                double x_start_p2 = p_values[6]; // Posizione iniziale dell'ostacolo da parametri
-                double x_end_p2 = -0.41;
+                // // Calcolo della velocità angolare per fare ESATTAMENTE 2 giri in tf secondi
+                // // 2 giri = 4 * PI radianti. diviso tf secondi.
+                // double omega1 = (4.0 * M_PI) / tf;
+                // double omega2 = -(4.0 * M_PI) / tf; // La Palla 2 fa 2 giri nel senso opposto
 
-                if (t >= t_inizio_movimento && t <= t_fine_movimento)
+                // // Palla 1 (ruota a 40 cm di distanza)
+                // double R1 = 0.4;
+                // double z_p1 = 0.6;
+
+                // // Palla 2 (ruota a 50 cm di dist)
+                // double R2 = 0.4;
+                // double z_p2 = 0.8;
+                // double sfasamento_p2 = M_PI;
+
+                // // --- Calcolo posizione CORRENTE per Gazebo ---
+                // double x_curr_p1 = cx + R1 * cos(omega1 * t);
+                // double y_curr_p1 = cy + R1 * sin(omega1 * t);
+
+                // double x_curr_p2 = cx + R2 * cos(omega2 * t + sfasamento_p2);
+                // double y_curr_p2 = cy + R2 * sin(omega2 * t + sfasamento_p2);
+                // // --- AGGIORNAMENTO POSIZIONE PALLE IN GAZEBO ---
+                // gazebo_msgs::ModelState sphere_state;
+                // sphere_state.model_name = "palla";
+                // sphere_state.pose.position.x = x_curr_p1;
+                // sphere_state.pose.position.y = y_curr_p1;
+                // sphere_state.pose.position.z = z_p1;
+                // sphere_state.pose.orientation.w = 1.0;
+                // sphere_state.reference_frame = "world";
+                // pub_gazebo_model.publish(sphere_state);
+
+                // gazebo_msgs::ModelState sphere_state2;
+                // sphere_state2.model_name = "palla2";
+                // sphere_state2.pose.position.x = x_curr_p2;
+                // sphere_state2.pose.position.y = y_curr_p2;
+                // sphere_state2.pose.position.z = z_p2;
+                // sphere_state2.pose.orientation.w = 1.0;
+                // sphere_state2.reference_frame = "world";
+                // pub_gazebo_model.publish(sphere_state2);
+
+                // //--CASO 4: Palla 1 avanti e indietro (Velocità Costante)
+                // --- DEFINIZIONE PARAMETRI ---
+                double v_palla = 0.2;    // Velocità in metri al secondo (m/s) -> es. 20 cm/s
+                double x_start_p1 = 0.0; 
+                double x_end_p1 = -0.6;  
+                double y_p1 = -0.35;     
+                double z_p1 = 0.53;      
+
+                // Distanza totale di UN tratto (andata)
+                double distanza_tratto = std::abs(x_start_p1 - x_end_p1); 
+                // Tempo per fare un tratto a velocità costante
+                double t_tratto = distanza_tratto / v_palla; 
+
+                // Palla 2 (ferma)
+                double x_p2_ferma = 0.31;
+                double y_p2_ferma = 0.2;
+                double z_p2_ferma = 0.5;
+
+                // --- Calcolo posizione CORRENTE (tempo t) ---
+                // Uso modulo (fmod) per sapere in che punto del ciclo ci troviamo
+                double ciclo_corrente = fmod(t, 2.0 * t_tratto);
+                double x_curr_p1;
+
+                if (ciclo_corrente < t_tratto)
                 {
-                    // Calcoliamo il progresso normalizzato (da 0 a 1) comune a entrambe
-                    double progresso = (t - t_inizio_movimento) / (t_fine_movimento - t_inizio_movimento);
-
-                    // Interpolazione Palla 1 (Indici 1,2,3)
-                    p_values[1] = x_start_p1 + (x_end_p1 - x_start_p1) * progresso;
-
-                    // Interpolazione Palla 2 (Indici 5,6,7)
-                    p_values[5] = x_start_p2 + (x_end_p2 - x_start_p2) * progresso;
-                }
-                else if (t > t_fine_movimento)
-                {
-                    p_values[1] = x_end_p1; // Rimane nel punto di arrivo
-                    p_values[5] = x_end_p2;
+                    // Andata (da x_start a x_end)
+                    x_curr_p1 = x_start_p1 - v_palla * ciclo_corrente;
                 }
                 else
                 {
-                    p_values[1] = x_start_p1; // Ferma al punto di partenza
-                    p_values[5] = x_start_p2;
+                    // Ritorno (da x_end a x_start)
+                    double tempo_ritorno = ciclo_corrente - t_tratto;
+                    x_curr_p1 = x_end_p1 + v_palla * tempo_ritorno;
                 }
 
-                // --- AGGIORNAMENTO POSIZIONE PALLA IN GAZEBO ---
+                // Aggiorniamo l'array
+                p_values[1] = x_curr_p1;
+                p_values[2] = y_p1;
+                p_values[3] = z_p1;
+
+                p_values[5] = x_p2_ferma;
+                p_values[6] = y_p2_ferma;
+                p_values[7] = z_p2_ferma;
+
+                // --- AGGIORNAMENTO POSIZIONE PALLE IN GAZEBO ---
                 gazebo_msgs::ModelState sphere_state;
                 sphere_state.model_name = "palla";
-                sphere_state.pose.position.x = p_values[1];
-                sphere_state.pose.position.y = p_values[2];
-                sphere_state.pose.position.z = p_values[3];
+                sphere_state.pose.position.x = x_curr_p1;
+                sphere_state.pose.position.y = y_p1;
+                sphere_state.pose.position.z = z_p1;
                 sphere_state.pose.orientation.w = 1.0;
                 sphere_state.reference_frame = "world";
                 pub_gazebo_model.publish(sphere_state);
 
-                // --- AGGIORNAMENTO POSIZIONE PALLA 2 IN GAZEBO ---
                 gazebo_msgs::ModelState sphere_state2;
                 sphere_state2.model_name = "palla2";
-                sphere_state2.pose.position.x = p_values[5];
-                sphere_state2.pose.position.y = p_values[6];
-                sphere_state2.pose.position.z = p_values[7];
+                sphere_state2.pose.position.x = x_p2_ferma;
+                sphere_state2.pose.position.y = y_p2_ferma;
+                sphere_state2.pose.position.z = z_p2_ferma;
                 sphere_state2.pose.orientation.w = 1.0;
                 sphere_state2.reference_frame = "world";
                 pub_gazebo_model.publish(sphere_state2);
@@ -611,7 +666,53 @@ int main(int argc, char **argv)
                                 ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", s.jerk.data());
                         }
 
-                        // Set parametri
+                        // // Set parametri
+                        // // Calcolo del tempo predetto per questo specifico nodo
+                        // double t_pred = t + i * dt_mpc_node;
+
+                        // // Calcolo posizione PREDETTA per Palla 1 e 2
+                        // double x_pred_p1 = cx + R1 * cos(omega1 * t_pred);
+                        // double y_pred_p1 = cy + R1 * sin(omega1 * t_pred);
+
+                        // double x_pred_p2 = cx + R2 * cos(omega2 * t_pred + sfasamento_p2);
+                        // double y_pred_p2 = cy + R2 * sin(omega2 * t_pred + sfasamento_p2);
+
+                        // // Aggiorno l'array p_values per QUESTO NODO
+                        // p_values[1] = x_pred_p1;
+                        // p_values[2] = y_pred_p1;
+                        // p_values[3] = z_p1;
+
+                        // p_values[5] = x_pred_p2;
+                        // p_values[6] = y_pred_p2;
+                        // p_values[7] = z_p2;
+
+                        // (Alla fine del ciclo for, subito prima di ocp_nlp_in_set)
+                        double t_pred = t + i * dt_mpc_node;
+
+                        // Ripetiamo la logica dell'onda triangolare per t_pred
+                        double ciclo_pred = fmod(t_pred, 2.0 * t_tratto);
+                        double x_pred_p1;
+
+                        if (ciclo_pred < t_tratto)
+                        {
+                            x_pred_p1 = x_start_p1 - v_palla * ciclo_pred;
+                        }
+                        else
+                        {
+                            double tempo_ritorno_pred = ciclo_pred - t_tratto;
+                            x_pred_p1 = x_end_p1 + v_palla * tempo_ritorno_pred;
+                        }
+
+                        // Predizione Palla 1 (velocità costante)
+                        p_values[1] = x_pred_p1;
+                        p_values[2] = y_p1;
+                        p_values[3] = z_p1;
+
+                        // Predizione Palla 2 (ferma)
+                        p_values[5] = x_p2_ferma;
+                        p_values[6] = y_p2_ferma;
+                        p_values[7] = z_p2_ferma;
+
                         ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "parameter_values", p_values);
                     }
                 }
@@ -680,7 +781,7 @@ int main(int argc, char **argv)
                                 ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, i, "ubx", x_target_ub_terminal);
                             }
 
-                            // 2. SLACK DINAMICI: Riduciamo la penalità da 10000 a 100 negli ultimi 3 nodi (circa 100-150ms).
+                            // 2. SLACK DINAMICI: Riduciamo la penalità da 10000 a 100 negli ultimi 3 nodi (circa 60ms).
                             // Questo elimina il "colpo di frusta" finale, permettendo un assestamento fluido.
                             double current_slack_penalty = (NODO <= 3) ? 1e2 : 1e4;
                             double Zl_dyn[N_SH_TOT], zl_dyn[N_SH_TOT], Zu_dyn[N_SH_TOT], zu_dyn[N_SH_TOT];
@@ -779,6 +880,51 @@ int main(int argc, char **argv)
                             }
                             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_stage);
                         }
+                        // // Calcolo del tempo predetto per questo specifico nodo
+                        // double t_pred = t + i * dt_mpc_node;
+
+                        // // Calcolo posizione PREDETTA per Palla 1 e 2
+                        // double x_pred_p1 = cx + R1 * cos(omega1 * t_pred);
+                        // double y_pred_p1 = cy + R1 * sin(omega1 * t_pred);
+
+                        // double x_pred_p2 = cx + R2 * cos(omega2 * t_pred + sfasamento_p2);
+                        // double y_pred_p2 = cy + R2 * sin(omega2 * t_pred + sfasamento_p2);
+
+                        // // Aggiorno l'array p_values per QUESTO NODO
+                        // p_values[1] = x_pred_p1;
+                        // p_values[2] = y_pred_p1;
+                        // p_values[3] = z_p1;
+
+                        // p_values[5] = x_pred_p2;
+                        // p_values[6] = y_pred_p2;
+                        // p_values[7] = z_p2;
+
+                        // (Alla fine del ciclo for, subito prima di ocp_nlp_in_set)
+                        double t_pred = t + i * dt_mpc_node;
+
+                        // Ripetiamo la logica dell'onda triangolare per t_pred
+                        double ciclo_pred = fmod(t_pred, 2.0 * t_tratto);
+                        double x_pred_p1;
+
+                        if (ciclo_pred < t_tratto)
+                        {
+                            x_pred_p1 = x_start_p1 - v_palla * ciclo_pred;
+                        }
+                        else
+                        {
+                            double tempo_ritorno_pred = ciclo_pred - t_tratto;
+                            x_pred_p1 = x_end_p1 + v_palla * tempo_ritorno_pred;
+                        }
+
+                        // Predizione Palla 1 (velocità costante)
+                        p_values[1] = x_pred_p1;
+                        p_values[2] = y_p1;
+                        p_values[3] = z_p1;
+
+                        // Predizione Palla 2 (ferma)
+                        p_values[5] = x_p2_ferma;
+                        p_values[6] = y_p2_ferma;
+                        p_values[7] = z_p2_ferma;
 
                         ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "parameter_values", p_values);
                     }
