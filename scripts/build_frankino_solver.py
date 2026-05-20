@@ -15,7 +15,7 @@ from acados_template import (
     AcadosSimSolver,
     AcadosSim,
 )
-import panda_controllers.scripts.DistanceFunctions as geom
+import scripts.DistanceFunctions as geom
 # ===================== PATHS =====================
 path_to_files = (
     "/home/frankino/Tesi/thunder_MPC_Acados/src/panda_controllers/frankino_generatedFiles"
