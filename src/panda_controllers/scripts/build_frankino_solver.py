@@ -44,14 +44,14 @@ def create_capsule_definitions():
     # --- Robot Capsule Definitions (Frankino) ---
     capsules.append(CapsuleDefinition(0, 0.065, 0.105, [[0,0,1,-0.075], [0,1,0,0], [-1,0,0,0.06], [0,0,0,1]])) # idx 0
     capsules.append(CapsuleDefinition(1, 0.06, 0.283, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.1915], [0,0,0,1]])) # idx 1
-    capsules.append(CapsuleDefinition(2, 0.06, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 2
-    capsules.append(CapsuleDefinition(3, 0.06, 0.15, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.145], [0,0,0,1]])) # idx 3
-    capsules.append(CapsuleDefinition(4, 0.06, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 4
+    capsules.append(CapsuleDefinition(2, 0.06, 0.24, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 2 
+    capsules.append(CapsuleDefinition(3, 0.06, 0.20, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.145], [0,0,0,1]])) # idx 3 
+    capsules.append(CapsuleDefinition(4, 0.06, 0.20, [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]))      # idx 4 
     capsules.append(CapsuleDefinition(5, 0.06, 0.13, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.26], [0,0,0,1]]))  # idx 5
     capsules.append(CapsuleDefinition(5, 0.025, 0.14, [[0.9968,-0.0799,0,0], [0.0799,0.9968,0,0.08], [0,0,1,-0.13], [0,0,0,1]])) # idx 6
     capsules.append(CapsuleDefinition(6, 0.05, 0.15, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.035], [0,0,0,1]]))  # idx 7 
     capsules.append(CapsuleDefinition(7, 0.045, 0.14, [[1,0,0,0], [0,1,0,0], [0,0,1,-0.10], [0,0,0,1]]))  # idx 8
-    capsules.append(CapsuleDefinition(7, 0.04, 0.11, [[0.0,-0.7071,0.7071,0.01], [0.0,0.7071,0.7071,0.01], [-1.0,0.0,0.0,-0.025], [0.0,0.0,0.0,1.0]])) # idx 9
+    capsules.append(CapsuleDefinition(7, 0.04, 0.13, [[0.0,-0.7071,0.7071,0.01], [0.0,0.7071,0.7071,0.01], [-1.0,0.0,0.0,-0.025], [0.0,0.0,0.0,1.0]])) # idx 9 
     # capsules.append(CapsuleDefinition(8, 0.07, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.04], [0,0,0,1]])) # idx 10
     # capsules.append(CapsuleDefinition(8, 0.05, 0.10, [[1,0,0,0], [0,0,-1,0], [0,1,0,0.10], [0,0,0,1]])) # idx 11
     return capsules
@@ -201,10 +201,10 @@ def create_solver():
     # --- COSTI ---
     ocp.cost.cost_type = "NONLINEAR_LS"
     ocp.cost.cost_type_e = "NONLINEAR_LS"
-    W_q   = 1e-6   
-    W_dq  = 1e-6
+    W_q   = 1e-1   
+    W_dq  = 1e-1
     W_ddq = 1
-    W_u = 1e-2
+    W_u = 0.0
     W_diag = np.concatenate([np.full(7, W_q), np.full(7, W_dq), np.full(7, W_ddq), np.full(7, W_u)])
     ocp.cost.W = np.diag(W_diag)
 

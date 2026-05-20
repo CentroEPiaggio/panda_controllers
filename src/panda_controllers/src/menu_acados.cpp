@@ -20,6 +20,7 @@
 #include "std_srvs/SetBool.h"
 #include "sensor_msgs/JointState.h"
 #include <panda_controllers/MpcSolution.h>
+#include <panda_controllers/ObstacleStatus.h>
 
 // --- INCLUSIONI CUSTOM & ACADOS ---
 #include "MinJerkTrajectory.h"
@@ -31,7 +32,10 @@ extern "C"
 #include "acados_c/ocp_nlp_interface.h"
 }
 #include "utils/KinematicsSolver.h" // Aggiunto per CLIK
+#include <gazebo_msgs/ModelStates.h>
 #include <gazebo_msgs/ModelState.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 
 const std::string conf_file = "../config/frankino_conf.yaml";
 using namespace std;
@@ -48,7 +52,7 @@ using namespace Eigen;
 int N_sfere = 2;                                                                             // Numero di sfere per approssimazione ostacoli
 int N_capsule = 10;                                                                          // Numero di capsule per approssimazione robot (dipende da come segmentiamo il robot)
 int N_piani = 1;                                                                             // Numero di piani per approssimazione ambiente.
-int N_autocollisioni = 2;                                                                    // Numero di auto-collisioni che vogliamo considerare (es. tra 2 coppie di capsule)
+int N_autocollisioni = 6;                                                                    // Numero di auto-collisioni che vogliamo considerare (es. tra 2 coppie di capsule)
 const int N_DIST = N_autocollisioni + (N_capsule - 1) * N_sfere + (N_capsule - 3) * N_piani; // 2 auto-collisioni + 9 capsule * 3 sfere + 7 capsule * piano  2 e 3 capsile escluse
 const int N_SH_TOT = NX;
 
@@ -83,7 +87,9 @@ double ub[NX] = {2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973,
                  2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61,
                  15, 7.5, 10, 12.5, 15, 20, 20};
 
-// Funzione di utilità per l'errore di predizione
+Eigen::Vector3d obstacle_pos(10.0, 10.0, 10.0);
+Eigen::Vector3d obstacle_vel(0.0, 0.0, 0.0);
+
 double simulate_prediction(
     const VectorXd &q_start,
     const VectorXd &dq_start,
@@ -148,25 +154,36 @@ void saveUSequenceToCSV(std::ofstream &file, double t_curr, const Eigen::MatrixX
     }
 }
 
+void obstacleStatusCallback(const panda_controllers::ObstacleStatusConstPtr &msg)
+{
+    obstacle_pos << msg->position.x, msg->position.y, msg->position.z;
+    obstacle_vel << msg->velocity.x, msg->velocity.y, msg->velocity.z;
+}
+
 int main(int argc, char **argv)
 {
     thunder_frankino robot;
+    thunder_frankino robot_visual;
+
     ros::init(argc, argv, "menu");
     ros::NodeHandle node_handle;
+
     robot.load_conf(conf_file);
-    // ros::Subscriber sub_joints = node_handle.subscribe<sensor_msgs::JointState>("/franka_state_controller/joint_states", 1, &jointsCallback);
+    robot_visual.load_conf(conf_file);
+
     ros::Subscriber sub_joints = node_handle.subscribe<sensor_msgs::JointState>("/mpc/filtered_joint_state", 1, &jointsCallback);
+    ros::Subscriber sub_obs = node_handle.subscribe<panda_controllers::ObstacleStatus>("/mpc/obstacle_status", 1, &obstacleStatusCallback);
+
     ros::Publisher pub_mpc_solution = node_handle.advertise<panda_controllers::MpcSolution>("/mpc_solution", 1);
     ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
-    // ros::Publisher pub_jerk_cmd = node_handle.advertise<sensor_msgs::JointState>("/mpc_jerk_command", 1000);
-    ros::Publisher pub_gazebo_model = node_handle.advertise<gazebo_msgs::ModelState>("/gazebo/set_model_state", 1);
+    ros::Publisher pub_ghost_state = node_handle.advertise<sensor_msgs::JointState>("/ghost_joint_states", 1);
+    ros::Publisher pub_mpc_path = node_handle.advertise<nav_msgs::Path>("/mpc_predicted_path", 1);
 
     sensor_msgs::JointState traj_msg;
-    // panda_controllers::MpcSolution mpc_msg;
 
     // Setup loop rates
     double loop_hz = 1000.0; // Per scelta 1-2-3
-    double loop_mpc = 50.0;
+    double loop_mpc = 30.0;
     ros::Rate loop_rate(loop_hz);
     ros::Rate mpc_rate(loop_mpc);
 
@@ -193,7 +210,7 @@ int main(int argc, char **argv)
     while (ros::ok())
     {
         cout << "\n------------------------------------------------" << endl;
-        cout << "choice: (1: Min-Jerk Standard, 2: Init, 3: Random, 6: MPC Acados, 7: Init + MPC Acados)" << endl;
+        cout << "choice: (1: Min-Jerk Standard, 2: Init, 3: Random, 6: MPC Acados, 7: Init + MPC Acados, 8: MPC Hold Position)" << endl;
         if (yaml == 1)
         {
             choice = 5;
@@ -201,8 +218,14 @@ int main(int argc, char **argv)
         else
         {
             cin >> choice;
+            if (cin.fail())
+            {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "[ERRORE] Input non valido. Inserisci un numero." << endl;
+                continue;
+            }
         }
-
         // --- GESTIONE INPUT ---
         if (choice == 1)
         {
@@ -248,6 +271,15 @@ int main(int argc, char **argv)
             loop_rate.sleep();
             cout << "Inserisci l'orizzonte temporale desiderato: ";
             cin >> tf; // Leggi orizzonte temporale desiderato
+
+            if (cin.fail())
+            {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "[ERRORE] Orizzonte temporale non valido. Operazione annullata, ritorno al menu." << endl;
+                continue;
+            }
+
             cout << "Orizzonte temporale: " << tf << endl;
             std::vector<double> qf_array;
             if (!node_handle.getParam("/menu/Q0_INIT", qf_array))
@@ -256,6 +288,30 @@ int main(int argc, char **argv)
             dqf.setZero();
             ddqf.setZero();
             ddq0.setZero();
+        }
+        else if (choice == 8)
+        {
+            ros::spinOnce();
+            loop_rate.sleep();
+            cout << "Inserisci il tempo di hold position (es. 30.0 secondi): ";
+            cin >> tf;
+
+            if (cin.fail())
+            {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "[ERRORE] Orizzonte temporale non valido. Ritorno al menu." << endl;
+                continue;
+            }
+
+            cout << "Hold Position per " << tf << " secondi." << endl;
+
+            qf = q0;
+            dqf.setZero();
+            ddqf.setZero();
+            ddq0.setZero();
+
+            cout << "Target (posizione corrente): q = " << qf.transpose() << endl;
         }
         else if (choice == 6)
         {
@@ -291,10 +347,6 @@ int main(int argc, char **argv)
             qf = target_state.q;
             dqf = target_state.dq;
             ddqf = target_state.ddq;
-
-            // qf << -0.14724, -0.526, -0.565, -2.1099, -0.312, 1.557, -1.733;
-            // dqf.setZero();
-            // ddqf.setZero();
         }
 
         // Attesa primo messaggio joint states
@@ -308,13 +360,11 @@ int main(int argc, char **argv)
         t = 0;
 
         // =================================================================================
-        // SCELTA 6: MPC ACADOS
+        // SCELTE: MPC ACADOS
         // =================================================================================
-        if (choice == 6 || choice == 7)
+        if (choice == 6 || choice == 7 || choice == 8)
         {
             cout << ">>> Initializing ACADOS MPC (Jerk version)..." << endl;
-
-            // ros::spinOnce();
 
             q_start = q0;
             dq_start = dq0;
@@ -404,10 +454,10 @@ int main(int argc, char **argv)
                 x_target_lb_terminal[2 * NJ + i] = ddqf(i) - tolerance;
             }
             // Setup MinJerk Planner
-            MinJerkTrajectory planner;
+            MinJerkTrajectory planner, planner_mj;
 
-            // Inizializza planner con stato corrente e target
             planner.init(q_start, qf, dq_start, dqf, ddq_start, ddqf, t, tf);
+            planner_mj.init(q_start, qf, dq_start, dqf, ddq_start, ddqf, t, tf);
 
             // Variabili per controllo sample-and-hold
             double t_hor_lim = N_HORIZON / loop_mpc; // Orizzonte minimo
@@ -460,137 +510,43 @@ int main(int argc, char **argv)
             {
                 ros::spinOnce(); // Aggiorna q0, dq0 dal robot reale dovrei aggiornare anche ddq0 se avessi un sensore o stima
 
-                std::cout << "Stato: " << "q = " << q0.transpose() << ", dq = " << dq0.transpose() << ", ddq = " << ddq0.transpose() << std::endl;
+                // std::cout << "Stato: " << "q = " << q0.transpose() << ", dq = " << dq0.transpose() << ", ddq = " << ddq0.transpose() << std::endl;
 
-                double time_to_go = tf - t;
-                double Tf = max(time_to_go, t_hor_lim);
-                // Tf = 1.0; // Per testare con orizzonte fisso a 1 secondo (debug)
-                double dt_mpc_node = Tf / N_HORIZON;
-                p_values[0] = Tf; // Aggiorna l'orizzonte temporale per il solve
+                double t_visual = (ros::Time::now() - t_init).toSec();
 
-                // //--CASO 1
-                // if (t < 2.0)
-                // {
-                //     // L'ostacolo parte da x = 1.0 e "scivola"
-                //     double progresso = t / 1.0; // va da 0 a 1
-                //     p_values[1] = 1.0 - (1.0 - 0.11) * progresso;
-                // }
-                // else if (t >= 2.0 && t < 2.5)
-                // {
-                //     p_values[1] = 0.11; // Raggiunge la posizione finale
-                // }
-                // else
-                // {
-                //     p_values[1] = 10.11; // Se ne va
-                // }
+                auto s_ghost = planner_mj.evaluate(std::min(t_visual, tf));
 
-                // // //--CASO 2: Traiettoria circolare attorno al robot
-                // // Centro di rotazione
-                // double cx = 0.0;
-                // double cy = 0.0;
-
-                // // Calcolo della velocità angolare per fare ESATTAMENTE 2 giri in tf secondi
-                // // 2 giri = 4 * PI radianti. diviso tf secondi.
-                // double omega1 = (4.0 * M_PI) / tf;
-                // double omega2 = -(4.0 * M_PI) / tf; // La Palla 2 fa 2 giri nel senso opposto
-
-                // // Palla 1 (ruota a 40 cm di distanza)
-                // double R1 = 0.4;
-                // double z_p1 = 0.6;
-
-                // // Palla 2 (ruota a 50 cm di dist)
-                // double R2 = 0.4;
-                // double z_p2 = 0.8;
-                // double sfasamento_p2 = M_PI;
-
-                // // --- Calcolo posizione CORRENTE per Gazebo ---
-                // double x_curr_p1 = cx + R1 * cos(omega1 * t);
-                // double y_curr_p1 = cy + R1 * sin(omega1 * t);
-
-                // double x_curr_p2 = cx + R2 * cos(omega2 * t + sfasamento_p2);
-                // double y_curr_p2 = cy + R2 * sin(omega2 * t + sfasamento_p2);
-                // // --- AGGIORNAMENTO POSIZIONE PALLE IN GAZEBO ---
-                // gazebo_msgs::ModelState sphere_state;
-                // sphere_state.model_name = "palla";
-                // sphere_state.pose.position.x = x_curr_p1;
-                // sphere_state.pose.position.y = y_curr_p1;
-                // sphere_state.pose.position.z = z_p1;
-                // sphere_state.pose.orientation.w = 1.0;
-                // sphere_state.reference_frame = "world";
-                // pub_gazebo_model.publish(sphere_state);
-
-                // gazebo_msgs::ModelState sphere_state2;
-                // sphere_state2.model_name = "palla2";
-                // sphere_state2.pose.position.x = x_curr_p2;
-                // sphere_state2.pose.position.y = y_curr_p2;
-                // sphere_state2.pose.position.z = z_p2;
-                // sphere_state2.pose.orientation.w = 1.0;
-                // sphere_state2.reference_frame = "world";
-                // pub_gazebo_model.publish(sphere_state2);
-
-                // //--CASO 4: Palla 1 avanti e indietro (Velocità Costante)
-                // --- DEFINIZIONE PARAMETRI ---
-                double v_palla = 0.2;    // Velocità in metri al secondo (m/s) -> es. 20 cm/s
-                double x_start_p1 = 0.0; 
-                double x_end_p1 = -0.6;  
-                double y_p1 = -0.35;     
-                double z_p1 = 0.53;      
-
-                // Distanza totale di UN tratto (andata)
-                double distanza_tratto = std::abs(x_start_p1 - x_end_p1); 
-                // Tempo per fare un tratto a velocità costante
-                double t_tratto = distanza_tratto / v_palla; 
-
-                // Palla 2 (ferma)
-                double x_p2_ferma = 0.31;
-                double y_p2_ferma = 0.2;
-                double z_p2_ferma = 0.5;
-
-                // --- Calcolo posizione CORRENTE (tempo t) ---
-                // Uso modulo (fmod) per sapere in che punto del ciclo ci troviamo
-                double ciclo_corrente = fmod(t, 2.0 * t_tratto);
-                double x_curr_p1;
-
-                if (ciclo_corrente < t_tratto)
+                sensor_msgs::JointState ghost_msg;
+                ghost_msg.header.stamp = ros::Time::now();
+                ghost_msg.name = {"ghost_joint1", "ghost_joint2", "ghost_joint3",
+                                  "ghost_joint4", "ghost_joint5", "ghost_joint6", "ghost_joint7"};
+                for (int i = 0; i < 7; i++)
                 {
-                    // Andata (da x_start a x_end)
-                    x_curr_p1 = x_start_p1 - v_palla * ciclo_corrente;
+                    ghost_msg.position.push_back(s_ghost.pos(i));
+                    ghost_msg.velocity.push_back(s_ghost.vel(i));
+                    ghost_msg.effort.push_back(s_ghost.acc(i));
+                }
+                pub_ghost_state.publish(ghost_msg);
+
+                // Gestione orizzonte differenziata
+                double time_to_go = tf - t;
+                double Tf;
+
+                if (choice == 8)
+                {
+                    double max_horizon_lookahead = 5.0;
+                    Tf = std::min(time_to_go, max_horizon_lookahead);
                 }
                 else
                 {
-                    // Ritorno (da x_end a x_start)
-                    double tempo_ritorno = ciclo_corrente - t_tratto;
-                    x_curr_p1 = x_end_p1 + v_palla * tempo_ritorno;
+                    Tf = time_to_go;
                 }
 
-                // Aggiorniamo l'array
-                p_values[1] = x_curr_p1;
-                p_values[2] = y_p1;
-                p_values[3] = z_p1;
+                Tf = std::max(Tf, t_hor_lim);
+                double dt_mpc_node = Tf / N_HORIZON;
 
-                p_values[5] = x_p2_ferma;
-                p_values[6] = y_p2_ferma;
-                p_values[7] = z_p2_ferma;
+                p_values[0] = Tf;
 
-                // --- AGGIORNAMENTO POSIZIONE PALLE IN GAZEBO ---
-                gazebo_msgs::ModelState sphere_state;
-                sphere_state.model_name = "palla";
-                sphere_state.pose.position.x = x_curr_p1;
-                sphere_state.pose.position.y = y_p1;
-                sphere_state.pose.position.z = z_p1;
-                sphere_state.pose.orientation.w = 1.0;
-                sphere_state.reference_frame = "world";
-                pub_gazebo_model.publish(sphere_state);
-
-                gazebo_msgs::ModelState sphere_state2;
-                sphere_state2.model_name = "palla2";
-                sphere_state2.pose.position.x = x_p2_ferma;
-                sphere_state2.pose.position.y = y_p2_ferma;
-                sphere_state2.pose.position.z = z_p2_ferma;
-                sphere_state2.pose.orientation.w = 1.0;
-                sphere_state2.reference_frame = "world";
-                pub_gazebo_model.publish(sphere_state2);
-                // --- FEEDBACK STATO CORRENTE ---
                 double x0[NX];
                 for (int i = 0; i < NJ; i++)
                 {
@@ -608,14 +564,17 @@ int main(int argc, char **argv)
                 // --- B. LOGICA MPC  ---
                 if (time_to_go >= t_hor_lim)
                 {
-                    // Ricalcola traiettoria MinJerk dal punto corrente
-                    planner.init(q0, qf, dq0, dqf, ddq0, ddqf, t, tf);
+                    // Ricalcola MinJerk solo per scelte 6 e 7
+                    if (choice != 8)
+                    {
+                        planner.init(q0, qf, dq0, dqf, ddq0, ddqf, t, tf);
+                    }
 
                     // Genera reference e warm start
                     for (int i = 0; i <= N_HORIZON; i++)
                     {
                         double ti = t + i * dt_mpc_node;
-                        auto s = planner.evaluate(ti);
+                        auto s = planner.evaluate(std::min(ti, tf));
 
                         // Stage cost reference [q_des, dq_des, ddq_des, jerk_des]
                         double yref_stage[NY];
@@ -648,11 +607,12 @@ int main(int argc, char **argv)
                             ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, i, "u", u_prev);
                             // SET
                             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_prev);
-                            ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u_prev);
+                            if (i < N_HORIZON)
+                                ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u_prev);
                         }
                         else
                         {
-                            first_mpc_call = false;
+                            
                             // Prima chiamata: MinJerk come initial guess
                             double x_guess[NX];
                             for (int j = 0; j < NJ; j++)
@@ -666,59 +626,20 @@ int main(int argc, char **argv)
                                 ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", s.jerk.data());
                         }
 
-                        // // Set parametri
-                        // // Calcolo del tempo predetto per questo specifico nodo
-                        // double t_pred = t + i * dt_mpc_node;
+                        double ti_horizon = i * dt_mpc_node;
 
-                        // // Calcolo posizione PREDETTA per Palla 1 e 2
-                        // double x_pred_p1 = cx + R1 * cos(omega1 * t_pred);
-                        // double y_pred_p1 = cy + R1 * sin(omega1 * t_pred);
-
-                        // double x_pred_p2 = cx + R2 * cos(omega2 * t_pred + sfasamento_p2);
-                        // double y_pred_p2 = cy + R2 * sin(omega2 * t_pred + sfasamento_p2);
-
-                        // // Aggiorno l'array p_values per QUESTO NODO
-                        // p_values[1] = x_pred_p1;
-                        // p_values[2] = y_pred_p1;
-                        // p_values[3] = z_p1;
-
-                        // p_values[5] = x_pred_p2;
-                        // p_values[6] = y_pred_p2;
-                        // p_values[7] = z_p2;
-
-                        // (Alla fine del ciclo for, subito prima di ocp_nlp_in_set)
-                        double t_pred = t + i * dt_mpc_node;
-
-                        // Ripetiamo la logica dell'onda triangolare per t_pred
-                        double ciclo_pred = fmod(t_pred, 2.0 * t_tratto);
-                        double x_pred_p1;
-
-                        if (ciclo_pred < t_tratto)
-                        {
-                            x_pred_p1 = x_start_p1 - v_palla * ciclo_pred;
-                        }
-                        else
-                        {
-                            double tempo_ritorno_pred = ciclo_pred - t_tratto;
-                            x_pred_p1 = x_end_p1 + v_palla * tempo_ritorno_pred;
-                        }
-
-                        // Predizione Palla 1 (velocità costante)
-                        p_values[1] = x_pred_p1;
-                        p_values[2] = y_p1;
-                        p_values[3] = z_p1;
-
-                        // Predizione Palla 2 (ferma)
-                        p_values[5] = x_p2_ferma;
-                        p_values[6] = y_p2_ferma;
-                        p_values[7] = z_p2_ferma;
+                        p_values[1] = obstacle_pos.x() + obstacle_vel.x() * ti_horizon;
+                        p_values[2] = obstacle_pos.y() + obstacle_vel.y() * ti_horizon;
+                        p_values[3] = obstacle_pos.z() + obstacle_vel.z() * ti_horizon;
 
                         ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "parameter_values", p_values);
                     }
+                    first_mpc_call = false;  // spostato il giorno 19/05 era dentro il ciclo for
                 }
                 else
                 {
                     int NODO = (int)std::round(time_to_go / dt_mpc_node);
+                    NODO = std::max(0, std::min(N_HORIZON, NODO));
                     std::cout << "NODO = " << NODO << std::endl;
                     NODO_corrente = NODO;
 
@@ -810,7 +731,6 @@ int main(int argc, char **argv)
                                     yref_stage[j] = qf(j);
                                     yref_stage[NJ + j] = dqf(j);
                                     yref_stage[2 * NJ + j] = ddqf(j);
-                                    yref_stage[3 * NJ + j] = 0.0;
                                 }
                                 ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_stage);
                             }
@@ -844,7 +764,6 @@ int main(int argc, char **argv)
                                     yref_stop[j] = qf(j) + dqf(j) * dt_mpc_node * (i - NODO) + 0.5 * ddqf(j) * pow(dt_mpc_node * (i - NODO), 2);
                                     yref_stop[NJ + j] = dqf(j) + ddqf(j) * dt_mpc_node * (i - NODO);
                                     yref_stop[2 * NJ + j] = ddqf(j);
-                                    yref_stop[3 * NJ + j] = 0.0; // Jerk target a 0 per i nodi dopo il target, tanto W_u = 0
                                 }
                                 ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_stop);
                             }
@@ -880,61 +799,51 @@ int main(int argc, char **argv)
                             }
                             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref_stage);
                         }
-                        // // Calcolo del tempo predetto per questo specifico nodo
-                        // double t_pred = t + i * dt_mpc_node;
 
-                        // // Calcolo posizione PREDETTA per Palla 1 e 2
-                        // double x_pred_p1 = cx + R1 * cos(omega1 * t_pred);
-                        // double y_pred_p1 = cy + R1 * sin(omega1 * t_pred);
+                        double ti_horizon = i * dt_mpc_node;
 
-                        // double x_pred_p2 = cx + R2 * cos(omega2 * t_pred + sfasamento_p2);
-                        // double y_pred_p2 = cy + R2 * sin(omega2 * t_pred + sfasamento_p2);
-
-                        // // Aggiorno l'array p_values per QUESTO NODO
-                        // p_values[1] = x_pred_p1;
-                        // p_values[2] = y_pred_p1;
-                        // p_values[3] = z_p1;
-
-                        // p_values[5] = x_pred_p2;
-                        // p_values[6] = y_pred_p2;
-                        // p_values[7] = z_p2;
-
-                        // (Alla fine del ciclo for, subito prima di ocp_nlp_in_set)
-                        double t_pred = t + i * dt_mpc_node;
-
-                        // Ripetiamo la logica dell'onda triangolare per t_pred
-                        double ciclo_pred = fmod(t_pred, 2.0 * t_tratto);
-                        double x_pred_p1;
-
-                        if (ciclo_pred < t_tratto)
-                        {
-                            x_pred_p1 = x_start_p1 - v_palla * ciclo_pred;
-                        }
-                        else
-                        {
-                            double tempo_ritorno_pred = ciclo_pred - t_tratto;
-                            x_pred_p1 = x_end_p1 + v_palla * tempo_ritorno_pred;
-                        }
-
-                        // Predizione Palla 1 (velocità costante)
-                        p_values[1] = x_pred_p1;
-                        p_values[2] = y_p1;
-                        p_values[3] = z_p1;
-
-                        // Predizione Palla 2 (ferma)
-                        p_values[5] = x_p2_ferma;
-                        p_values[6] = y_p2_ferma;
-                        p_values[7] = z_p2_ferma;
+                        p_values[1] = obstacle_pos.x() + obstacle_vel.x() * ti_horizon;
+                        p_values[2] = obstacle_pos.y() + obstacle_vel.y() * ti_horizon;
+                        p_values[3] = obstacle_pos.z() + obstacle_vel.z() * ti_horizon;
 
                         ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "parameter_values", p_values);
                     }
                 }
 
-                // --- SOLVE MPC ---
                 auto start_solve = chrono::high_resolution_clock::now();
                 int status = frankino_tracking_mpc_acados_solve(capsule);
                 auto end_solve = chrono::high_resolution_clock::now();
                 solve_time_ms = chrono::duration_cast<chrono::microseconds>(end_solve - start_solve).count() / 1000.0;
+
+                nav_msgs::Path predicted_path;
+                predicted_path.header.stamp = ros::Time::now();
+                predicted_path.header.frame_id = "world";
+
+                for (int i = 0; i <= N_HORIZON; i++)
+                {
+                    double x_pred[NX];
+                    ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, i, "x", x_pred);
+
+                    Eigen::VectorXd q_pred(NJ);
+                    for (int j = 0; j < NJ; j++)
+                    {
+                        q_pred(j) = x_pred[j];
+                    }
+
+                    robot_visual.set_q(q_pred);
+                    Eigen::Matrix4d T_ee = robot_visual.get_T_0_ee();
+
+                    geometry_msgs::PoseStamped pose;
+                    pose.header.stamp = ros::Time::now();
+                    pose.header.frame_id = "world";
+                    pose.pose.position.x = T_ee(0, 3);
+                    pose.pose.position.y = T_ee(1, 3);
+                    pose.pose.position.z = T_ee(2, 3);
+
+                    predicted_path.poses.push_back(pose);
+                }
+
+                pub_mpc_path.publish(predicted_path);
 
                 if (status != 0 && status != 2)
                 {
@@ -979,7 +888,8 @@ int main(int argc, char **argv)
                 // --- CREAZIONE E PUBBLICAZIONE MESSAGGIO MPC_SOLUTION ---
                 panda_controllers::MpcSolution mpc_msg;
                 mpc_msg.header.stamp = ros::Time::now();
-                mpc_msg.dt_mpc = dt_mpc_node; // Il dt dell'orizzonte calcolato
+                mpc_msg.dt_mpc = dt_mpc_node;
+                mpc_msg.solve_time_ms = solve_time_ms;
 
                 // Riempio lo stato ottimo attuale (quello da cui parte l'integratore)
                 for (int i = 0; i < 7; i++)
@@ -1003,14 +913,12 @@ int main(int argc, char **argv)
                 // INTEGRAZIONE DI EULERO PER RIMEDIARE ALLA MANCANZA DI FEEDBACK REALE SULL'ACCELERAZIONE (ddq0)
                 // current_jerk mantiene l'ultimo valore valido grazie al sample-and-hold
                 ddq0 += current_jerk * 1.0 / loop_mpc;
-                loop_rate.sleep(); // preferisco usare questo sleep per non tardare ancor più la pubblicazione del messaggio MPC_SOLUTION, dato che ci mette già solve di per se a risolvere, integrare e pubblicare tutto entro i 40 ms
+                loop_rate.sleep(); // preferisco usare loop_rate.sleep() per non tardare ancor più la pubblicazione del messaggio MPC_SOLUTION, dato che ci mette già solve di per se a risolvere, integrare e pubblicare tutto entro i 40 ms
                 // mpc_rate.sleep(); // FREQUENZA DI CONTROLLO MPC
                 t = (ros::Time::now() - t_init).toSec();
             }
 
             cout << ">>> MPC Trajectory Finished." << endl;
-            // pred_file.close();
-
             u_seq_file.close();
 
             // Cleanup Acados

@@ -7,7 +7,7 @@
   <!-- Avvia il robot e gazebo insieme -->
   <include file="$(find franka_gazebo)/launch/panda.launch">
     <arg name="gazebo" value="true" />
-    <arg name="rviz" value="true" />
+    <arg name="rviz" value="false" />
     <arg name="world" value="$(arg world_file)" />
     <arg name="controller" value="computed_torque_controller" />
     <arg name="use_gripper" value="false" />
@@ -18,5 +18,19 @@
   <!-- Carica i parametri dei controller -->
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
   <node name="mpc_integrator_node" pkg="panda_controllers" type="mpc_integrator_node" output="screen" />
+
+  <group ns="ghost">
+    <param name="robot_description" command="$(find xacro)/xacro $(find franka_description)/robots/panda/panda.urdf.xacro hand:=false arm_id:=ghost" />
+
+    <node name="ghost_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+      <remap from="joint_states" to="/ghost_joint_states" />
+    </node>
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="ghost_to_world" args="0 0 0 0 0 0 world ghost_link0" />
+  <node name="ball_marker_publisher" pkg="panda_controllers" type="ball_marker_publisher.py" output="screen" />
+  
+  <!-- RVIZ con la configurazione salvata -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d /home/frankino/robot+ghost_model.rviz" />
 
 </launch>
