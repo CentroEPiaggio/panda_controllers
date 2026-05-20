@@ -50,21 +50,21 @@ std::vector<CapsuleDef> get_frankino_capsules()
          0, 1, 0, 0,
          0, 0, 1, 0,
          0, 0, 0, 1;
-    capsules.push_back({2, 0.06, 0.14, T});
+    capsules.push_back({2, 0.06, 0.24, T});
 
     // idx 3
     T << 1, 0, 0, 0,
          0, 1, 0, 0,
          0, 0, 1, -0.145,
          0, 0, 0, 1;
-    capsules.push_back({3, 0.06, 0.15, T});
+    capsules.push_back({3, 0.06, 0.20, T});
 
     // idx 4
     T << 1, 0, 0, 0,
          0, 1, 0, 0,
          0, 0, 1, 0,
          0, 0, 0, 1;
-    capsules.push_back({4, 0.06, 0.14, T});
+    capsules.push_back({4, 0.06, 0.20, T});
 
     // idx 5
     T << 1, 0, 0, 0,
@@ -99,7 +99,7 @@ std::vector<CapsuleDef> get_frankino_capsules()
           0.0,  0.7071,  0.7071,  0.01,
          -1.0,  0.0,     0.0,    -0.025,
           0.0,  0.0,     0.0,     1.0;
-    capsules.push_back({7, 0.04, 0.11, T});
+    capsules.push_back({7, 0.04, 0.13, T});
 
     // // idx 10
     // T << 1, 0, 0, 0,

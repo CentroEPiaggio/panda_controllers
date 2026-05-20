@@ -29,6 +29,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
     FILES
     MpcSolution.msg
+    ObstacleStatus.msg
 )
 
 # Questo genera effettivamente gli header C++ dipendenti da std_msgs e sensor_msgs
@@ -36,6 +37,7 @@ generate_messages(
     DEPENDENCIES
     std_msgs
     sensor_msgs
+    geometry_msgs
 )
 
 find_package(Eigen3 REQUIRED)

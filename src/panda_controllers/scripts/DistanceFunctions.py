@@ -26,11 +26,16 @@ def closestSegmentSegment(P0, P1, Q0, Q1, eps=1e-12):
 
     parallel = ca.fabs(D) < eps
 
-    # Caso parallelo
-    sN_par = 0.0
-    sD_par = 1.0
-    tN_par = e
-    tD_par = c
+    # Se il secondo segmento è un punto (es. la palla), c sarà ~0.
+    c_is_zero = c < eps
+    
+    # Se la palla è un punto, forziamo t=0 e calcoliamo s proiettando la palla sul braccio (d/a).
+    # Altrimenti (segmenti paralleli normali), forziamo s=0 e calcoliamo t.
+    sN_par = ca.if_else(c_is_zero, d, 0.0)
+    sD_par = ca.if_else(c_is_zero, a, 1.0)
+    
+    tN_par = ca.if_else(c_is_zero, 0.0, e)
+    tD_par = ca.if_else(c_is_zero, 1.0, c)
 
     # Caso non parallelo
     sN_np = c * d - b * e
