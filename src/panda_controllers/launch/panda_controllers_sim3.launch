@@ -30,7 +30,7 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="ghost_to_world" args="0 0 0 0 0 0 world ghost_link0" />
   <node name="ball_marker_publisher" pkg="panda_controllers" type="ball_marker_publisher.py" output="screen" />
   
-  <!-- RVIZ con la configurazione salvata -->
+  <!-- RVIZ con la configurazione robot+ghost_model -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d /home/frankino/robot+ghost_model.rviz" />
 
 </launch>
