@@ -1,0 +1,36 @@
+computed_torque_controller:
+    type: panda_controllers/ComputedTorque
+    arm_id: $(arg prefix)arm
+    joint_names:
+         - $(arg prefix)arm_joint1
+         - $(arg prefix)arm_joint2
+         - $(arg prefix)arm_joint3
+         - $(arg prefix)arm_joint4
+         - $(arg prefix)arm_joint5
+         - $(arg prefix)arm_joint6
+         - $(arg prefix)arm_joint7
+    # --- Controller parameters --- #
+    kp1: 300.0   #default: 120.0
+    kp2: 150.0   #default: 70.0
+    kp3: 30.0    #default: 50.0
+    kv1: 30.0
+    kv2: 15.0
+    kv3: 3.0
+    dt: 5
+
+cartesian_impedance_controller_softbots:
+    type: panda_controllers/CartesianImpedanceControllerSoftbots
+    arm_id: $(arg prefix)arm
+    joint_names:
+        - $(arg prefix)arm_joint1
+        - $(arg prefix)arm_joint2
+        - $(arg prefix)arm_joint3
+        - $(arg prefix)arm_joint4
+        - $(arg prefix)arm_joint5
+        - $(arg prefix)arm_joint6
+        - $(arg prefix)arm_joint7
+
+
+
+
+

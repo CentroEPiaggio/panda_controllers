@@ -1,0 +1,15 @@
+<library path="lib/libpanda_controllers">
+  
+  <class name="panda_controllers/ComputedTorque" type="panda_controllers::ComputedTorque" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Computed Torque controller.
+   </description>
+  </class>
+  
+   <class name="panda_controllers/CartesianImpedanceControllerSoftbots" type="panda_controllers::CartesianImpedanceControllerSoftbots" base_class_type="controller_interface::ControllerBase">
+   <description>
+      Variable impedance controller.
+   </description>
+  </class>
+
+</library>

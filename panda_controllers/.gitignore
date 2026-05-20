@@ -1,0 +1,17 @@
+*.kdev4
+build/
+devel/
+c_generated_code_tracking/**
+scripts/DistanceFunctions.py
+esperimenti
+*.bag
+# frankino_generatedFiles
+src/menu_acados_jerk_soft_constr_fase_finale.cpp
+src/menu_acados_jerk.cpp
+src/menu_acados_ddq.cpp
+src/ball_marker_publisher.py
+src/ee_trajectory_visualizer.py
+src/wall_marker_publisher.py
+.venv/
+.vscode/
+__pycache__/
