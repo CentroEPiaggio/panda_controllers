@@ -15,10 +15,10 @@ from acados_template import (
     AcadosSimSolver,
     AcadosSim,
 )
-import scripts.DistanceFunctions as geom
+import DistanceFunctions as geom
 # ===================== PATHS =====================
 path_to_files = (
-    "/home/frankino/Tesi/thunder_MPC_Acados/src/panda_controllers/frankino_generatedFiles"
+    "src/panda_controllers/frankino_generatedFiles"
 )
 if not os.path.exists(path_to_files):
     raise FileNotFoundError(f"Path non trovato: {path_to_files}")
@@ -151,17 +151,23 @@ def export_frankino_model():
         A, B, r_cap = get_capsule_endpoints(q, cap_def)
         
         # Sfera 1
-        dist_obs1, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs1, p_obs1, r_obs1)
-        dist_obs1_list.append(dist_obs1)
+        if cap_def.link_index > 1:
+            # dist_obs1, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs1, p_obs1, r_obs1)
+            dist_obs1, _, _, _ = geom.dist_capsule_sphere(A, B, r_cap, p_obs1, r_obs1)
+            dist_obs1_list.append(dist_obs1)
         
         # Sfera 2
-        dist_obs2, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs2, p_obs2, r_obs2)
-        dist_obs2_list.append(dist_obs2)
-        
+        if cap_def.link_index > 1:
+            dist_obs2, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs2, p_obs2, r_obs2)
+            # dist_obs2, _, _, _ = geom.dist_capsule_sphere(A, B, r_cap, p_obs2, r_obs2)
+            dist_obs2_list.append(dist_obs2)
+            
         # Sfera 3
-        # dist_obs3, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs3, p_obs3, r_obs3)
-        # dist_obs3_list.append(dist_obs3)
-        
+        # if cap_def.link_index > 1:
+            # dist_obs3, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs3, p_obs3, r_obs3)
+            # dist_obs2, _, _, _ = geom.dist_capsule_sphere(A, B, r_cap, p_obs2, r_obs2)
+            # dist_obs3_list.append(dist_obs3)
+            
         # Piano (SOLO per i link dal 3 in poi)
         if cap_def.link_index > 2:
             dist_plane, _ = geom.dist_capsule_plane(A, B, r_cap, p_plane, n_plane)
@@ -201,8 +207,8 @@ def create_solver():
     # --- COSTI ---
     ocp.cost.cost_type = "NONLINEAR_LS"
     ocp.cost.cost_type_e = "NONLINEAR_LS"
-    W_q   = 1e-1   
-    W_dq  = 1e-1
+    W_q   = 1   
+    W_dq  = 1
     W_ddq = 1
     W_u = 0.0
     W_diag = np.concatenate([np.full(7, W_q), np.full(7, W_dq), np.full(7, W_ddq), np.full(7, W_u)])

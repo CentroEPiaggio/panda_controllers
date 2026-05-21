@@ -5,6 +5,7 @@
 #include <panda_controllers/ObstacleStatus.h>
 #include <gazebo_msgs/ModelStates.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 
 namespace panda_controllers
 {
@@ -18,12 +19,13 @@ namespace panda_controllers
         ros::Subscriber sub_mpc_sol;
         ros::Subscriber sub_joint_states;
         ros::Subscriber sub_palla;
-        ros::Publisher pub_palla_filt;
+        ros::Subscriber sub_obstacle;
+        
 
         // Publisher
         ros::Publisher pub_cmd;
         ros::Publisher pub_filtered_state; // pubblico q, dq, ddq filtrati verso menu
-
+        ros::Publisher pub_palla_filt;
         ros::Timer timer;
 
         // Stato interno dell'integratore
@@ -52,7 +54,7 @@ namespace panda_controllers
 
         // Guadagni filtro palla
         double alpha_p_palla_ = 0.7; // Posizione
-        double alpha_v_palla_ = 0.1; // Velocità 
+        double alpha_v_palla_ = 0.1; // Velocità
 
         // Limiti accelerazione per clamp
         const double q_min[7] = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
@@ -102,6 +104,9 @@ namespace panda_controllers
 
             sub_palla = nh.subscribe("/gazebo/model_states", 1,
                                      &MpcIntegratorNode::pallaCallback, this);
+
+            sub_obstacle = nh.subscribe("/qualisys/mpc_obstacle/pose", 1,
+                                        &MpcIntegratorNode::obstacleCallback, this);
 
             // Publisher
             pub_cmd = nh.advertise<sensor_msgs::JointState>(
@@ -264,6 +269,65 @@ namespace panda_controllers
             obs_msg.velocity.y = v_palla_filt_.y();
             obs_msg.velocity.z = v_palla_filt_.z();
             pub_palla_filt.publish(obs_msg);
+        }
+
+        void obstacleCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
+        {
+            // Estrai posizione dal messaggio Qualisys
+            Eigen::Vector3d p_raw(
+                msg->pose.position.x,
+                msg->pose.position.y,
+                msg->pose.position.z);
+
+            ros::Time now = msg->header.stamp; // Usa il timestamp del Qualisys
+
+            if (first_palla_msg_)
+            {
+                p_palla_filt_ = p_raw;
+                p_palla_prev_ = p_raw;
+                v_palla_filt_.setZero();
+                last_palla_time_ = now;
+                first_palla_msg_ = false;
+                return;
+            }
+
+            double dt = (now - last_palla_time_).toSec();
+
+            // Protezione da dt troppo piccoli o negativi
+            if (dt <= 0.0001)
+            {
+                p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
+                return;
+            }
+
+            // Calcola velocità per differenze finite
+            Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
+
+            // Aggiorna storico
+            p_palla_prev_ = p_raw;
+            last_palla_time_ = now;
+
+            // Filtra posizione e velocità
+            p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
+            v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
+
+            // Pubblica stato dell'ostacolo per MPC
+            panda_controllers::ObstacleStatus obs_msg;
+            obs_msg.header.stamp = now;
+            obs_msg.header.frame_id = "mocap"; 
+            obs_msg.position.x = p_palla_filt_.x();
+            obs_msg.position.y = p_palla_filt_.y();
+            obs_msg.position.z = p_palla_filt_.z();
+            obs_msg.velocity.x = v_palla_filt_.x();
+            obs_msg.velocity.y = v_palla_filt_.y();
+            obs_msg.velocity.z = v_palla_filt_.z();
+
+            pub_palla_filt.publish(obs_msg);
+
+            // Debug (opzionale)
+            ROS_DEBUG_THROTTLE(1, "Palla: pos=[%.3f, %.3f, %.3f], vel=[%.2f, %.2f, %.2f], dt=%.4f",
+                               p_palla_filt_.x(), p_palla_filt_.y(), p_palla_filt_.z(),
+                               v_palla_filt_.x(), v_palla_filt_.y(), v_palla_filt_.z(), dt);
         }
 
         // ----------------------------------------------------------------

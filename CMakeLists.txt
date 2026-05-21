@@ -45,7 +45,7 @@ find_package(Franka 0.9.2 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
 # --- 2. CONFIGURAZIONE MANUALE CASADI ---
-set(CASADI_ROOT_DIR "/home/frankino/casadi")
+set(CASADI_ROOT_DIR "/usr/local/lib/python3.8/dist-packages/casadi")
 find_library(CASADI_LIBRARIES casadi PATHS ${CASADI_ROOT_DIR} NO_DEFAULT_PATH)
 
 if(NOT CASADI_LIBRARIES)
@@ -53,7 +53,7 @@ if(NOT CASADI_LIBRARIES)
 endif()
 
 # --- 3. ACADOS SETUP ---
-set(ACADOS_INSTALL_DIR "/home/frankino/acados") 
+set(ACADOS_INSTALL_DIR "/opt/acados") 
 set(ACADOS_GENERATED_DIR "${PROJECT_SOURCE_DIR}/../../c_generated_code_tracking")
 
 # --- 4. TROVA I SORGENTI ACADOS  ---
@@ -81,6 +81,11 @@ link_directories(
     ${ACADOS_INSTALL_DIR}/lib
     ${CASADI_ROOT_DIR}          
 )
+
+# --- FIX CASADI RUNTIME ---
+set(CMAKE_BUILD_RPATH "${CASADI_ROOT_DIR}")
+set(CMAKE_INSTALL_RPATH "${CASADI_ROOT_DIR}")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # --- 7. Catkin Package ---
 catkin_package(
@@ -124,8 +129,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 # --- 9. Eseguibile Standalone (menu_acados) ---
 add_executable(menu_acados src/menu_acados.cpp)
-
-# Linkando ${PROJECT_NAME}, eredita tutto (Casadi, Acados, ecc.)
 target_link_libraries(menu_acados 
     ${PROJECT_NAME}
     ${catkin_LIBRARIES}

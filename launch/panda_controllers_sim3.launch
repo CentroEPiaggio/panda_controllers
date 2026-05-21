@@ -31,6 +31,6 @@
   <node name="ball_marker_publisher" pkg="panda_controllers" type="ball_marker_publisher.py" output="screen" />
   
   <!-- RVIZ con la configurazione robot+ghost_model -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d /home/frankino/robot+ghost_model.rviz" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find panda_controllers)/config/robot+ghost_model.rviz" />
 
 </launch>
