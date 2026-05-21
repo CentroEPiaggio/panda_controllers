@@ -380,7 +380,7 @@ int main(int argc, char **argv)
             cout << "Target ddq: " << ddqf.transpose() << endl;
 
             // --- DEFINIZIONE PATH PERSONALIZZATA ---
-            std::string custom_path = "/home/frankino/Tesi/thunder_MPC_Acados/src/panda_controllers/esperimenti/u_sequence_log.csv";
+            std::string custom_path = "/home/darko/eligio_ws/ros1_franka_qualisys/src/panda_controllers/esperimenti/u_sequence_log.csv";
 
             std::ofstream u_seq_file;
             u_seq_file.open(custom_path, std::ios::out);
@@ -505,6 +505,8 @@ int main(int argc, char **argv)
             for (int i = 3; i <= N_capsule - 1; i++)
                 constraint_names.push_back("Piano vs Cap " + std::to_string(i));
 
+            double t_memory = t;
+
             // Loop di controllo MPC
             while (t <= tf + eps && ros::ok())
             {
@@ -535,7 +537,14 @@ int main(int argc, char **argv)
                 if (choice == 8)
                 {
                     double max_horizon_lookahead = 5.0;
-                    Tf = std::min(time_to_go, max_horizon_lookahead);
+                    double t_reference = 0.1;
+                    time_to_go = max_horizon_lookahead - (t-t_memory);
+                    if(t - t_memory >= t_reference && tf - t > max_horizon_lookahead)
+                    {
+                        t_memory = t;
+                        time_to_go = max_horizon_lookahead;
+                    }
+                    Tf = time_to_go;
                 }
                 else
                 {
@@ -912,7 +921,7 @@ int main(int argc, char **argv)
 
                 // INTEGRAZIONE DI EULERO PER RIMEDIARE ALLA MANCANZA DI FEEDBACK REALE SULL'ACCELERAZIONE (ddq0)
                 // current_jerk mantiene l'ultimo valore valido grazie al sample-and-hold
-                ddq0 += current_jerk * 1.0 / loop_mpc;
+                ddq0 += current_jerk / loop_mpc;
                 loop_rate.sleep(); // preferisco usare loop_rate.sleep() per non tardare ancor più la pubblicazione del messaggio MPC_SOLUTION, dato che ci mette già solve di per se a risolvere, integrare e pubblicare tutto entro i 40 ms
                 // mpc_rate.sleep(); // FREQUENZA DI CONTROLLO MPC
                 t = (ros::Time::now() - t_init).toSec();
