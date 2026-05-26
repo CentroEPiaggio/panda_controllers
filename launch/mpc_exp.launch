@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<launch>
+
+  <arg name="robot_ip" default="172.16.0.104" />
+  <arg name="load_gripper" default="false" />
+  <include file="$(find franka_control)/launch/franka_control.launch" >
+    <arg name="robot_ip" value="$(arg robot_ip)" />
+    <arg name="load_gripper" value="$(arg load_gripper)" />
+  </include>
+
+  <!-- Carica i parametri dei controller -->
+  <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+  <node name="mpc_integrator_node" pkg="panda_controllers" type="mpc_integrator_node" output="screen" />
+
+</launch>
