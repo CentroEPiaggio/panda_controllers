@@ -15,3 +15,4 @@ src/wall_marker_publisher.py
 .venv/
 .vscode/
 __pycache__/
+src/mpc_integrator_node copy.cpp

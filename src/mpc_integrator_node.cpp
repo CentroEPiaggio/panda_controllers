@@ -20,14 +20,15 @@ namespace panda_controllers
         ros::Subscriber sub_mpc_sol;
         ros::Subscriber sub_joint_states;
         ros::Subscriber sub_palla;
-        ros::Subscriber sub_obstacle;
+        // ros::Subscriber sub_obstacle;
         ros::Subscriber sub_franka_pos;
+        
         
 
         // Publisher
         ros::Publisher pub_cmd;
         ros::Publisher pub_filtered_state; // pubblico q, dq, ddq filtrati verso menu
-        ros::Publisher pub_palla_filt;
+        ros::Publisher pub_palla_filt;;
         ros::Timer timer;
 
         // Stato interno dell'integratore
@@ -113,14 +114,14 @@ namespace panda_controllers
                 "/franka/joint_states_1khz", 1,
                 &MpcIntegratorNode::jointStatesCallback, this);
 
-            // sub_palla = nh.subscribe("/gazebo/model_states", 1,
-            //                          &MpcIntegratorNode::pallaCallback, this);
+            sub_palla = nh.subscribe("/gazebo/model_states", 1,
+                                     &MpcIntegratorNode::pallaCallback, this);
 
-            sub_obstacle = nh.subscribe("/qualisys/mpc_obstacle/pose", 1,
-                                        &MpcIntegratorNode::obstacleCallback, this);
+            // sub_obstacle = nh.subscribe("/qualisys/mpc_obstacle/pose", 1,
+            //                             &MpcIntegratorNode::obstacleCallback, this);
 
             sub_franka_pos = nh.subscribe("/qualisys/mpc_franka/pose", 1,
-                                           &MpcIntegratorNode::frankaCallback, this);
+                                          &MpcIntegratorNode::frankaCallback, this);
 
             // Publisher
             pub_cmd = nh.advertise<sensor_msgs::JointState>(
@@ -187,10 +188,6 @@ namespace panda_controllers
                 publishFilteredStateNow();
                 return;
             }
-            else
-            {
-                return
-            }
 
             // Stima accelerazione con derivata numerica a 1kHz
             double dt = (msg->header.stamp - last_joint_time_).toSec();
@@ -213,7 +210,6 @@ namespace panda_controllers
 
             // Pubblico immediatamente lo stato filtrato (così il menu ha dati sempre freschi)
             publishFilteredStateNow();
-            // }
         }
 
         // ----------------------------------------------------------------
@@ -254,82 +250,27 @@ namespace panda_controllers
                 
             has_franka_pose_ = true;
         }
-    // void pallaCallback(const gazebo_msgs::ModelStates::ConstPtr &msg)
-        // {
-        //     int idx = -1;
-        //     for (size_t i = 0; i < msg->name.size(); ++i)
-        //     {
-        //         if (msg->name[i] == "palla")
-        //         {
-        //             idx = i;
-        //             break;
-        //         }
-        //     }
-        //     if (idx == -1)
-        //         return;
-
-        //     Eigen::Vector3d p_raw(msg->pose[idx].position.x, msg->pose[idx].position.y, msg->pose[idx].position.z);
-        //     ros::Time now = ros::Time::now();
-
-        //     if (first_palla_msg_)
-        //     {
-        //         p_palla_filt_ = p_raw;
-        //         p_palla_prev_ = p_raw;
-        //         v_palla_filt_.setZero();
-        //         last_palla_time_ = now;
-        //         first_palla_msg_ = false;
-        //         return;
-        //     }
-
-        //     double dt = (now - last_palla_time_).toSec();
-        //     if (dt <= 0.0001)
-        //         return;
-
-        //     // Derivata e Filtro
-        //     Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
-        //     p_palla_prev_ = p_raw;
-        //     last_palla_time_ = now;
-
-        //     p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
-        //     v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
-
-        //     // Pubblicazione Status
-        //     panda_controllers::ObstacleStatus obs_msg;
-        //     obs_msg.header.stamp = now;
-        //     obs_msg.position.x = p_palla_filt_.x();
-        //     obs_msg.position.y = p_palla_filt_.y();
-        //     obs_msg.position.z = p_palla_filt_.z();
-        //     obs_msg.velocity.x = v_palla_filt_.x();
-        //     obs_msg.velocity.y = v_palla_filt_.y();
-        //     obs_msg.velocity.z = v_palla_filt_.z();
-        //     pub_palla_filt.publish(obs_msg);
-        // }
-
-        // Callback ostacolo che calcola posizione relativa al robot
-        void obstacleCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
+        void pallaCallback(const gazebo_msgs::ModelStates::ConstPtr &msg)
         {
-            if (!has_franka_pose_)
+            int idx = -1;
+            for (size_t i = 0; i < msg->name.size(); ++i)
             {
-                ROS_WARN_THROTTLE(1.0, "Qualisys: robot pose not yet received");
-                return;
+                if (msg->name[i] == "palla")
+                {
+                    idx = i;
+                    break;
+                }
             }
+            if (idx == -1)
+                return;
 
-            // Posizione ostacolo nel sistema Qualisys
-            Eigen::Vector3d p_obs_qualisys(
-                msg->pose.position.x,
-                msg->pose.position.y,
-                msg->pose.position.z);
-
-            // TRASFORMAZIONE: posizione ostacolo rispetto al centro del robot
-            Eigen::Vector3d p_rel = franka_quat_qualisys_.inverse() * 
-                                    (p_obs_qualisys - franka_pos_qualisys_);
-
-            ros::Time now = msg->header.stamp;
+            Eigen::Vector3d p_raw(msg->pose[idx].position.x, msg->pose[idx].position.y, msg->pose[idx].position.z);
+            ros::Time now = ros::Time::now();
 
             if (first_palla_msg_)
             {
-                p_palla_filt_ = p_rel;
-                p_palla_prev_ = p_rel;
+                p_palla_filt_ = p_raw;
+                p_palla_prev_ = p_raw;
                 v_palla_filt_.setZero();
                 last_palla_time_ = now;
                 first_palla_msg_ = false;
@@ -337,38 +278,93 @@ namespace panda_controllers
             }
 
             double dt = (now - last_palla_time_).toSec();
-
-            // Protezione da dt troppo piccoli o negativi
             if (dt <= 0.0001)
-            {
-                p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
                 return;
-            }
 
-            // Calcola velocità per differenze finite
-            Eigen::Vector3d v_raw = (p_rel - p_palla_prev_) / dt;
-
-            // Aggiorna storico
-            p_palla_prev_ = p_rel;
+            // Derivata e Filtro
+            Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
+            p_palla_prev_ = p_raw;
             last_palla_time_ = now;
 
-            // Filtra posizione e velocità
-            p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
+            p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
             v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
 
-            // Pubblica stato dell'ostacolo (ora relativo al robot)
+            // Pubblicazione Status
             panda_controllers::ObstacleStatus obs_msg;
             obs_msg.header.stamp = now;
-            obs_msg.header.frame_id = "panda_link0"; // Sistema di riferimento del robot
             obs_msg.position.x = p_palla_filt_.x();
             obs_msg.position.y = p_palla_filt_.y();
             obs_msg.position.z = p_palla_filt_.z();
             obs_msg.velocity.x = v_palla_filt_.x();
             obs_msg.velocity.y = v_palla_filt_.y();
             obs_msg.velocity.z = v_palla_filt_.z();
-
             pub_palla_filt.publish(obs_msg);
         }
+
+        // // Callback ostacolo che calcola posizione relativa al robot
+        // void obstacleCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
+        // {
+        //     if (!has_franka_pose_)
+        //     {
+        //         ROS_WARN_THROTTLE(1.0, "Qualisys: robot pose not yet received");
+        //         return;
+        //     }
+
+        //     // Posizione ostacolo nel sistema Qualisys
+        //     Eigen::Vector3d p_obs_qualisys(
+        //         msg->pose.position.x,
+        //         msg->pose.position.y,
+        //         msg->pose.position.z);
+
+        //     // TRASFORMAZIONE: posizione ostacolo rispetto al centro del robot
+        //     Eigen::Vector3d p_rel = franka_quat_qualisys_.inverse() *
+        //                             (p_obs_qualisys - franka_pos_qualisys_);
+
+        //     ros::Time now = msg->header.stamp;
+
+        //     if (first_palla_msg_)
+        //     {
+        //         p_palla_filt_ = p_rel;
+        //         p_palla_prev_ = p_rel;
+        //         v_palla_filt_.setZero();
+        //         last_palla_time_ = now;
+        //         first_palla_msg_ = false;
+        //         return;
+        //     }
+
+        //     double dt = (now - last_palla_time_).toSec();
+
+        //     // Protezione da dt troppo piccoli o negativi
+        //     if (dt <= 0.0001)
+        //     {
+        //         p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
+        //         return;
+        //     }
+
+        //     // Calcola velocità per differenze finite
+        //     Eigen::Vector3d v_raw = (p_rel - p_palla_prev_) / dt;
+
+        //     // Aggiorna storico
+        //     p_palla_prev_ = p_rel;
+        //     last_palla_time_ = now;
+
+        //     // Filtra posizione e velocità
+        //     p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
+        //     v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
+
+        //     // Pubblica stato dell'ostacolo (ora relativo al robot)
+        //     panda_controllers::ObstacleStatus obs_msg;
+        //     obs_msg.header.stamp = now;
+        //     obs_msg.header.frame_id = "panda_link0"; // Sistema di riferimento del robot
+        //     obs_msg.position.x = p_palla_filt_.x();
+        //     obs_msg.position.y = p_palla_filt_.y();
+        //     obs_msg.position.z = p_palla_filt_.z();
+        //     obs_msg.velocity.x = v_palla_filt_.x();
+        //     obs_msg.velocity.y = v_palla_filt_.y();
+        //     obs_msg.velocity.z = v_palla_filt_.z();
+
+        //     pub_palla_filt.publish(obs_msg);
+        // }
 
         // ----------------------------------------------------------------
         // TIMER 1kHz: integrazione triple integrator
@@ -419,14 +415,8 @@ namespace panda_controllers
                 cmd_msg.effort.push_back(ddq_int_(i));
             }
             pub_cmd.publish(cmd_msg);
-            if (!first_joint_msg_)
-                q_filt_= q_int_;
-                dq_filt_= dq_int_;
-                publishFilteredStateNow()
-                first_joint_msg_=false;
         }
     };
-
 }
 
 int main(int argc, char **argv)

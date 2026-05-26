@@ -121,11 +121,24 @@ void signal_callback_handler(int signum)
 // Callback per leggere POSIZIONE, VELOCITÀ
 void jointsCallback(const sensor_msgs::JointStateConstPtr &msg)
 {
-    q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->position.data());
-    dq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->velocity.data());
-    // if (msg->effort.size() == 7)
-    //     ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->effort.data());
-    init_q0 = true;
+    if (init_q0 == false)
+    {
+        q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->position.data());
+        dq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->velocity.data());
+        // if (msg->effort.size() == 7)
+        //     ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->effort.data());
+        init_q0 = true;
+    }
+}
+
+void commandCallback(const sensor_msgs::JointStateConstPtr &msg)
+{
+    if (init_q0 == true)
+    {
+        q0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->position.data());
+        dq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->velocity.data());
+        ddq0 = Eigen::Map<const Eigen::Matrix<double, 7, 1>>(msg->effort.data());
+    }
 }
 
 // Interpolatore Classico (Scelta 1)
@@ -173,7 +186,7 @@ int main(int argc, char **argv)
 
     ros::Subscriber sub_joints = node_handle.subscribe<sensor_msgs::JointState>("/mpc/filtered_joint_state", 1, &jointsCallback);
     ros::Subscriber sub_obs = node_handle.subscribe<panda_controllers::ObstacleStatus>("/mpc/obstacle_status", 1, &obstacleStatusCallback);
-
+    ros::Subscriber sub_cmd = node_handle.subscribe<sensor_msgs::JointState>("/computed_torque_controller/command", 1, &commandCallback);
     ros::Publisher pub_mpc_solution = node_handle.advertise<panda_controllers::MpcSolution>("/mpc_solution", 1);
     ros::Publisher pub_cmd = node_handle.advertise<sensor_msgs::JointState>("/computed_torque_controller/command", 1);
     ros::Publisher pub_ghost_state = node_handle.advertise<sensor_msgs::JointState>("/ghost_joint_states", 1);
@@ -938,7 +951,7 @@ int main(int argc, char **argv)
 
                 // INTEGRAZIONE DI EULERO PER RIMEDIARE ALLA MANCANZA DI FEEDBACK REALE SULL'ACCELERAZIONE (ddq0)
                 // current_jerk mantiene l'ultimo valore valido grazie al sample-and-hold
-                ddq0 += current_jerk / loop_mpc;
+                // ddq0 += current_jerk / loop_mpc;
                 loop_rate.sleep(); // preferisco usare loop_rate.sleep() per non tardare ancor più la pubblicazione del messaggio MPC_SOLUTION, dato che ci mette già solve di per se a risolvere, integrare e pubblicare tutto entro i 40 ms
                 // mpc_rate.sleep(); // FREQUENZA DI CONTROLLO MPC
                 t = (ros::Time::now() - t_init).toSec();
