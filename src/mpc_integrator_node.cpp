@@ -187,6 +187,10 @@ namespace panda_controllers
                 publishFilteredStateNow();
                 return;
             }
+            else
+            {
+                return
+            }
 
             // Stima accelerazione con derivata numerica a 1kHz
             double dt = (msg->header.stamp - last_joint_time_).toSec();
@@ -415,6 +419,11 @@ namespace panda_controllers
                 cmd_msg.effort.push_back(ddq_int_(i));
             }
             pub_cmd.publish(cmd_msg);
+            if (!first_joint_msg_)
+                q_filt_= q_int_;
+                dq_filt_= dq_int_;
+                publishFilteredStateNow()
+                first_joint_msg_=false;
         }
     };
 

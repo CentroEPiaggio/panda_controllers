@@ -472,7 +472,7 @@ int main(int argc, char **argv)
             //                        0.0, 0.0, 1.0};
 
             // Parametri per ostacoli (da aggiornare ad ogni loop)
-            double p_values[NP] = {tf, 0.11, -0.35, 0.53, 0.05,
+            double p_values[NP] = {tf, 0.11, -0.35, 0.53, 0.10,
                                    0.31, 0.2, 0.5, 0.05,
                                    0.0, 0.0, 0.0,
                                    0.0, 0.0, 1.0};

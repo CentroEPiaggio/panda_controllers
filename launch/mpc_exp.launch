@@ -10,6 +10,7 @@
 
   <!-- Carica i parametri dei controller -->
   <rosparam command="load" file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="computed_torque_controller"/>
   <node name="mpc_integrator_node" pkg="panda_controllers" type="mpc_integrator_node" output="screen" />
 
 </launch>
