@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <panda_controllers/MpcSolution.h>
 #include <panda_controllers/ObstacleStatus.h>
 #include <gazebo_msgs/ModelStates.h>
@@ -20,6 +21,7 @@ namespace panda_controllers
         ros::Subscriber sub_joint_states;
         ros::Subscriber sub_palla;
         ros::Subscriber sub_obstacle;
+        ros::Subscriber sub_franka_pos;
         
 
         // Publisher
@@ -55,6 +57,11 @@ namespace panda_controllers
         // Guadagni filtro palla
         double alpha_p_palla_ = 0.7; // Posizione
         double alpha_v_palla_ = 0.1; // Velocità
+
+        // Pose del robot nel sistema Qualisys
+        Eigen::Vector3d franka_pos_qualisys_;
+        Eigen::Quaterniond franka_quat_qualisys_;
+        bool has_franka_pose_ = false;
 
         // Limiti accelerazione per clamp
         const double q_min[7] = {-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973};
@@ -93,6 +100,10 @@ namespace panda_controllers
             v_palla_filt_.setZero();
             p_palla_prev_.setZero();
 
+            // Inizializzazione pose Qualisys
+            franka_pos_qualisys_.setZero();
+            franka_quat_qualisys_.setIdentity();
+
             // Subscriber
             sub_mpc_sol = nh.subscribe(
                 "/mpc_solution", 1,
@@ -102,11 +113,14 @@ namespace panda_controllers
                 "/franka/joint_states_1khz", 1,
                 &MpcIntegratorNode::jointStatesCallback, this);
 
-            sub_palla = nh.subscribe("/gazebo/model_states", 1,
-                                     &MpcIntegratorNode::pallaCallback, this);
+            // sub_palla = nh.subscribe("/gazebo/model_states", 1,
+            //                          &MpcIntegratorNode::pallaCallback, this);
 
             sub_obstacle = nh.subscribe("/qualisys/mpc_obstacle/pose", 1,
                                         &MpcIntegratorNode::obstacleCallback, this);
+
+            sub_franka_pos = nh.subscribe("/qualisys/mpc_franka/pose", 1,
+                                           &MpcIntegratorNode::frankaCallback, this);
 
             // Publisher
             pub_cmd = nh.advertise<sensor_msgs::JointState>(
@@ -220,71 +234,98 @@ namespace panda_controllers
                     jerk_opt_(i) = msg->jerk[i];
         }
 
-        void pallaCallback(const gazebo_msgs::ModelStates::ConstPtr &msg)
+        // Callback per la posa del robot nel sistema Qualisys
+        void frankaCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
         {
-            int idx = -1;
-            for (size_t i = 0; i < msg->name.size(); ++i)
-            {
-                if (msg->name[i] == "palla")
-                {
-                    idx = i;
-                    break;
-                }
-            }
-            if (idx == -1)
-                return;
-
-            Eigen::Vector3d p_raw(msg->pose[idx].position.x, msg->pose[idx].position.y, msg->pose[idx].position.z);
-            ros::Time now = ros::Time::now();
-
-            if (first_palla_msg_)
-            {
-                p_palla_filt_ = p_raw;
-                p_palla_prev_ = p_raw;
-                v_palla_filt_.setZero();
-                last_palla_time_ = now;
-                first_palla_msg_ = false;
-                return;
-            }
-
-            double dt = (now - last_palla_time_).toSec();
-            if (dt <= 0.0001)
-                return;
-
-            // Derivata e Filtro
-            Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
-            p_palla_prev_ = p_raw;
-            last_palla_time_ = now;
-
-            p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
-            v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
-
-            // Pubblicazione Status
-            panda_controllers::ObstacleStatus obs_msg;
-            obs_msg.header.stamp = now;
-            obs_msg.position.x = p_palla_filt_.x();
-            obs_msg.position.y = p_palla_filt_.y();
-            obs_msg.position.z = p_palla_filt_.z();
-            obs_msg.velocity.x = v_palla_filt_.x();
-            obs_msg.velocity.y = v_palla_filt_.y();
-            obs_msg.velocity.z = v_palla_filt_.z();
-            pub_palla_filt.publish(obs_msg);
+            franka_pos_qualisys_ = Eigen::Vector3d(
+                msg->pose.position.x,
+                msg->pose.position.y,
+                msg->pose.position.z);
+                
+            franka_quat_qualisys_ = Eigen::Quaterniond(
+                msg->pose.orientation.w,
+                msg->pose.orientation.x,
+                msg->pose.orientation.y,
+                msg->pose.orientation.z);
+                
+            has_franka_pose_ = true;
         }
+    // void pallaCallback(const gazebo_msgs::ModelStates::ConstPtr &msg)
+        // {
+        //     int idx = -1;
+        //     for (size_t i = 0; i < msg->name.size(); ++i)
+        //     {
+        //         if (msg->name[i] == "palla")
+        //         {
+        //             idx = i;
+        //             break;
+        //         }
+        //     }
+        //     if (idx == -1)
+        //         return;
 
+        //     Eigen::Vector3d p_raw(msg->pose[idx].position.x, msg->pose[idx].position.y, msg->pose[idx].position.z);
+        //     ros::Time now = ros::Time::now();
+
+        //     if (first_palla_msg_)
+        //     {
+        //         p_palla_filt_ = p_raw;
+        //         p_palla_prev_ = p_raw;
+        //         v_palla_filt_.setZero();
+        //         last_palla_time_ = now;
+        //         first_palla_msg_ = false;
+        //         return;
+        //     }
+
+        //     double dt = (now - last_palla_time_).toSec();
+        //     if (dt <= 0.0001)
+        //         return;
+
+        //     // Derivata e Filtro
+        //     Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
+        //     p_palla_prev_ = p_raw;
+        //     last_palla_time_ = now;
+
+        //     p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
+        //     v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
+
+        //     // Pubblicazione Status
+        //     panda_controllers::ObstacleStatus obs_msg;
+        //     obs_msg.header.stamp = now;
+        //     obs_msg.position.x = p_palla_filt_.x();
+        //     obs_msg.position.y = p_palla_filt_.y();
+        //     obs_msg.position.z = p_palla_filt_.z();
+        //     obs_msg.velocity.x = v_palla_filt_.x();
+        //     obs_msg.velocity.y = v_palla_filt_.y();
+        //     obs_msg.velocity.z = v_palla_filt_.z();
+        //     pub_palla_filt.publish(obs_msg);
+        // }
+
+        // Callback ostacolo che calcola posizione relativa al robot
         void obstacleCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
         {
-            // Estrai posizione dal messaggio Qualisys
-            Eigen::Vector3d p_raw(
+            if (!has_franka_pose_)
+            {
+                ROS_WARN_THROTTLE(1.0, "Qualisys: robot pose not yet received");
+                return;
+            }
+
+            // Posizione ostacolo nel sistema Qualisys
+            Eigen::Vector3d p_obs_qualisys(
                 msg->pose.position.x,
                 msg->pose.position.y,
                 msg->pose.position.z);
 
-            ros::Time now = msg->header.stamp; // Usa il timestamp del Qualisys
+            // TRASFORMAZIONE: posizione ostacolo rispetto al centro del robot
+            Eigen::Vector3d p_rel = franka_quat_qualisys_.inverse() * 
+                                    (p_obs_qualisys - franka_pos_qualisys_);
+
+            ros::Time now = msg->header.stamp;
 
             if (first_palla_msg_)
             {
-                p_palla_filt_ = p_raw;
-                p_palla_prev_ = p_raw;
+                p_palla_filt_ = p_rel;
+                p_palla_prev_ = p_rel;
                 v_palla_filt_.setZero();
                 last_palla_time_ = now;
                 first_palla_msg_ = false;
@@ -296,25 +337,25 @@ namespace panda_controllers
             // Protezione da dt troppo piccoli o negativi
             if (dt <= 0.0001)
             {
-                p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
+                p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
                 return;
             }
 
             // Calcola velocità per differenze finite
-            Eigen::Vector3d v_raw = (p_raw - p_palla_prev_) / dt;
+            Eigen::Vector3d v_raw = (p_rel - p_palla_prev_) / dt;
 
             // Aggiorna storico
-            p_palla_prev_ = p_raw;
+            p_palla_prev_ = p_rel;
             last_palla_time_ = now;
 
             // Filtra posizione e velocità
-            p_palla_filt_ = alpha_p_palla_ * p_raw + (1.0 - alpha_p_palla_) * p_palla_filt_;
+            p_palla_filt_ = alpha_p_palla_ * p_rel + (1.0 - alpha_p_palla_) * p_palla_filt_;
             v_palla_filt_ = alpha_v_palla_ * v_raw + (1.0 - alpha_v_palla_) * v_palla_filt_;
 
-            // Pubblica stato dell'ostacolo per MPC
+            // Pubblica stato dell'ostacolo (ora relativo al robot)
             panda_controllers::ObstacleStatus obs_msg;
             obs_msg.header.stamp = now;
-            obs_msg.header.frame_id = "mocap"; 
+            obs_msg.header.frame_id = "panda_link0"; // Sistema di riferimento del robot
             obs_msg.position.x = p_palla_filt_.x();
             obs_msg.position.y = p_palla_filt_.y();
             obs_msg.position.z = p_palla_filt_.z();
@@ -323,11 +364,6 @@ namespace panda_controllers
             obs_msg.velocity.z = v_palla_filt_.z();
 
             pub_palla_filt.publish(obs_msg);
-
-            // Debug (opzionale)
-            ROS_DEBUG_THROTTLE(1, "Palla: pos=[%.3f, %.3f, %.3f], vel=[%.2f, %.2f, %.2f], dt=%.4f",
-                               p_palla_filt_.x(), p_palla_filt_.y(), p_palla_filt_.z(),
-                               v_palla_filt_.x(), v_palla_filt_.y(), v_palla_filt_.z(), dt);
         }
 
         // ----------------------------------------------------------------

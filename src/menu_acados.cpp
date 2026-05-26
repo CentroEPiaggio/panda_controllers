@@ -538,8 +538,8 @@ int main(int argc, char **argv)
                 {
                     double max_horizon_lookahead = 5.0;
                     double t_reference = 0.1;
-                    time_to_go = max_horizon_lookahead - (t-t_memory);
-                    if(t - t_memory >= t_reference && tf - t > max_horizon_lookahead)
+                    time_to_go = max_horizon_lookahead - (t - t_memory);
+                    if (t - t_memory >= t_reference && tf - t > max_horizon_lookahead)
                     {
                         t_memory = t;
                         time_to_go = max_horizon_lookahead;
@@ -621,7 +621,7 @@ int main(int argc, char **argv)
                         }
                         else
                         {
-                            
+
                             // Prima chiamata: MinJerk come initial guess
                             double x_guess[NX];
                             for (int j = 0; j < NJ; j++)
@@ -643,7 +643,7 @@ int main(int argc, char **argv)
 
                         ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "parameter_values", p_values);
                     }
-                    first_mpc_call = false;  // spostato il giorno 19/05 era dentro il ciclo for
+                    first_mpc_call = false; // spostato il giorno 19/05 era dentro il ciclo for
                 }
                 else
                 {
@@ -872,7 +872,6 @@ int main(int argc, char **argv)
                         printf("  >> nodo %d: slack_state=%.5f\n", node, max_s);
                 }
 
-
                 // Recupera jerk ottimo
                 double u0_temp[NU];
                 ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, 0, "u", u0_temp);
@@ -900,7 +899,7 @@ int main(int argc, char **argv)
                 mpc_msg.dt_mpc = dt_mpc_node;
                 mpc_msg.solve_time_ms = solve_time_ms;
 
-                // Riempio lo stato ottimo attuale (quello da cui parte l'integratore)
+                // Riempio lo stato ottimo attuale
                 for (int i = 0; i < 7; i++)
                 {
                     mpc_msg.q_start.push_back(q0(i));
@@ -909,7 +908,25 @@ int main(int argc, char **argv)
                     mpc_msg.jerk.push_back(current_jerk(i));
                 }
 
-                // Pubblico la soluzione per il nodo integratore
+                // === CALCOLO ERRORI ===
+                // Errore norme
+                double pos_error_norm = (q0 - qf).norm();
+                double vel_error_norm = (dq0 - dqf).norm();
+
+                for (int i = 0; i < 7; i++)
+                {
+                    double pos_err = std::abs(q0(i) - qf(i));
+                    double vel_err = std::abs(dq0(i) - dqf(i));
+
+                    mpc_msg.position_error_per_joint.push_back(pos_err);
+                    mpc_msg.velocity_error_per_joint.push_back(vel_err);
+                }
+
+                // Assegna i campi
+                mpc_msg.position_error_norm = pos_error_norm;
+                mpc_msg.velocity_error_norm = vel_error_norm;
+
+                // Pubblico la soluzione
                 pub_mpc_solution.publish(mpc_msg);
 
                 // Calcola prediction error
