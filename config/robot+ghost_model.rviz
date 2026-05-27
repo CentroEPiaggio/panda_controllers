@@ -71,6 +71,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link1:
           Alpha: 1
           Show Axes: false
@@ -80,6 +81,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link2:
           Alpha: 1
           Show Axes: false
@@ -89,6 +91,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link3:
           Alpha: 1
           Show Axes: false
@@ -98,6 +101,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link4:
           Alpha: 1
           Show Axes: false
@@ -107,6 +111,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link5:
           Alpha: 1
           Show Axes: false
@@ -116,6 +121,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link6:
           Alpha: 1
           Show Axes: false
@@ -125,6 +131,7 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link7:
           Alpha: 1
           Show Axes: false
@@ -134,11 +141,8 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+          Value: true
         panda_link8:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        world:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -193,7 +197,7 @@ Visualization Manager:
       Marker Topic: /ball_markers_array
       Name: MarkerArray
       Namespaces:
-        obstacle: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -201,14 +205,14 @@ Visualization Manager:
       Marker Topic: /frankino_collision_capsules
       Name: MarkerArray
       Namespaces:
-        collision_capsules: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: panda_link0
     Frame Rate: 30
   Name: root
   Tools:
@@ -269,4 +273,4 @@ Window Geometry:
     collapsed: false
   Width: 2944
   X: 128
-  Y: 54
+  Y: 0

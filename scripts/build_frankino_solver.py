@@ -151,7 +151,7 @@ def export_frankino_model():
         A, B, r_cap = get_capsule_endpoints(q, cap_def)
         
         # Sfera 1
-        if cap_def.link_index > 1:
+        if cap_def.link_index > 2:
             # dist_obs1, _, _, _, _ = geom.dist_capsule_capsule(A, B, r_cap, p_obs1, p_obs1, r_obs1)
             dist_obs1, _, _, _ = geom.dist_capsule_sphere(A, B, r_cap, p_obs1, r_obs1)
             dist_obs1_list.append(dist_obs1)

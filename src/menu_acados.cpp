@@ -53,7 +53,7 @@ int N_sfere = 2;                                                                
 int N_capsule = 10;                                                                          // Numero di capsule per approssimazione robot (dipende da come segmentiamo il robot)
 int N_piani = 1;                                                                             // Numero di piani per approssimazione ambiente.
 int N_autocollisioni = 6;                                                                    // Numero di auto-collisioni che vogliamo considerare (es. tra 2 coppie di capsule)
-const int N_DIST = N_autocollisioni + (N_capsule - 1) * N_sfere + (N_capsule - 3) * N_piani; // 2 auto-collisioni + 9 capsule * 3 sfere + 7 capsule * piano  2 e 3 capsile escluse
+const int N_DIST = N_autocollisioni + (N_capsule - 3) + (N_capsule - 2)+ (N_capsule - 3) * N_piani; // 2 auto-collisioni + 9 capsule * 3 sfere + 7 capsule * piano  2 e 3 capsile escluse
 const int N_SH_TOT = NX;
 
 // Globals
@@ -244,7 +244,7 @@ int main(int argc, char **argv)
         {
             ros::spinOnce();
             tf = 5.0;
-            qf << -0.157, -0.504, -0.623, -2.258, -0.332, 1.637, -1.728;
+            qf << 0.8352892580965613, -0.11142312275283414, -0.18867532277316376, -2.171368266833052, 0.010157541863620282, 2.1063786387575996, -0.4769349245615303 ;
             dqf.setZero();
             ddqf.setZero();
         }
@@ -485,8 +485,8 @@ int main(int argc, char **argv)
             //                        0.0, 0.0, 1.0};
 
             // Parametri per ostacoli (da aggiornare ad ogni loop)
-            double p_values[NP] = {tf, 0.11, -0.35, 0.53, 0.10,
-                                   0.31, 0.2, 0.5, 0.05,
+            double p_values[NP] = {tf, 10.11, -0.35, 0.53, 0.07,
+                                   10.31, 0.2, 0.5, 0.1,
                                    0.0, 0.0, 0.0,
                                    0.0, 0.0, 1.0};
 

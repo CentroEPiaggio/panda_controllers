@@ -13,4 +13,6 @@
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="computed_torque_controller"/>
   <node name="mpc_integrator_node" pkg="panda_controllers" type="mpc_integrator_node" output="screen" />
 
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find panda_controllers)/config/robot+ghost_model.rviz" /> -->
+
 </launch>
