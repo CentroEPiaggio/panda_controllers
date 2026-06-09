@@ -53,8 +53,14 @@ int N_sfere = 2;                                                                
 int N_capsule = 10;                                                                          // Numero di capsule per approssimazione robot (dipende da come segmentiamo il robot)
 int N_piani = 1;                                                                             // Numero di piani per approssimazione ambiente.
 int N_autocollisioni = 6;                                                                    // Numero di auto-collisioni che vogliamo considerare (es. tra 2 coppie di capsule)
-const int N_DIST = N_autocollisioni + (N_capsule - 3) + (N_capsule - 2)+ (N_capsule - 3) * N_piani; // 2 auto-collisioni + 9 capsule * 3 sfere + 7 capsule * piano  2 e 3 capsile escluse
-const int N_SH_TOT = NX;
+// Conteggi esatti che devono matchare il generatore Python
+const int N_OBS1 = 7;                 // Sfera 1: link_index > 2 → capsule idx 3..9
+const int N_OBS2 = 8;                 // Sfera 2: link_index > 1 → capsule idx 2..9
+const int N_SH_OBS = N_OBS1 + N_OBS2; // 15 slack per ostacoli (soft)
+const int N_SH_TOT = NX + N_SH_OBS;   // 21 + 15 = 36 slack totali
+
+// Layout di con_h_expr: [tau(7) | autocoll(6) | obs1(7) | obs2(8) | piano(7)]
+// Layout slack vector:  [sbx(21)              | sh_obs(15)                  ]
 
 // Globals
 bool init_q0 = false;
@@ -520,6 +526,10 @@ int main(int argc, char **argv)
 
             double t_memory = t;
 
+            // Penalità ostacoli — visibili in entrambi i branch
+            const double Z_obs = 1e4;
+            const double z_obs = 1e3;
+
             // Loop di controllo MPC
             while (t <= tf + eps && ros::ok())
             {
@@ -586,6 +596,40 @@ int main(int argc, char **argv)
                 // --- B. LOGICA MPC  ---
                 if (time_to_go >= t_hor_lim)
                 {
+                    // --- PREPARAZIONE ARRAY SLACK DINAMICI (size = N_SH_TOT = 36) ---
+                    double Zl_normal[N_SH_TOT], zl_normal[N_SH_TOT];
+                    double Zu_normal[N_SH_TOT], zu_normal[N_SH_TOT];
+                    double Zl_target[N_SH_TOT], zl_target[N_SH_TOT];
+                    double Zu_target[N_SH_TOT], zu_target[N_SH_TOT];
+
+                    // --- Sezione 1: slack sugli STATI (indici 0..20) ---
+                    // Penalità alta → simulano vincoli quasi-hard
+                    for (int s = 0; s < NX; s++)
+                    {
+                        Zl_normal[s] = 1e5;
+                        zl_normal[s] = 1e5;
+                        Zu_normal[s] = 1e5;
+                        zu_normal[s] = 1e5;
+                        Zl_target[s] = 1e5;
+                        zl_target[s] = 1e5;
+                        Zu_target[s] = 1e5;
+                        zu_target[s] = 1e5;
+                    }
+
+                    // --- Sezione 2: slack sugli OSTACOLI (indici 21..35) ---
+                    // Penalità media → soft: permette evasione fluida, evita status 4
+                    for (int s = NX; s < N_SH_TOT; s++)
+                    {
+                        Zl_normal[s] = Z_obs;
+                        zl_normal[s] = z_obs;
+                        Zu_normal[s] = Z_obs;
+                        zu_normal[s] = z_obs;
+                        Zl_target[s] = Z_obs;
+                        zl_target[s] = z_obs;
+                        Zu_target[s] = Z_obs;
+                        zu_target[s] = z_obs;
+                    }
+
                     // Ricalcola MinJerk solo per scelte 6 e 7
                     if (choice != 8)
                     {
@@ -680,6 +724,7 @@ int main(int argc, char **argv)
                     double Zl_target[N_SH_TOT], zl_target[N_SH_TOT];
                     double Zu_target[N_SH_TOT], zu_target[N_SH_TOT];
 
+                    // Sezione 1: stati (0..20) — quasi-hard
                     for (int s = 0; s < NX; s++)
                     {
                         // Nodi normali: limiti fisici (q, dq, ddq) INVALICABILI
@@ -693,6 +738,18 @@ int main(int argc, char **argv)
                         zl_target[s] = 1e5;
                         Zu_target[s] = 1e5;
                         zu_target[s] = 1e5;
+                    }
+                    // Sezione 2: ostacoli (21..35) — soft 
+                    for (int s = NX; s < N_SH_TOT; s++)
+                    {
+                        Zl_normal[s] = Z_obs;
+                        zl_normal[s] = z_obs;
+                        Zu_normal[s] = Z_obs;
+                        zu_normal[s] = z_obs;
+                        Zl_target[s] = Z_obs;
+                        zl_target[s] = z_obs;
+                        Zu_target[s] = Z_obs;
+                        zu_target[s] = z_obs;
                     }
                     for (int i = 0; i <= N_HORIZON; i++)
                     {
@@ -731,10 +788,18 @@ int main(int argc, char **argv)
 
                             for (int s = 0; s < NX; s++)
                             {
-                                Zl_dyn[s] = Zl_target[s];
-                                zl_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
-                                Zu_dyn[s] = Zu_target[s];
-                                zu_dyn[s] = current_slack_penalty; // Usa la penalità dinamica
+                                Zl_dyn[s] = 1e5;
+                                zl_dyn[s] = current_slack_penalty;
+                                Zu_dyn[s] = 1e5;
+                                zu_dyn[s] = current_slack_penalty;
+                            }
+                            // Ostacoli: penalità fissa (non cambiano con NODO)
+                            for (int s = NX; s < N_SH_TOT; s++)
+                            {
+                                Zl_dyn[s] = Z_obs;
+                                zl_dyn[s] = z_obs;
+                                Zu_dyn[s] = Z_obs;
+                                zu_dyn[s] = z_obs;
                             }
 
                             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "Zl", Zl_dyn);
@@ -873,16 +938,26 @@ int main(int argc, char **argv)
                     break;
                 }
 
-                // Controlla slack su tutti i nodi
+                // Controlla slack su tutti i nodi — stati e ostacoli separati
                 for (int node = 1; node <= N_HORIZON; node++)
                 {
-                    double sl_check[N_SH_TOT]; // N_SH_TOT ora è solo NX (21)
+                    double sl_check[N_SH_TOT];
                     ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, node, "sl", sl_check);
-                    double max_s = 0.0;
-                    for (int idx = 0; idx < NX; idx++) // Solo stati, non distanze
-                        max_s = std::max(max_s, sl_check[idx]);
-                    if (max_s > 1e-4)
-                        printf("  >> nodo %d: slack_state=%.5f\n", node, max_s);
+
+                    // Slack stati (0..20)
+                    double max_state = 0.0;
+                    for (int idx = 0; idx < NX; idx++)
+                        max_state = std::max(max_state, sl_check[idx]);
+
+                    // Slack ostacoli (21..35)
+                    double max_obs = 0.0;
+                    for (int idx = NX; idx < N_SH_TOT; idx++)
+                        max_obs = std::max(max_obs, sl_check[idx]);
+
+                    if (max_state > 1e-4)
+                        printf("  >> nodo %d: slack_stato=%.5f\n", node, max_state);
+                    if (max_obs > 1e-4)
+                        printf("  >> nodo %d: slack_ostacolo=%.5f  [EVASIONE ATTIVA]\n", node, max_obs);
                 }
 
                 // Recupera jerk ottimo

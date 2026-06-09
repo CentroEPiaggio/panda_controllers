@@ -2,7 +2,6 @@
 build/
 devel/
 c_generated_code_tracking/**
-scripts/DistanceFunctions.py
 esperimenti
 *.bag
 # frankino_generatedFiles

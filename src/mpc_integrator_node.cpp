@@ -56,8 +56,8 @@ namespace panda_controllers
         bool first_palla_msg_ = true;
 
         // Guadagni filtro palla
-        double alpha_p_palla_ = 0.1; // Posizione
-        double alpha_v_palla_ = 0.1; // Velocità
+        double alpha_p_palla_ = 0.2; // Posizione
+        double alpha_v_palla_ = 0.2; // Velocità
 
         // Pose del robot nel sistema Qualisys
         Eigen::Vector3d franka_pos_qualisys_;

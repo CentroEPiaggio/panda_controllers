@@ -131,6 +131,7 @@ def export_frankino_model():
 
     # 1. Autocollisioni da Whitelist
     whitelist = get_self_collision_whitelist()
+    n_autocoll = len(whitelist)
     for idxA, idxB in whitelist:
         A1, B1, r1 = get_capsule_endpoints(q, capsule_defs[idxA])
         A2, B2, r2 = get_capsule_endpoints(q, capsule_defs[idxB])
@@ -175,6 +176,8 @@ def export_frankino_model():
 
     # 3. Impiliamo tutto ordinatamente nella lista principale
     dist_constraints.extend(dist_obs1_list)
+    n_obs1 = len(dist_obs1_list)
+    n_obs2 = len(dist_obs2_list)
     dist_constraints.extend(dist_obs2_list)
     # dist_constraints.extend(dist_obs3_list)
     dist_constraints.extend(dist_plane_list)
@@ -187,6 +190,10 @@ def export_frankino_model():
     
     # Costo terminale: solo per definizione, ma comanderanno gli Hard Constraints
     model.cost_y_expr_e = ca.vertcat(q, dq,ddq)
+    model.n_autocoll = n_autocoll
+    model.n_obs1 = n_obs1
+    model.n_obs2 = n_obs2
+    model.n_plane = len(dist_plane_list)
 
     return model
 
@@ -197,7 +204,20 @@ def create_solver():
     ocp.model = model
     ocp.code_export_directory = "c_generated_code_tracking"
     n_tau = 7
-    n_dist = model.con_h_expr.size1() - n_tau
+    n_autocoll = model.n_autocoll
+    n_obs1 = model.n_obs1
+    n_obs2 = model.n_obs2
+    n_plane = model.n_plane
+    n_dist = n_autocoll + n_obs1 + n_obs2 + n_plane
+
+    obs1_h_start = n_tau + n_autocoll
+    obs2_h_start = obs1_h_start + n_obs1
+
+    idxsh_obs = np.concatenate([
+        np.arange(obs1_h_start, obs1_h_start + n_obs1),
+        np.arange(obs2_h_start, obs2_h_start + n_obs2),
+    ])
+    n_sh = len(idxsh_obs)
 
     # --- SETUP ORARIO ---
     N = 20
@@ -224,7 +244,7 @@ def create_solver():
     W_diag_e = np.concatenate([np.full(7, W_q_e), np.full(7, W_dq_e), np.full(7, W_ddq_e)])
     ocp.cost.W_e = np.diag(W_diag_e) # Peso alto su tutto lo stato finale
     ocp.cost.yref_e = np.zeros(21)   
-    # --- VINCOLI --- (Coppie + Distanze)
+    # --- VINCOLI ---
     # Limiti Fisici Giunti
     q_min = np.array([-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973])
     q_max = np.array([2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973])
@@ -242,6 +262,11 @@ def create_solver():
     ocp.constraints.idxbx = np.arange(21)
     ocp.constraints.lbx = np.concatenate([q_min, dq_min, ddq_min])
     ocp.constraints.ubx = np.concatenate([q_max, dq_max, ddq_max])
+    
+    # Aggiunta: State Bounds per il nodo terminale (_e)
+    ocp.constraints.idxbx_e = np.arange(21)
+    ocp.constraints.lbx_e = np.concatenate([q_min, dq_min, ddq_min])
+    ocp.constraints.ubx_e = np.concatenate([q_max, dq_max, ddq_max])
 
     # 2. Input Bounds (u)
     ocp.constraints.idxbu = np.arange(7)
@@ -249,40 +274,47 @@ def create_solver():
     ocp.constraints.ubu = np.full(7, jerk_lim)
 
     # 3. Torque Bounds (h) - Solo Stage Constraints
-    ocp.constraints.lh = np.concatenate([np.full(n_tau, -tau_lim), np.full(n_dist, d_safe_obs)])
-    ocp.constraints.uh = np.concatenate([np.full(n_tau, tau_lim), np.full(n_dist, 1e5)])
-    ocp.constraints.lh_e = np.concatenate([np.full(n_tau, -tau_lim), np.full(n_dist, d_safe_coll)])
-    ocp.constraints.uh_e = np.concatenate([np.full(n_tau, tau_lim), np.full(n_dist, 1e5)])
+    ocp.constraints.lh = np.concatenate([
+        np.full(n_tau, -tau_lim),
+        np.full(n_autocoll, d_safe_coll),
+        np.full(n_obs1, d_safe_obs),
+        np.full(n_obs2, d_safe_obs),
+        np.full(n_plane, d_safe_obs),
+    ])
+    ocp.constraints.uh = np.concatenate([
+        np.full(n_tau + n_autocoll + n_obs1 + n_obs2 + n_plane, 1e5)
+    ])
+    ocp.constraints.lh_e = ocp.constraints.lh.copy()
+    ocp.constraints.uh_e = ocp.constraints.uh.copy()
     
-    # ---------------- SLACK ----------------
+    # ---------------- SLACK STATI ----------------
     # Diciamo ad Acados che possiamo ammorbidire i limiti di stato (x) nei nodi intermedi
-    ocp.constraints.idxsbx = np.arange(21)
+    n_sbx = 21
+    ocp.constraints.idxsbx = np.arange(n_sbx)
+    ocp.constraints.idxsbx_e = np.arange(n_sbx)
 
-    # La dimensione totale degli slack: SOLO 21 (stati), niente slack per distanze
-    n_sh_total = 21
-    ocp.dims.nsh = n_sh_total
-    # Configurazione slack SOLO per gli stati
-    slack_Zl = np.full(21, 1e3)
-    slack_zl = np.full(21, 1e3)
-    slack_Zu = np.full(21, 1e3)
-    slack_zu = np.full(21, 1e3)
-    ocp.cost.zl = slack_zl
-    ocp.cost.Zl = slack_Zl
-    ocp.cost.zu = slack_zu
-    ocp.cost.Zu = slack_Zu
+    slack_bx_Z = np.full(n_sbx, 1e3)
+    slack_bx_z = np.full(n_sbx, 1e3)
 
-    # ---------------- SLACK TERMINALI ----------------
-    # State Bounds Terminali
-    ocp.constraints.idxbx_e = np.arange(21)
-    ocp.constraints.lbx_e = np.concatenate([q_min, dq_min, ddq_min])
-    ocp.constraints.ubx_e = np.concatenate([q_max, dq_max, ddq_max])
+    # ---------------- SLACK OSTACOLI ----------------
+    ocp.constraints.idxsh = idxsh_obs
+    ocp.constraints.idxsh_e = idxsh_obs
 
-    ocp.constraints.idxsbx_e = np.arange(21)
-    ocp.dims.nsh_e = n_sh_total  # 21
-    ocp.cost.zl_e = slack_zl
-    ocp.cost.Zl_e = slack_Zl
-    ocp.cost.zu_e = slack_zu
-    ocp.cost.Zu_e = slack_Zu
+    slack_h_Z = np.full(n_sh, 1e4)
+    slack_h_z = np.full(n_sh, 1e3)
+
+    ocp.cost.zl = np.concatenate([slack_bx_z, slack_h_z])
+    ocp.cost.Zl = np.concatenate([slack_bx_Z, slack_h_Z])
+    ocp.cost.zu = np.concatenate([slack_bx_z, slack_h_z])
+    ocp.cost.Zu = np.concatenate([slack_bx_Z, slack_h_Z])
+
+    ocp.cost.zl_e = np.concatenate([slack_bx_z, slack_h_z])
+    ocp.cost.Zl_e = np.concatenate([slack_bx_Z, slack_h_Z])
+    ocp.cost.zu_e = np.concatenate([slack_bx_z, slack_h_z])
+    ocp.cost.Zu_e = np.concatenate([slack_bx_Z, slack_h_Z])
+
+    ocp.dims.nsh = n_sh
+    ocp.dims.nsh_e = n_sh
     
     # --- OPZIONI SOLVER ---
     ocp.solver_options.qp_solver = "FULL_CONDENSING_HPIPM"
