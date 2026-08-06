@@ -13,13 +13,7 @@ float32[36] conv2
 float32[3] ee_tr
 float32[6] e_kin
 
-link_params link1
-link_params link2
-link_params link3
-link_params link4
-link_params link5
-link_params link6
-link_params link7
+float32[90] par_REG
 
 float32[7] Yr_param
 float32[7] tau_cmd

@@ -12,10 +12,8 @@
 #include "point.h"
 #include "desTrajEE.h"
 
-#include "ThunderPanda.h"
+#include "thunder_franka.h"
 #include "utils_cartesian.h"
-
-#define NJ 7
 
 typedef Eigen::Vector3d vec3d;
 
@@ -46,10 +44,14 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(frequency); // 100 Hz,10 volte più lento del controllore
 	
 	/* Publisher */
-	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1000);
+	ros::Publisher pub_des_jointState = node_handle.advertise<sensor_msgs::JointState>("command_joints", 1);
 	
 	/* Subscriber */
 	ros::Subscriber sub_des_pose = node_handle.subscribe<panda_controllers::desTrajEE>("command_cartesian", 1, &desPoseCallback);
+
+    // - Robot - //
+    thunder_franka franka;
+    const int NJ = franka.ndof;
 
 	/* Message for /computed_torque_controller/command */
 	sensor_msgs::JointState clik;
@@ -58,8 +60,6 @@ int main(int argc, char **argv)
     clik.effort.resize(NJ);
 
     /* robot kinematic */
-    regrob::thunderPanda robot_handle;
-    robot_handle.init(NJ);
     Eigen::Matrix<double,4,4> T0EE;
     Eigen::Matrix<double,6,NJ> JacEE;
     Eigen::Matrix<double,NJ,6> pJacEE;
@@ -116,11 +116,14 @@ int main(int argc, char **argv)
 
         t = ros::Time::now();
 
-        robot_handle.setArguments(qr,dot_qr);
-        T0EE = robot_handle.getKin_gen();
-        JacEE = robot_handle.getJac_gen();
-        pJacEE = robot_handle.getPinvJac_gen();
-        dot_pJacEE = robot_handle.getDotPinvJac_gen();
+        franka.set_q(qr);
+        franka.set_dq(dot_qr);
+        T0EE = franka.get_T_w_EE();
+        JacEE = franka.get_J_EE();
+        JacEE_dot = franka.get_J_EE_dot();
+        // pJacEE = franka.getPinvJac_gen();
+        // dot_pJacEE = franka.getDotPinvJac_gen();
+        pJacEE = franka.get_J_EE_pinv();
 
         if(!start){
             ee_rot_cmd = T0EE.block(0,0,3,3);
@@ -165,7 +168,7 @@ int main(int argc, char **argv)
         tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
 
         dot_qr = pJacEE*tmp_conversion1*tmp_position;
-        ddot_qr = pJacEE*tmp_conversion1*tmp_velocity + pJacEE*tmp_conversion2*tmp_position +dot_pJacEE*tmp_conversion1*tmp_position;
+        ddot_qr = pJacEE*tmp_conversion1*tmp_velocity + pJacEE*tmp_conversion2*tmp_position;// +dot_pJacEE*tmp_conversion1*tmp_position;
         qr_old = qr;
         qr = qr_old + period * dot_qr;
         /* ======================================== */

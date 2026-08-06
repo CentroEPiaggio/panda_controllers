@@ -21,10 +21,7 @@
 	<arg name="controller_name" 	default="backstepping_controller" /> <!-- backstepping_controller, computed_torque_controller -->
 	
 	<!-- to load yaml -->
-	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
-	<group ns="$(arg controller_name)">
-		<rosparam command="load" 	file="$(find panda_controllers)/config/thunder/franka_par_REG.yaml" /> <!-- franka_inertial_REG_pW.yaml -->
-	</group>
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers.yaml" />
 
 	<!-- to load gazebo (and rviz) -->
 	<include file="$(find panda_controllers)/launch/gazebo/panda.launch">

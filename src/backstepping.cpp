@@ -55,11 +55,11 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	/* Assigning joint names */
 	std::vector<std::string> joint_names;
-	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != NJ) {
+	if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != ndof) {
 		ROS_ERROR("Backstepping: Error in parsing joints name!");
 		return false;
 	}
-	for (size_t i = 0; i < NJ; ++i) {
+	for (size_t i = 0; i < ndof; ++i) {
 		try {
 			joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
 
@@ -69,35 +69,14 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		}
 	}
 
-	/* Assigning inertial parameters for initial guess of panda parameters to compute dynamics with regressor */
-	// for(int i=0; i<NJ; i++){
-	// 	double mass, cmx, cmy, cmz, xx, xy, xz, yy, yz, zz;
-	// 	if (!node_handle.getParam("link"+std::to_string(i+1)+"/mass", mass) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_x", cmx) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_y", cmy) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/m_CoM_z", cmz) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Ixx", xx) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Ixy", xy) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Ixz", xz) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Iyy", yy) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Iyz", yz) ||
-	// 		!node_handle.getParam("link"+std::to_string(i+1)+"/Izz", zz)){
-			
-	// 		ROS_ERROR("Backstepping: Error in parsing inertial parameters!");
-	// 		return 1;
-	// 	}
-	// 	param_REG.segment(PARAM*i, PARAM) << mass,cmx,cmy,cmz,xx,xy,xz,yy,yz,zz;
-	// }
-
-
 	// - thunder init - //
-	// get absolute path to franka_conf.yaml file
-	std::string package_path = ros::package::getPath("panda_controllers");
-	std::string path_conf = package_path + "/config/thunder/franka.yaml";
-	std::string path_par_REG = package_path + "/config/thunder/franka_par_REG_pW.yaml";
-	frankaRobot.load_conf(path_conf);
-	// frankaRobot.load_par_REG(path_par_REG);
-	param_REG = frankaRobot.get_par_REG();
+	// // get absolute path to franka_conf.yaml file
+	// std::string package_path = ros::package::getPath("panda_controllers");
+	// std::string path_conf = package_path + "/config/thunder/franka.yaml";
+	// std::string path_par_REG = package_path + "/config/thunder/franka_par_REG_pW.yaml";
+	// franka.load_conf(path_conf);
+	// franka.load_par_REG(path_par_REG);
+	param_REG = franka.get_par_REG();
 	param_init = param_REG;
 	// ee_tr.setZero();
 
@@ -122,7 +101,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		Lambda(i,i) = gainLambda[i];
 	}
 	Kd.setIdentity();
-	for(int i=0;i<NJ;i++){
+	for(int i=0;i<ndof;i++){
 		Kd(i,i) = gainKd[i];
 	}
 	
@@ -139,7 +118,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
-	for (int i = 0; i<NJ; i++){	
+	for (int i = 0; i<ndof; i++){	
 		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
 	}
 
@@ -151,18 +130,18 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
 	/*Start command subscriber and advertise */
-
-	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &Backstepping::setCommandCB, this);
+	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("/backstepping/command_cartesian", 1, &Backstepping::setCommandCB, this);
 	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &Backstepping::setFlagUpdate, this);
 	// this->sub_dyn_update_ = node_handle.subscribe<panda_controllers::flag>", 1, &Backstepping::setDynUpdate, this);
 	this->pub_log = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
+	this->pub_franka_pose = node_handle.advertise<geometry_msgs::PoseStamped> ("/backstepping/franka_pose", 1);
 
 	// set end effector
 	// Creazione di un client di servizio per SetEEFrame
-  	ros::ServiceClient client = node_handle.serviceClient<franka_msgs::SetEEFrame>("/franka_control/set_EE_frame");
+  	// ros::ServiceClient client = node_handle.serviceClient<franka_msgs::SetEEFrame>("/franka_control/set_EE_frame");
 
-	franka_msgs::SetEEFrame srv;
+	// franka_msgs::SetEEFrame srv;
 
 	// // transformation matrix (column_major)
 	// srv.request.NE_T_EE[0] = 1.0;
@@ -199,7 +178,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	// set ee in thunder
 	// Eigen::Matrix<double,3,1> ee_tr;
 	// ee_tr << 0.2, 0.2, 0.2;
-	// frankaRobot.set_Ln2EE(ee_tr);
+	// franka.set_Ln2EE(ee_tr);
 	
 	return true;
 }
@@ -211,50 +190,50 @@ void Backstepping::starting(const ros::Time& time)
 	robot_state = state_handle_->getRobotState();
 	Eigen::Matrix4d T0EE_real = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 
-	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
-	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
+	q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.q.data());
+	dot_q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.dq.data());
 
-	frankaRobot.set_q(q_curr);
-	frankaRobot.set_dq(dot_q_curr);
-	frankaRobot.set_dqr(dot_q_curr);
-	frankaRobot.set_ddqr(ddot_qr.setOnes());
-	T0EE = frankaRobot.get_T_0_ee();
-	ee_tr = frankaRobot.get_Ln2EE();
+	franka.set_q(q_curr);
+	franka.set_dq(dot_q_curr);
+	franka.set_dqr(dot_q_curr);
+	franka.set_ddqr(ddot_qr.setOnes());
+	T0EE = franka.get_T_w_EE();
+	ee_tr = franka.get_KIN_EE_xyzrpy();
 	cout << "ee_tr: " << ee_tr << endl;
 	cout << "T0EE_real: \n" << T0EE_real << endl<<endl;
 	cout << "T0EE_thunder: \n" << T0EE << endl<<endl;
 
-	Eigen::Matrix<double,6,NJ> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, NJ>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
-	Jee = frankaRobot.get_J_ee();
+	Eigen::Matrix<double,6,ndof> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, ndof>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+	Jee = franka.get_J_EE();
 	cout << "Jee_real: \n" << Jee_real << endl<<endl;
 	cout << "Jee_thunder: \n" << Jee << endl<<endl;
 
-	Eigen::Matrix<double,NJ,NJ> M_real = Eigen::Map<Eigen::Matrix<double, NJ, NJ>> (model_handle_->getMass().data());
-	Eigen::Matrix<double,NJ,NJ> M = frankaRobot.get_M();
+	Eigen::Matrix<double,ndof,ndof> M_real = Eigen::Map<Eigen::Matrix<double, ndof, ndof>> (model_handle_->getMass().data());
+	Eigen::Matrix<double,ndof,ndof> M = franka.get_M();
 	cout << "M_real: \n" << M_real << endl<<endl;
 	cout << "M_thunder: \n" << M << endl<<endl;
 
-	Eigen::Matrix<double,NJ,1> Cdq_real = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getCoriolis().data());
-	Eigen::Matrix<double,NJ,NJ> C = frankaRobot.get_C();
+	Eigen::Matrix<double,ndof,1> Cdq_real = Eigen::Map<Eigen::Matrix<double, ndof, 1>> (model_handle_->getCoriolis().data());
+	Eigen::Matrix<double,ndof,ndof> C = franka.get_C();
 	cout << "Cdq_real: \n" << Cdq_real << endl<<endl;
 	cout << "Cdq_thunder: \n" << C*dot_q_curr << endl<<endl;
 
-	Eigen::Matrix<double,NJ,1> G_real = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
-	Eigen::Matrix<double,NJ,1> G = frankaRobot.get_G();
+	Eigen::Matrix<double,ndof,1> G_real = Eigen::Map<Eigen::Matrix<double, ndof, 1>> (model_handle_->getGravity().data());
+	Eigen::Matrix<double,ndof,1> G = franka.get_G();
 	cout << "G_real: \n" << G_real << endl<<endl;
 	cout << "G_thunder: \n" << G << endl<<endl;
 
-	Eigen::Matrix<double,NJ,1> G_reg = frankaRobot.get_reg_G() * param_REG;
+	Eigen::Matrix<double,ndof,1> G_reg = franka.get_reg_G() * param_REG;
 	cout << "G_reg: \n" << G_reg << endl<<endl;
 
 	cout << "M_reg_real: \n" << (M_real*ddot_qr).transpose() << endl<<endl;
-	cout << "M_reg_thunder: \n" << (frankaRobot.get_reg_M()*param_REG).transpose() << endl<<endl;
+	cout << "M_reg_thunder: \n" << (franka.get_reg_M()*param_REG).transpose() << endl<<endl;
 
 	cout << "C_reg_real: \n" << Cdq_real.transpose() << endl<<endl;
-	cout << "C_reg_thunder: \n" << (frankaRobot.get_reg_C()*param_REG).transpose() << endl<<endl;
+	cout << "C_reg_thunder: \n" << (franka.get_reg_C()*param_REG).transpose() << endl<<endl;
 
-	frankaRobot.set_dqr(dot_qr.setZero());
-	frankaRobot.set_ddqr(ddot_qr.setZero());
+	franka.set_dqr(dot_qr.setZero());
+	franka.set_ddqr(ddot_qr.setZero());
 
 	/* Secure initialization command */
 	ee_pos_cmd = T0EE_real.block<3,1>(0,3);
@@ -290,22 +269,22 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	
 	robot_state = state_handle_->getRobotState();
 	
-	franka_G = Eigen::Map<Eigen::Matrix<double, NJ, 1>> (model_handle_->getGravity().data());
-	// Jee = Eigen::Map<Eigen::Matrix<double, 6, NJ>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+	franka_G = Eigen::Map<Eigen::Matrix<double, ndof, 1>> (model_handle_->getGravity().data());
+	// Jee = Eigen::Map<Eigen::Matrix<double, 6, ndof>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 	// T0EE = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
-	q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.q.data());
-	dot_q_curr = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.dq.data());
+	q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.q.data());
+	dot_q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.dq.data());
 	/* tau_J_d is past tau_cmd saturated */
-	tau_J_d = Eigen::Map<Eigen::Matrix<double, NJ, 1>>(robot_state.tau_J_d.data());
-	frankaRobot.set_q(q_curr);
-	frankaRobot.set_dq(dot_q_curr);
-	Jee = frankaRobot.get_J_ee();
-	T0EE = frankaRobot.get_T_0_ee();
+	tau_J_d = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.tau_J_d.data());
+	franka.set_q(q_curr);
+	franka.set_dq(dot_q_curr);
+	Jee = franka.get_J_EE();
+	T0EE = franka.get_T_w_EE();
 	Eigen::Matrix4d T0EE_real = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
-	Eigen::Matrix<double,6,NJ> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, NJ>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+	Eigen::Matrix<double,6,ndof> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, ndof>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 	/* Compute pseudo-inverse of jacobian and its derivative */
-	J_pinv = frankaRobot.get_J_ee_pinv();
-	J_dot = frankaRobot.get_J_ee_dot();
+	J_pinv = franka.get_J_EE_pinv();
+	J_dot = franka.get_J_EE_dot();
 	Eigen::Vector3d ee_pos, ee_vel, ee_pos_real, ee_vel_real;
 	Eigen::Vector3d ee_omega, ee_omega_real;
 	Eigen::VectorXd ee_vel_cmd_tot(6), ee_acc_cmd_tot(6);
@@ -378,27 +357,27 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	ddot_qr = J_pinv * (tmp_conversion1*tmp_velocity + tmp_conversion2*tmp_position + J_dot*dot_qr);
 
 	s = dot_qr - dot_q_curr;
-/* 	for(int i=0;i<NJ;i++){
+/* 	for(int i=0;i<ndof;i++){
 		if (s(i,1)<=tol_s) s(i,1) = 0;
 	} */
 	
 	/* Update and Compute Regressor */
-	frankaRobot.set_dqr(dot_qr);
-	frankaRobot.set_ddqr(ddot_qr);
-	Yr = frankaRobot.get_Yr();
+	franka.set_dqr(dot_qr);
+	franka.set_ddqr(ddot_qr);
+	Yr = franka.get_Yr();
 	/* Backstepping control law */
 	dt = period.toSec();
 
 	/* Update inertial parameters */
 	Eigen::Matrix<double,7,1> s_temp = s;
-	for(int i=0;i<NJ;i++){
+	for(int i=0;i<ndof;i++){
 		if (std::fabs(s_temp(i,1)) < tol_s) s_temp(i,1) = 0.0;
 	}
 
 	// /*skip update if s>UB_s*/
 	// if (UB_s_flag){
 	// 	int count_UB_s = 0;
-	// 	for(int i=0;i<NJ;i++){
+	// 	for(int i=0;i<ndof;i++){
 	// 		if (std::fabs(s_temp(i,1)) < tol_s){
 	// 			s_temp(i,1) = 0.0;
 	// 		}
@@ -407,7 +386,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	// 		}else{
 	// 			count_UB_s++;
 	// 		}
-	// 		if (count_UB_s == NJ) saturate_s_flag = false;
+	// 		if (count_UB_s == ndof) saturate_s_flag = false;
 	// 	}
 	// }
 
@@ -416,28 +395,28 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 		// - J^T method - //
 		// Eigen::VectorXd w = tmp_conversion0.transpose()*error_real;
 		// // Eigen::VectorXd w = tmp_conversion0.transpose()*e_kin;
-		// frankaRobot.set_w(w);
-		// Eigen::MatrixXd Yk = frankaRobot.get_reg_JTw();
+		// franka.set_w(w);
+		// Eigen::MatrixXd Yk = franka.get_reg_JTw();
 		// Eigen::VectorXd dot_kin_par = -Yk.transpose() * dot_qr;
 		// - J method - //
-		Eigen::MatrixXd Yk = frankaRobot.get_reg_Jdq();
+		Eigen::MatrixXd Yk = franka.get_reg_Jdq_EE();
 		Eigen::VectorXd dot_kin_par = - Yk.transpose() * tmp_conversion0.transpose() * error_real;
 		// - Indirect method - //
-		// Eigen::MatrixXd Yk = frankaRobot.get_reg_Jdq();
+		// Eigen::MatrixXd Yk = franka.get_reg_Jdq();
 		// Eigen::VectorXd dot_kin_par = Yk.transpose() * (dot_e_kin + e_kin);
 
 		ee_tr += dt * dot_kin_par;
-		frankaRobot.set_Ln2EE(ee_tr);
+		franka.set_KIN_EE_xyzrpy(ee_tr);
 		// cout << "Yk: \n" << Yk << endl;
 	}
 	// --- end --- //
 	
 	// --- dynamics adaptive law --- //
 	if (update_dyn_flag){// && !saturate_s_flag){
-// 		dot_param = Rinv*Yr.transpose()*s;//_temp;
-// /* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
-// 		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
-// 		param_REG += dt*dot_param;
+		dot_param = Rinv*Yr.transpose()*s;//_temp;
+/* 		std::cout<<"\n =================== \n s_temp:\n"<<s_temp<<"\n ------------------- \n";
+		std::cout<<"\n dot_param: \n"<<dot_param<<"\n =================== \n"; */
+		param_REG += dt*dot_param;
 	}
 	// --- end --- //
 
@@ -458,7 +437,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	
 	/* Set the command for each joint */
 
-	for (size_t i = 0; i < NJ; i++) {
+	for (size_t i = 0; i < ndof; i++) {
 		joint_handles_[i].setCommand(tau_cmd[i] - franka_G[i]);
 	}
 
@@ -480,13 +459,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	fillMsg(msg_log.conv1, tmp_conversion1);
 	fillMsg(msg_log.conv2, tmp_conversion2);
 	fillMsg(msg_log.s, s);
-	fillMsgLink(msg_log.link1, param_REG.segment(0, PARAM));
-	fillMsgLink(msg_log.link2, param_REG.segment(10, PARAM));
-	fillMsgLink(msg_log.link3, param_REG.segment(20, PARAM));
-	fillMsgLink(msg_log.link4, param_REG.segment(30, PARAM));
-	fillMsgLink(msg_log.link5, param_REG.segment(40, PARAM));
-	fillMsgLink(msg_log.link6, param_REG.segment(50, PARAM));
-	fillMsgLink(msg_log.link7, param_REG.segment(60, PARAM));
+	fillMsg(msg_log.par_REG, param_REG);
+	// fillMsgLink(msg_log.link1, param_REG.segment(0, PARAM));
+	// fillMsgLink(msg_log.link2, param_REG.segment(10, PARAM));
+	// fillMsgLink(msg_log.link3, param_REG.segment(20, PARAM));
+	// fillMsgLink(msg_log.link4, param_REG.segment(30, PARAM));
+	// fillMsgLink(msg_log.link5, param_REG.segment(40, PARAM));
+	// fillMsgLink(msg_log.link6, param_REG.segment(50, PARAM));
+	// fillMsgLink(msg_log.link7, param_REG.segment(60, PARAM));
 	fillMsg(msg_log.Yr_param, Yr*param_REG);
 	fillMsg(msg_log.tau_cmd, tau_cmd);
 	fillMsg(msg_log.tau_tilde, tau_tilde);
@@ -501,6 +481,19 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	msg_config.xyz.z = T0EE(2,3);
 
 	this->pub_config_.publish(msg_config);
+
+	// - publish franka pose - //
+	geometry_msgs::PoseStamped msg_franka_pose;
+	msg_franka_pose.header.stamp = time_now;
+	msg_franka_pose.pose.position.x = T0EE(0,3);
+	msg_franka_pose.pose.position.y = T0EE(1,3);
+	msg_franka_pose.pose.position.z = T0EE(2,3);
+	Eigen::Quaterniond ee_rot_quat(T0EE.block<3,3>(0,0));
+	msg_franka_pose.pose.orientation.x = ee_rot_quat.x();
+	msg_franka_pose.pose.orientation.y = ee_rot_quat.y();
+	msg_franka_pose.pose.orientation.z = ee_rot_quat.z();
+	msg_franka_pose.pose.orientation.w = ee_rot_quat.w();
+	this->pub_franka_pose.publish(msg_franka_pose);
 }
 
 void Backstepping::stopping(const ros::Time&)
@@ -509,11 +502,11 @@ void Backstepping::stopping(const ros::Time&)
 }
 
 /* Check for the effort commanded */
-Eigen::Matrix<double, NJ, 1> Backstepping::saturateTorqueRate( 
-	const Eigen::Matrix<double, NJ, 1>& tau_d_calculated, const Eigen::Matrix<double, NJ, 1>& tau_J_d){
+Eigen::Matrix<double, ndof, 1> Backstepping::saturateTorqueRate( 
+	const Eigen::Matrix<double, ndof, 1>& tau_d_calculated, const Eigen::Matrix<double, ndof, 1>& tau_J_d){
 	
-	Eigen::Matrix<double, NJ, 1> tau_d_saturated {};
-	for (size_t i = 0; i < NJ; i++) {
+	Eigen::Matrix<double, ndof, 1> tau_d_saturated {};
+	for (size_t i = 0; i < ndof; i++) {
 
 		double difference = tau_d_calculated[i] - tau_J_d[i];
 		tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, kDeltaTauMax), -kDeltaTauMax);
@@ -558,19 +551,19 @@ void Backstepping::fillMsg(boost::array<float, N>& msg_, const Eigen::MatrixXd& 
     }
 }
 
-void Backstepping::fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_) {
+// void Backstepping::fillMsgLink(panda_controllers::link_params &msg_, const Eigen::VectorXd& data_) {
     
-    msg_.mass = data_[0];
-	msg_.m_CoM_x = data_[1];
-	msg_.m_CoM_y = data_[2];
-	msg_.m_CoM_z = data_[3];
-	msg_.Ixx = data_[4];
-	msg_.Ixy = data_[5];
-	msg_.Ixz = data_[6];
-	msg_.Iyy = data_[7];
-	msg_.Iyz = data_[8];
-	msg_.Izz = data_[9];
-}
+//     msg_.mass = data_[0];
+// 	msg_.m_CoM_x = data_[1];
+// 	msg_.m_CoM_y = data_[2];
+// 	msg_.m_CoM_z = data_[3];
+// 	msg_.Ixx = data_[4];
+// 	msg_.Ixy = data_[5];
+// 	msg_.Ixz = data_[6];
+// 	msg_.Iyy = data_[7];
+// 	msg_.Iyz = data_[8];
+// 	msg_.Izz = data_[9];
+// }
 
 }
 

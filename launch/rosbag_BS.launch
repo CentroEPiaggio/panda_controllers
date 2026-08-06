@@ -5,7 +5,7 @@
     <arg name="package"         default="panda_controllers" />
     
     <!-- load -->
-	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers.yaml" />
 
     <!-- flag -->
     <arg name="command_node"    default="true" />

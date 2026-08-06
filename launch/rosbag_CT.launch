@@ -2,7 +2,7 @@
 <!-- launch rosbag and command -->
 <launch>
 
-	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers_default.yaml" />
+	<rosparam command="load" 	file="$(find panda_controllers)/config/panda_controllers.yaml" />
     <!-- load -->
     <arg name="yaml_file"   default="$(find panda_controllers)/config/homing.yaml" />
     
