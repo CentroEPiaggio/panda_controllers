@@ -13,10 +13,35 @@
 	<!-- flag -->
 	<arg name="use_gripper" 		default="false" />
 	<arg name="rviz" 				default="false" />
+	<arg name="headless" 			default="false" doc="true to start gazebo without its GUI" />
 	<arg name="clik"            	default="false" />
 	<arg name="rosbag_BS"			value="false" />
 	<arg name="rosbag_CT"			value="false" />
-    
+
+	<!-- tube (handtool) montato sulla flangia: descritto in handtool_throw, fuori da franka_ros -->
+	<arg name="tube" 				default="true" doc="true per montare il tubo sulla flangia" />
+	<arg name="tube_xyz"			default="0 0 0.05" doc="posizione del tubo rispetto a $(arg arm_id)_link8 [m]" />
+	<arg name="tube_length"			default="0.30" />
+	<arg name="tube_radius"			default="0.015" />
+	<arg name="tube_mass"			default="0.05" />
+	<arg name="description_file"	default="$(find handtool_throw)/urdf/panda_with_tube.urdf.xacro" />
+	<arg name="xacro_args"			default="tube:=$(arg tube)
+											 tube_xyz:='$(arg tube_xyz)'
+											 tube_length:=$(arg tube_length)
+											 tube_radius:=$(arg tube_radius)
+											 tube_mass:=$(arg tube_mass)" />
+
+	<!-- NOTA: il tubo e' nell'URDF (gazebo + rviz) e nel modello thunder
+		 (config/thunder/franka_par.yaml, dove e' sommato al corpo EE). Il modello
+		 analitico di franka_hw_sim (mass matrix / gravita' riportate in franka_state)
+		 invece non lo vede. Per tenerne conto anche li', decommentare (valori per i
+		 default: L=0.30, r=0.015, m=0.05, baricentro in (L/2, 0, 0.05) rispetto alla
+		 flangia, asse del tubo lungo x):
+	<param name="m_ee"    value="0.05" />
+	<param name="F_x_Cee" value="0.15 0 0.05" />
+	<param name="I_ee"    value="9.85e-06 0 0  0 3.79925e-04 0  0 0 3.79925e-04" />
+	-->
+
 	<!-- set controller -->
 	<arg name="controller_name" 	default="backstepping_controller" /> <!-- backstepping_controller, computed_torque_controller -->
 	
@@ -27,8 +52,12 @@
 	<include file="$(find panda_controllers)/launch/gazebo/panda.launch">
 		<arg name="rviz_config" value="$(find panda_controllers)/launch/rviz/franka_marker.rviz" />
 		<arg name="rviz" 		value="$(arg rviz)" />
+		<arg name="headless" 	value="$(arg headless)" />
 		<arg name="use_gripper" value="$(arg use_gripper)" />
 		<arg name="controller" 	value="$(arg controller_name)" />
+		<arg name="arm_id" 		value="$(arg arm_id)" />
+		<arg name="description_file" value="$(arg description_file)" />
+		<arg name="xacro_args" 	value="$(arg xacro_args)" />
 	</include>
 	
 	<!-- to draw trajectory on rviz -->

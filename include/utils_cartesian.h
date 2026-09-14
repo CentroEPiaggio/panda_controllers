@@ -26,7 +26,7 @@ inline Eigen::Matrix<double, 3, 1> vect(const Eigen::Matrix<double, 3, 3> mat){
     Eigen::Matrix<double, 3, 1> vector;
     Eigen::Matrix<double, 3, 3> tmp_mat;
 
-    tmp_mat = (mat-mat.transpose())/0.5;
+    tmp_mat = (mat-mat.transpose())*0.5;
     vector(0,0) = -tmp_mat(1,2);
     vector(1,0) = tmp_mat(0,2);
     vector(2,0) = -tmp_mat(0,1);
@@ -54,7 +54,7 @@ inline Eigen::Matrix<double, 3, 3> createL(
     s_hat = hat(s);
     a_hat = hat(a);
 
-    L = -(nd_hat*n_hat+sd_hat*s_hat+ad_hat*a_hat)/0.5;
+    L = -(nd_hat*n_hat+sd_hat*s_hat+ad_hat*a_hat)*0.5;
     return L;
 };
 
@@ -82,8 +82,16 @@ inline Eigen::Matrix<double, 3, 3> createDotL(
     wd_hat = hat(w_cmd);
 
     dotL = -(hat(wd_hat*nd)*n_hat + hat(wd_hat*sd)*s_hat + hat(wd_hat*ad)*a_hat
-            + nd_hat*hat(w_hat*n) + sd_hat*hat(w_hat*s) + ad_hat*hat(w_hat*a))/0.5;
+            + nd_hat*hat(w_hat*n) + sd_hat*hat(w_hat*s) + ad_hat*hat(w_hat*a))*0.5;
 
     return dotL;
+};
+
+// damped inverse of a 3x3 matrix, allocation free; lambda -> 0 recovers M.inverse()
+inline Eigen::Matrix<double, 3, 3> dampedInverse(
+    const Eigen::Matrix<double, 3, 3> M, const double lambda){
+
+    return (M.transpose()*M + lambda*lambda*Eigen::Matrix<double, 3, 3>::Identity()).inverse()
+            * M.transpose();
 };
 

@@ -17,6 +17,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 		ROS_ERROR("Backstepping: Could not get parameter arm_id!");
 		return false;
 	}
+	arm_id_ = arm_id;
 
 	if (!node_handle.getParam("logging", logging)) {
 		ROS_ERROR("Backstepping: Could not get parameter logging, set to 0!");
@@ -71,40 +72,65 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 
 	// - thunder init - //
 	// // get absolute path to franka_conf.yaml file
-	// std::string package_path = ros::package::getPath("panda_controllers");
+	std::string package_path = ros::package::getPath("panda_controllers");
 	// std::string path_conf = package_path + "/config/thunder/franka.yaml";
-	// std::string path_par_REG = package_path + "/config/thunder/franka_par_REG_pW.yaml";
 	// franka.load_conf(path_conf);
-	// franka.load_par_REG(path_par_REG);
+	std::string path_par = package_path + "/config/thunder/franka_par.yaml";
+	franka.load_par(path_par);
 	param_REG = franka.get_par_REG();
 	param_init = param_REG;
 	// ee_tr.setZero();
 
 	/* Inizializing the Lambda and R and Kd gains */
 	
-	std::vector<double> gainRlinks(NJ), gainRparam(4), gainLambda(6), gainKd(7);
+	std::vector<double> gainRlinks(NJ), gainRparam(4), gainLambda(6), gainKp(6), gainKd(7);
 	Eigen::Matrix<double,PARAM,PARAM> Rlink;
 
 	if (!node_handle.getParam("gainLambda", gainLambda) ||
 		!node_handle.getParam("gainRlinks", gainRlinks) ||
 		!node_handle.getParam("gainRparam", gainRparam) ||
+		!node_handle.getParam("gainKp", gainKp)  ||
 		!node_handle.getParam("gainKd", gainKd)  ||
 		!node_handle.getParam("adaptive_kin", update_kin_flag)||
 		!node_handle.getParam("adaptive_dyn", update_dyn_flag)||
 		!node_handle.getParam("upper_bound_s", UB_s_flag)) {
-	
-		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kd!");
+
+		ROS_ERROR("Backstepping: Could not get gain parameter for Lambda, R, Kp, Kd!");
+		return false;
+	}
+	if (gainLambda.size() != 6 || gainKp.size() != 6 || gainKd.size() != ndof){
+		ROS_ERROR("Backstepping: gainLambda and gainKp need 6 values, gainKd needs %d!", ndof);
+		return false;
+	}
+	if (gainRlinks.size() != NJ){
+		ROS_ERROR("Backstepping: gainRlinks needs %d values (one per thunder joint: "
+				  "base, link0..link6, flange, EE), got %zu!", NJ, gainRlinks.size());
 		return false;
 	}
 	Lambda.setIdentity();
 	for(int i=0;i<6;i++){
 		Lambda(i,i) = gainLambda[i];
 	}
+	Kp.setIdentity();
+	for(int i=0;i<6;i++){
+		Kp(i,i) = gainKp[i];
+	}
 	Kd.setIdentity();
 	for(int i=0;i<ndof;i++){
 		Kd(i,i) = gainKd[i];
 	}
-	
+	/* Guard of the L inversion, defaults keep the controller running on an old yaml */
+	if (!node_handle.getParam("lambda_L", lambda_L)) {
+		lambda_L = 0.001;
+		ROS_WARN("Backstepping: Could not get parameter lambda_L, set to %f", lambda_L);
+	}
+	double orient_warn_deg;
+	if (!node_handle.getParam("orient_warn_deg", orient_warn_deg)) {
+		orient_warn_deg = 60.0;
+		ROS_WARN("Backstepping: Could not get parameter orient_warn_deg, set to %f", orient_warn_deg);
+	}
+	orient_warn_angle = orient_warn_deg*M_PI/180.0;
+
 	Rlink.setZero();
 	Rlink(0,0) = gainRparam[0];
 	Rlink(1,1) = gainRparam[1];
@@ -118,7 +144,7 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	Rlink(9,9) = Rlink(4,4);
 
 	Rinv.setZero();
-	for (int i = 0; i<ndof; i++){	
+	for (int i = 0; i<NJ; i++){	
 		Rinv.block(i*PARAM, i*PARAM, PARAM, PARAM) = gainRlinks[i]*Rlink;;
 	}
 
@@ -130,12 +156,14 @@ bool Backstepping::init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& 
 	q_dot_limit << 2.175, 2.175, 2.175, 2.175, 2.61, 2.61, 2.61; 
 
 	/*Start command subscriber and advertise */
-	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("/backstepping/command_cartesian", 1, &Backstepping::setCommandCB, this);
+	/* relative names, so every topic of the controller lives under its own namespace
+	   (/backstepping_controller/...), matching command_cartesian and CLIK_node */
+	this->sub_command_ = node_handle.subscribe<panda_controllers::desTrajEE> ("command_cartesian", 1, &Backstepping::setCommandCB, this);
 	this->sub_flag_update_ = node_handle.subscribe<panda_controllers::flag> ("adaptiveFlag", 1, &Backstepping::setFlagUpdate, this);
 	// this->sub_dyn_update_ = node_handle.subscribe<panda_controllers::flag>", 1, &Backstepping::setDynUpdate, this);
 	this->pub_log = node_handle.advertise<panda_controllers::log_adaptive_cartesian> ("logging", 1);
 	this->pub_config_ = node_handle.advertise<panda_controllers::point> ("current_config", 1);
-	this->pub_franka_pose = node_handle.advertise<geometry_msgs::PoseStamped> ("/backstepping/franka_pose", 1);
+	this->pub_franka_pose = node_handle.advertise<geometry_msgs::PoseStamped> ("franka_pose", 1);
 
 	// set end effector
 	// Creazione di un client di servizio per SetEEFrame
@@ -316,6 +344,17 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	L = createL(ee_rot_cmd, ee_rot);
 	dotL = createDotL(ee_rot_cmd, ee_rot, ee_ang_vel_cmd, ee_omega);
 
+	/* Rs_tilde = ee_rot_cmd*ee_rot^T, so its rotation angle is the orientation error.
+	   det(L) = cos(theta)*(1+cos(theta))/2 : L is singular at theta = 90 deg and changes
+	   sign beyond it, where the orientation feedback becomes destabilizing. */
+	double cos_theta = (Rs_tilde.trace() - 1.0)/2.0;
+	cos_theta = std::max(-1.0, std::min(1.0, cos_theta));
+	double theta_err = std::acos(cos_theta);
+	if (theta_err > orient_warn_angle){
+		ROS_WARN_THROTTLE(0.5, "Backstepping: orientation error %.1f deg, L is singular at 90 deg",
+			theta_err*180.0/M_PI);
+	}
+
 	error.head(3) = ee_pos_cmd - ee_pos;
 	error_real.head(3) = ee_pos_cmd - ee_pos_real;
 	dot_error.head(3) = ee_vel_cmd - ee_vel;
@@ -350,9 +389,10 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	tmp_conversion0.setIdentity();
 	tmp_conversion0.block(3, 3, 3, 3) = L;
 	tmp_conversion1.setIdentity();
-	tmp_conversion1.block(3, 3, 3, 3) = L.inverse();
+	Eigen::Matrix<double,3,3> L_inv = dampedInverse(L, lambda_L);
+	tmp_conversion1.block(3, 3, 3, 3) = L_inv;
 	tmp_conversion2.setZero();
-	tmp_conversion2.block(3, 3, 3, 3) = -L.inverse() * dotL *L.inverse();
+	tmp_conversion2.block(3, 3, 3, 3) = -L_inv * dotL * L_inv;
 	dot_qr = J_pinv*tmp_conversion1*tmp_position;
 	ddot_qr = J_pinv * (tmp_conversion1*tmp_velocity + tmp_conversion2*tmp_position + J_dot*dot_qr);
 
@@ -369,6 +409,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	dt = period.toSec();
 
 	/* Update inertial parameters */
+	// /* Saturate s to avoid update of param_REG when s is too small */
 	Eigen::Matrix<double,7,1> s_temp = s;
 	for(int i=0;i<ndof;i++){
 		if (std::fabs(s_temp(i,1)) < tol_s) s_temp(i,1) = 0.0;
@@ -429,7 +470,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	/* Compute tau command */
 	tau_tilde = Yr*(param_init-param_REG);
-	tau_cmd = Yr*param_REG + Kd*s + Jee.transpose()*tmp_conversion0.transpose()*error_real;
+	tau_cmd = Yr*param_REG + Kd*s + Jee.transpose()*tmp_conversion0.transpose()*Kp*error_real;
 	//tau_cmd.setZero(); // gravity compensation check (spoiler: it is not perfect)
 	
 	/* Saturate the derivate of tau_cmd */
@@ -483,12 +524,16 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	this->pub_config_.publish(msg_config);
 
 	// - publish franka pose - //
+	// the real kinematics is published, not the thunder one: the command is seeded in
+	// starting() from T0EE_real and tracked against error_real, so a trajectory generator
+	// asking "where am I" must get the same pose
 	geometry_msgs::PoseStamped msg_franka_pose;
 	msg_franka_pose.header.stamp = time_now;
-	msg_franka_pose.pose.position.x = T0EE(0,3);
-	msg_franka_pose.pose.position.y = T0EE(1,3);
-	msg_franka_pose.pose.position.z = T0EE(2,3);
-	Eigen::Quaterniond ee_rot_quat(T0EE.block<3,3>(0,0));
+	msg_franka_pose.header.frame_id = arm_id_ + "_link0";
+	msg_franka_pose.pose.position.x = T0EE_real(0,3);
+	msg_franka_pose.pose.position.y = T0EE_real(1,3);
+	msg_franka_pose.pose.position.z = T0EE_real(2,3);
+	Eigen::Quaterniond ee_rot_quat(T0EE_real.block<3,3>(0,0));
 	msg_franka_pose.pose.orientation.x = ee_rot_quat.x();
 	msg_franka_pose.pose.orientation.y = ee_rot_quat.y();
 	msg_franka_pose.pose.orientation.z = ee_rot_quat.z();
@@ -525,12 +570,17 @@ void Backstepping::setCommandCB(const panda_controllers::desTrajEE::ConstPtr& ms
  	ee_pos_cmd << msg->position.x, msg->position.y, msg->position.z;
 	ee_vel_cmd << msg->velocity.x, msg->velocity.y, msg->velocity.z;
 	ee_acc_cmd << msg->acceleration.x, msg->acceleration.y, msg->acceleration.z;
-	// quaternion to matrix
-	// Eigen::Quaterniond quaternion(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
-    // Eigen::Matrix3d rotation_matrix = quaternion.toRotationMatrix();
-	// ee_rot_cmd = rotation_matrix;
-	// ee_ang_vel_cmd << msg->ang_vel.x, msg->ang_vel.y, msg->ang_vel.z;
-	// ee_ang_acc_cmd << msg->ang_acc.x, msg->ang_acc.y, msg->ang_acc.z;
+	// quaternion to matrix, Eigen takes w first
+	Eigen::Quaterniond quaternion(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
+	// a publisher filling only the position leaves an all zero quaternion: keep the
+	// last command instead of slamming the arm to an arbitrary attitude
+	if (quaternion.norm() > 1e-6){
+		ee_rot_cmd = quaternion.normalized().toRotationMatrix();
+	} else {
+		ROS_WARN_THROTTLE(1.0, "Backstepping: command with a null quaternion, orientation kept");
+	}
+	ee_ang_vel_cmd << msg->ang_vel.x, msg->ang_vel.y, msg->ang_vel.z;
+	ee_ang_acc_cmd << msg->ang_acc.x, msg->ang_acc.y, msg->ang_acc.z;
 }
 
 void Backstepping::setFlagUpdate(const panda_controllers::flag::ConstPtr& msg){

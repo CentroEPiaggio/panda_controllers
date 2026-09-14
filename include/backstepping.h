@@ -3,6 +3,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <utility>
 #include <math.h>
 #include <eigen3/Eigen/Dense>
 
@@ -35,12 +36,23 @@
 
 #define     DEBUG   0      
 
-#define    NJ      9       // number of joints
+// NJ is thunder's numJoints, i.e. the number of entries in the `kinematics` block
+// of config/thunder/*.yaml -- NOT the number of degrees of freedom. For
+// franka_toTest.yaml that is 10: base, link0..link6, flange, EE.
+#define    NJ      10      // number of joints (thunder numJoints)
 #define    ndof    7       // number of degrees of freedom
 
 #ifndef     PARAM
 # define    PARAM 10	// number of parameters for each link
 #endif
+
+// The generated model is the authority on the size of the regressor parameter
+// vector. If this fires, NJ*PARAM no longer matches config/thunder/*.yaml:
+// regenerate the model, or fix NJ/PARAM to agree with it. Note that a non-zero
+// Dl_order (link friction) adds parameters beyond NJ*PARAM.
+static_assert(
+    decltype(std::declval<thunder_franka&>().get_par_REG())::RowsAtCompileTime == NJ * PARAM,
+    "NJ*PARAM does not match thunder_franka::get_par_REG() -- see config/thunder/*.yaml");
 
 namespace panda_controllers
 {
@@ -60,8 +72,11 @@ private:
   
     bool flag = false;           // flag for check of the desired command velocity
 	bool logging;
+	std::string arm_id_;         // kept for the frame_id of the published pose
     const double tol_s = 0.01;
     const double UB_s = 1;
+    double lambda_L;             // damping of the L inverse
+    double orient_warn_angle;    // [rad] warn above this orientation error
     // const int NJ = 9;
     // const int ndof = 7;
     
@@ -89,7 +104,8 @@ private:
     
     /* Gain Matrices */
     
-    Eigen::Matrix<double, 6, 6> Lambda; 
+    Eigen::Matrix<double, 6, 6> Lambda;
+    Eigen::Matrix<double, 6, 6> Kp;         // gain of the cartesian stiffness term of tau_cmd
     Eigen::Matrix<double, ndof, ndof> Kd;
     //Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> R;
     Eigen::Matrix<double, NJ*PARAM, NJ*PARAM> Rinv;
@@ -125,14 +141,14 @@ private:
 
     /* Parameter vector */
 
-    Eigen::Matrix<double, 90, 1> param_REG;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_REG;
 	Eigen::Matrix<double,6,1> ee_tr;
-    Eigen::Matrix<double, 90, 1> param_init;
-    Eigen::Matrix<double, 90, 1> dot_param;
+    Eigen::Matrix<double, NJ*PARAM, 1> param_init;
+    Eigen::Matrix<double, NJ*PARAM, 1> dot_param;
 
     /* Regressor Matrix */
     
-    Eigen::Matrix<double, 7, 90> Yr;
+    Eigen::Matrix<double, ndof, NJ*PARAM> Yr;
 	
 	/* Pseudo-inverse of jacobian and its derivative matrices */
 	

@@ -3,8 +3,8 @@ pipeline:
   builders: [kin_builder, dyn_builder, reg_builder]
   generators: [robot_generator]
 version: 1.0
-PI_2: 1.5707963267948966
-PI_2_neg: -1.5707963267948966
+PI_2: &1 1.5707963267948966
+PI_2_neg: &2 -1.5707963267948966
 PI_4_neg: -0.7853981633974483
 robot_generator:
   gen_python: false
@@ -27,37 +27,42 @@ kin_loader:
       parent: link0
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [0, 0, 0, -1.5708, 0, 0]
+      xyzrpy: [0, 0, 0, *2, 0, 0]
     link2:
       parent: link1
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [0, -0.316, 0, 1.5708, 0, 0]
+      xyzrpy: [0, -0.316, 0, *1, 0, 0]
     link3:
       parent: link2
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [0.0825, 0, 0, 1.5708, 0, 0]
+      xyzrpy: [0.0825, 0, 0, *1, 0, 0]
     link4:
       parent: link3
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [-0.0825, 0.384, 0, -1.5708, 0, 0]
+      xyzrpy: [-0.0825, 0.384, 0, *2, 0, 0]
     link5:
       parent: link4
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [0, 0, 0, 1.5708, 0, 0]
+      xyzrpy: [0, 0, 0, *1, 0, 0]
     link6:
       parent: link5
       joint_type: R
       symb: [0, 0, 0, 0, 0, 0]
-      xyzrpy: [0.088, -0.107, 0, 1.5708, 0, 0]
-    EE:
+      xyzrpy: [0.088, 0, 0, *1, 0, 0]
+    flange:
       parent: link6
       joint_type: FIXED
+      symb: [0, 0, 0, 0, 0, 0]
+      xyzrpy: [0, 0, 0.107, 0, 0, 0]
+    EE:
+      parent: flange
+      joint_type: FIXED
       symb: [1, 1, 1, 1, 1, 1]
-      xyzrpy: [0, 0, 0, 0, 0, 0]
+      xyzrpy: [0.30, 0, 0.05, 0, 0, 0]
       available: true
       derivatives: true
 dyn_loader:
@@ -176,20 +181,30 @@ dyn_loader:
       friction:
         symb: [1, 1]
         Dl: [0.1, 0.01]
-    EE:
+    flange:
       inertial:
-        symb: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        symb: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         mass: 0.735522
         CoM_x: 1.0517e-02
         CoM_y: -4.252e-03
-        CoM_z: -4.5403e-02
+        CoM_z: 6.1597e-02
         Ixx: 1.2516e-02
         Iyy: 1.0027e-02
         Izz: 4.8150e-03
         Ixy: -4.2800e-04
         Ixz: -1.1960e-03
         Iyz: -7.4100e-04
-      friction:
-        symb: [1, 1]
-        Dl: [0.1, 0.01]
+    EE:
+      inertial:
+        symb: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        mass: 0.05
+        CoM_x: 0.15
+        CoM_y: 0.0
+        CoM_z: 0.05
+        Ixx: 9.85e-06
+        Iyy: 3.79925e-04
+        Izz: 3.79925e-04
+        Ixy: 0.0
+        Ixz: 0.0
+        Iyz: 0.0
 config_path: /home/thunder_dev/thunder_dynamics/src/thunder/robots/debug/franka.yaml
