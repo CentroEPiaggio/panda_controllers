@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# gzclient without libgazebo_ros_api_plugin.
+#
+# The standard wrapper (gazebo_ros/gzclient) also loads that plugin in the GUI,
+# with -g. The plugin calls ros::init() and replaces Gazebo's signal handler:
+# from that point on, gzclient no longer exits on the SIGINT sent by roslaunch
+# during shutdown, and roslaunch waits DEFAULT_TIMEOUT_SIGINT (15 s) before
+# escalating to SIGTERM ([gazebo_gui-3] escalating to SIGTERM).
+# Measured: gzclient alone exits in ~0.4 s; with the plugin, it does not exit at all.
+# The plugin is needed on the server side (gzserver loads it with -s), which is not affected here.
+
+. $(catkin_find --first-only --libexec gazebo_ros)/libcommon.sh
+
+final="$@"
+
+EXT=so
+if [ $(uname) = "Darwin" ]; then
+    EXT=dylib
+fi
+
+# il paths plugin serve anche alla GUI, per risolvere gli URI model:// dei pacchetti ROS
+if [ `expr "$final" : ".*libgazebo_ros_paths_plugin\.$EXT.*"` -eq 0 ]
+then
+    final="$final -g `catkin_find --first-only libgazebo_ros_paths_plugin.$EXT`"
+fi
+
+setup_path=$(pkg-config --variable=prefix gazebo)/share/gazebo/
+
+# source setup.sh, but keep local modifications to GAZEBO_MASTER_URI and GAZEBO_MODEL_DATABASE_URI
+desired_master_uri="$GAZEBO_MASTER_URI"
+desired_model_database_uri="$GAZEBO_MODEL_DATABASE_URI"
+. $setup_path/setup.sh
+if [ "$desired_master_uri" = "" ]; then
+	desired_master_uri="$GAZEBO_MASTER_URI"
+fi
+if [ "$desired_model_database_uri" = "" ]; then
+	desired_model_database_uri="$GAZEBO_MODEL_DATABASE_URI"
+fi
+
+final=$(relocate_remappings "${final}")
+
+# exec: cosi' il pid che roslaunch sorveglia e' gzclient stesso, non questa shell
+export GAZEBO_MASTER_URI="$desired_master_uri"
+export GAZEBO_MODEL_DATABASE_URI="$desired_model_database_uri"
+exec gzclient $final

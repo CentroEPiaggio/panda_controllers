@@ -43,9 +43,19 @@
     <arg name="world_name" value="$(arg world)"/>
     <!-- Always start in paused mode, and only unpause when spawning the model -->
     <arg name="paused" value="true"/>
-    <arg name="gui" value="$(eval not arg('headless'))"/>
+    <!-- linea modificata: la GUI la lanciamo noi qui sotto -->
+    <arg name="gui" value="false"/>
     <arg name="use_sim_time" value="true"/>
   </include>
+
+  <!-- linea aggiunta: gzclient con il nostro wrapper invece di quello di gazebo_ros.
+       Quello di gazebo_ros carica libgazebo_ros_api_plugin anche nella GUI, e con
+       quel plugin gzclient non risponde piu' al SIGINT: in chiusura roslaunch
+       aspetta 15 s e poi stampa "[gazebo_gui-3] escalating to SIGTERM".
+       Vedi i commenti in scripts/gzclient_no_ros_api. -->
+  <node name="gazebo_gui" pkg="panda_controllers" type="gzclient_no_ros_api"
+        respawn="false" output="screen"
+        if="$(eval arg('gazebo') and not arg('headless'))" />
 
   <param name="robot_description"
          command="xacro $(arg description_file)
