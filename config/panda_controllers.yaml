@@ -39,13 +39,13 @@ backstepping_controller:
     cutoff_frequency: 1000
     logging: true
     # --- Controller parameters --- #
-    gainLambda: [1, 1, 1, 0.2, 0.2, 0.2]          # gain for Lambda matrix
+    gainLambda: [5, 5, 5, 1.0, 1.0, 1.0]          # gain for Lambda matrix
     # one entry per thunder joint (NJ): base, link0..link6, flange, EE.
     # base is fixed -> 0.0. The last entry is the tube.
     gainRlinks: [0.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]     # gain for R matrix
     gainRparam: [1.0, 0.1, 0.01, 0.001]                 # gain proportional to [mass, mass*length, mass*length^2, nondiagonal inertial] 
-    gainKp: [1, 1, 1, 16, 16, 16]              # gain for the Jt*conv0t*e stiffness term of tau_cmd. [1,1,1,16,16,16] reproduces old behavior for /0.5 fix
-    gainKd: [10, 10, 10, 10, 5, 5, 2]       # gain for Kd matrix
+    gainKp: [1, 1, 1, 5, 5, 5]              # gain for the Jt*conv0t*e stiffness term of tau_cmd. [1,1,1,16,16,16] reproduces old behavior for /0.5 fix
+    gainKd: [50, 50, 50, 50, 30, 30, 10]       # gain for Kd matrix
     lambda_L: 0.001                         # damping of the L inverse, ~0 away from the singularity
     orient_warn_deg: 60.0                   # warn above this orientation error (L is singular at 90)
     adaptive_kin: false                     # flag to update kinematics parameters

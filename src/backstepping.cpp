@@ -216,7 +216,7 @@ void Backstepping::starting(const ros::Time& time)
 	/* Getting Robot State in order to get q_curr and dot_q_curr and jacobian of end-effector */
 	
 	robot_state = state_handle_->getRobotState();
-	Eigen::Matrix4d T0EE_real = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+	Eigen::Matrix4d T0EE_franka = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 
 	q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.q.data());
 	dot_q_curr = Eigen::Map<Eigen::Matrix<double, ndof, 1>>(robot_state.dq.data());
@@ -228,7 +228,7 @@ void Backstepping::starting(const ros::Time& time)
 	T0EE = franka.get_T_w_EE();
 	ee_tr = franka.get_KIN_EE_xyzrpy();
 	cout << "ee_tr: " << ee_tr << endl;
-	cout << "T0EE_real: \n" << T0EE_real << endl<<endl;
+	cout << "T0EE_franka: \n" << T0EE_franka << endl<<endl;
 	cout << "T0EE_thunder: \n" << T0EE << endl<<endl;
 
 	Eigen::Matrix<double,6,ndof> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, ndof>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
@@ -264,10 +264,10 @@ void Backstepping::starting(const ros::Time& time)
 	franka.set_ddqr(ddot_qr.setZero());
 
 	/* Secure initialization command */
-	ee_pos_cmd = T0EE_real.block<3,1>(0,3);
-	ee_rot_cmd = T0EE_real.block<3,3>(0,0);
-	// ee_pos_cmd = T0EE.block<3,1>(0,3);
-	// ee_rot_cmd = T0EE.block<3,3>(0,0);
+	// ee_pos_cmd = T0EE_franka.block<3,1>(0,3);
+	// ee_rot_cmd = T0EE_franka.block<3,3>(0,0);
+	ee_pos_cmd = T0EE.block<3,1>(0,3);
+	ee_rot_cmd = T0EE.block<3,3>(0,0);
 	
 	ee_vel_cmd.setZero();
 	ee_acc_cmd.setZero();
@@ -308,7 +308,7 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	franka.set_dq(dot_q_curr);
 	Jee = franka.get_J_EE();
 	T0EE = franka.get_T_w_EE();
-	Eigen::Matrix4d T0EE_real = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
+	Eigen::Matrix4d T0EE_franka = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
 	Eigen::Matrix<double,6,ndof> Jee_real = Eigen::Map<Eigen::Matrix<double, 6, ndof>> (model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 	/* Compute pseudo-inverse of jacobian and its derivative */
 	J_pinv = franka.get_J_EE_pinv();
@@ -330,11 +330,11 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 
 	// - Forward kinematics - //
 	ee_pos = T0EE.block<3,1>(0,3);
-	ee_pos_real = T0EE_real.block<3,1>(0,3);
+	ee_pos_real = T0EE_franka.block<3,1>(0,3);
 	ee_vel = Jee.topRows(3)*dot_q_curr;
 	ee_vel_real = Jee_real.topRows(3)*dot_q_curr;
 	ee_rot = T0EE.block<3,3>(0,0);
-	ee_rot_real = T0EE_real.block<3,3>(0,0);
+	ee_rot_real = T0EE_franka.block<3,3>(0,0);
 	ee_omega = Jee.bottomRows(3)*dot_q_curr;
 	ee_omega_real = Jee_real.bottomRows(3)*dot_q_curr;
 
@@ -524,16 +524,14 @@ void Backstepping::update(const ros::Time&, const ros::Duration& period)
 	this->pub_config_.publish(msg_config);
 
 	// - publish franka pose - //
-	// the real kinematics is published, not the thunder one: the command is seeded in
-	// starting() from T0EE_real and tracked against error_real, so a trajectory generator
-	// asking "where am I" must get the same pose
+	// the real kinematics from thunder is published
 	geometry_msgs::PoseStamped msg_franka_pose;
 	msg_franka_pose.header.stamp = time_now;
 	msg_franka_pose.header.frame_id = arm_id_ + "_link0";
-	msg_franka_pose.pose.position.x = T0EE_real(0,3);
-	msg_franka_pose.pose.position.y = T0EE_real(1,3);
-	msg_franka_pose.pose.position.z = T0EE_real(2,3);
-	Eigen::Quaterniond ee_rot_quat(T0EE_real.block<3,3>(0,0));
+	msg_franka_pose.pose.position.x = T0EE(0,3);
+	msg_franka_pose.pose.position.y = T0EE(1,3);
+	msg_franka_pose.pose.position.z = T0EE(2,3);
+	Eigen::Quaterniond ee_rot_quat(T0EE.block<3,3>(0,0));
 	msg_franka_pose.pose.orientation.x = ee_rot_quat.x();
 	msg_franka_pose.pose.orientation.y = ee_rot_quat.y();
 	msg_franka_pose.pose.orientation.z = ee_rot_quat.z();
