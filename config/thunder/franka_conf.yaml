@@ -62,7 +62,7 @@ kin_loader:
       parent: flange
       joint_type: FIXED
       symb: [1, 1, 1, 1, 1, 1]
-      xyzrpy: [0.30, 0, 0.01, 0, 0, 0]
+      xyzrpy: [0.14, 0, 0.02, 0, 0, 0]
       available: true
       derivatives: true
 dyn_loader:
